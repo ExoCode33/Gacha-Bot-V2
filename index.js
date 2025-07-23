@@ -1,4 +1,6 @@
 // index.js - Professional One Piece Devil Fruit Gacha Bot v4.0
+require('dotenv').config(); // Load environment variables FIRST
+
 const { Client, GatewayIntentBits, Collection, ActivityType } = require('discord.js');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
@@ -17,6 +19,7 @@ const ErrorHandler = require('./src/utils/ErrorHandler');
 class OnePieceGachaBot {
     constructor() {
         this.client = null;
+        this.commandManager = null;
         this.logger = new Logger('BOT_CORE');
         this.isReady = false;
         this.startTime = Date.now();
@@ -150,8 +153,9 @@ class OnePieceGachaBot {
         try {
             this.logger.info('📁 Loading commands...');
             
-            const commandManager = new CommandManager(this.client);
-            await commandManager.loadCommands();
+            this.commandManager = new CommandManager(this.client);
+            this.client.commandManager = this.commandManager; // Store reference
+            await this.commandManager.loadCommands();
             
             this.logger.success(`✅ Loaded ${this.client.commands.size} commands`);
             
@@ -196,8 +200,11 @@ class OnePieceGachaBot {
 
             const rest = new REST({ version: '10' }).setToken(Config.discord.token);
             
+            // Get client ID from token if not provided
+            const clientId = Config.discord.clientId || this.getClientIdFromToken(Config.discord.token);
+            
             await rest.put(
-                Routes.applicationCommands(Config.discord.clientId || 'temp'),
+                Routes.applicationCommands(clientId),
                 { body: commands }
             );
 
@@ -206,6 +213,20 @@ class OnePieceGachaBot {
         } catch (error) {
             this.logger.error('Failed to register commands:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Extract client ID from token if needed
+     */
+    getClientIdFromToken(token) {
+        try {
+            const base64 = token.split('.')[0];
+            const decoded = Buffer.from(base64, 'base64').toString('ascii');
+            return decoded;
+        } catch (error) {
+            this.logger.warn('Could not extract client ID from token');
+            return 'temp';
         }
     }
 
