@@ -259,4 +259,338 @@ class DatabaseManager {
      */
     async ensureUser(userId, username, guildId = null) {
         const result = await this.query(`
-            INSERT INTO users (user_
+            INSERT INTO users (user_id, username, guild_id, level, base_cp, total_cp, berries, created_at, updated_at)
+            VALUES ($1, $2, $3, 0, 100, 100, 0, NOW(), NOW())
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                guild_id = EXCLUDED.guild_id,
+                updated_at = NOW()
+            RETURNING *
+        `, [userId, username, guildId]);
+        
+        return result.rows[0];
+    }
+
+    async getUser(userId) {
+        const result = await this.query(
+            'SELECT * FROM users WHERE user_id = $1',
+            [userId]
+        );
+        return result.rows[0] || null;
+    }
+
+    async updateUser(userId, updates) {
+        const setClause = Object.keys(updates)
+            .map((key, index) => `${key} = ${index + 2}`)
+            .join(', ');
+        
+        const values = [userId, ...Object.values(updates)];
+        
+        const result = await this.query(`
+            UPDATE users 
+            SET ${setClause}, updated_at = NOW()
+            WHERE user_id = $1
+            RETURNING *
+        `, values);
+        
+        return result.rows[0];
+    }
+
+    async updateUserBerries(userId, amount, reason = 'Unknown') {
+        const result = await this.query(`
+            UPDATE users 
+            SET berries = berries + $2,
+                total_earned = CASE WHEN $2 > 0 THEN total_earned + $2 ELSE total_earned END,
+                total_spent = CASE WHEN $2 < 0 THEN total_spent + ABS($2) ELSE total_spent END,
+                updated_at = NOW()
+            WHERE user_id = $1
+            RETURNING berries
+        `, [userId, amount]);
+        
+        if (result.rows.length === 0) {
+            throw new Error('User not found');
+        }
+        
+        return result.rows[0].berries;
+    }
+
+    /**
+     * Devil Fruit management methods
+     */
+    async addDevilFruit(userId, fruitData) {
+        // Check for duplicates
+        const existing = await this.query(`
+            SELECT COUNT(*) as count 
+            FROM user_devil_fruits 
+            WHERE user_id = $1 AND fruit_id = $2
+        `, [userId, fruitData.id]);
+        
+        const duplicateCount = parseInt(existing.rows[0].count) + 1;
+        const isNewFruit = duplicateCount === 1;
+        
+        // Get user's base CP
+        const user = await this.getUser(userId);
+        const baseCp = user.base_cp;
+        
+        // Calculate values
+        const multiplier = parseFloat(fruitData.multiplier) || 1.0;
+        const multiplierAsInt = Math.floor(multiplier * 100);
+        const totalCp = Math.floor(baseCp * multiplier);
+        
+        // Insert fruit
+        const result = await this.query(`
+            INSERT INTO user_devil_fruits (
+                user_id, fruit_id, fruit_name, fruit_type, fruit_rarity,
+                fruit_element, fruit_fruit_type, fruit_power, fruit_description,
+                base_cp, duplicate_count, total_cp, obtained_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+            RETURNING *
+        `, [
+            userId,
+            fruitData.id || 'unknown_fruit',
+            fruitData.name || 'Unknown Fruit',
+            fruitData.type || 'Paramecia',
+            fruitData.rarity || 'common',
+            fruitData.element || fruitData.fruitType || 'Unknown',
+            fruitData.fruitType || 'Unknown',
+            fruitData.power || 'Unknown power',
+            fruitData.description || fruitData.power || 'Unknown power',
+            multiplierAsInt,
+            duplicateCount,
+            totalCp
+        ]);
+        
+        // Recalculate user's total CP
+        await this.recalculateUserCP(userId);
+        
+        return {
+            fruit: result.rows[0],
+            isNewFruit,
+            duplicateCount,
+            totalCp: await this.getUserTotalCP(userId)
+        };
+    }
+
+    async getUserDevilFruits(userId) {
+        const result = await this.query(`
+            SELECT *, 
+                   (SELECT COUNT(*) FROM user_devil_fruits udf2 
+                    WHERE udf2.user_id = $1 AND udf2.fruit_id = user_devil_fruits.fruit_id) as duplicate_count
+            FROM user_devil_fruits 
+            WHERE user_id = $1 
+            ORDER BY obtained_at DESC
+        `, [userId]);
+        
+        return result.rows;
+    }
+
+    async recalculateUserCP(userId) {
+        const user = await this.getUser(userId);
+        if (!user) return 0;
+        
+        const baseCp = user.base_cp;
+        
+        // Get all user's fruits
+        const fruits = await this.query(`
+            SELECT fruit_id, base_cp, duplicate_count 
+            FROM user_devil_fruits 
+            WHERE user_id = $1
+        `, [userId]);
+        
+        let totalCp = baseCp;
+        const fruitGroups = {};
+        
+        // Group by fruit type
+        fruits.rows.forEach(fruit => {
+            if (!fruitGroups[fruit.fruit_id]) {
+                fruitGroups[fruit.fruit_id] = {
+                    baseCp: fruit.base_cp,
+                    count: 0
+                };
+            }
+            fruitGroups[fruit.fruit_id].count++;
+        });
+        
+        // Calculate total CP
+        Object.values(fruitGroups).forEach(group => {
+            const multiplier = group.baseCp / 100;
+            const duplicateBonus = 1 + ((group.count - 1) * 0.01);
+            const fruitCp = (baseCp * multiplier) * duplicateBonus;
+            totalCp += fruitCp;
+        });
+        
+        const finalTotalCp = Math.floor(totalCp);
+        
+        await this.query(
+            'UPDATE users SET total_cp = $2, updated_at = NOW() WHERE user_id = $1',
+            [userId, finalTotalCp]
+        );
+        
+        return finalTotalCp;
+    }
+
+    async getUserTotalCP(userId) {
+        const result = await this.query(
+            'SELECT total_cp FROM users WHERE user_id = $1',
+            [userId]
+        );
+        return result.rows[0]?.total_cp || 0;
+    }
+
+    /**
+     * Statistics and leaderboards
+     */
+    async getServerStats() {
+        const stats = await Promise.all([
+            this.query('SELECT COUNT(*) as count FROM users'),
+            this.query('SELECT COUNT(*) as count FROM user_devil_fruits'),
+            this.query('SELECT COALESCE(SUM(berries), 0) as total FROM users')
+        ]);
+        
+        return {
+            totalUsers: parseInt(stats[0].rows[0].count),
+            totalFruits: parseInt(stats[1].rows[0].count),
+            totalBerries: parseInt(stats[2].rows[0].total)
+        };
+    }
+
+    async getLeaderboard(type = 'cp', limit = 10) {
+        let query;
+        
+        switch (type) {
+            case 'cp':
+                query = `
+                    SELECT user_id, username, total_cp, level
+                    FROM users 
+                    ORDER BY total_cp DESC 
+                    LIMIT $1
+                `;
+                break;
+            case 'berries':
+                query = `
+                    SELECT user_id, username, berries, total_earned
+                    FROM users 
+                    ORDER BY berries DESC 
+                    LIMIT $1
+                `;
+                break;
+            case 'fruits':
+                query = `
+                    SELECT u.user_id, u.username, COUNT(DISTINCT df.fruit_id) as unique_fruits
+                    FROM users u
+                    LEFT JOIN user_devil_fruits df ON u.user_id = df.user_id
+                    GROUP BY u.user_id, u.username
+                    ORDER BY unique_fruits DESC 
+                    LIMIT $1
+                `;
+                break;
+            case 'level':
+                query = `
+                    SELECT user_id, username, level, base_cp
+                    FROM users 
+                    ORDER BY level DESC, base_cp DESC 
+                    LIMIT $1
+                `;
+                break;
+            default:
+                throw new Error('Invalid leaderboard type');
+        }
+        
+        const result = await this.query(query, [limit]);
+        return result.rows;
+    }
+
+    /**
+     * Income tracking
+     */
+    async recordIncome(userId, amount, cpAtTime, incomeType = 'automatic') {
+        await this.query(`
+            INSERT INTO income_history (user_id, amount, cp_at_time, income_type, created_at)
+            VALUES ($1, $2, $3, $4, NOW())
+        `, [userId, amount, Math.floor(cpAtTime), incomeType]);
+        
+        await this.query(
+            'UPDATE users SET last_income = NOW() WHERE user_id = $1',
+            [userId]
+        );
+    }
+
+    /**
+     * Health check and diagnostics
+     */
+    async healthCheck() {
+        try {
+            const start = Date.now();
+            await this.query('SELECT 1');
+            const latency = Date.now() - start;
+            
+            const poolStats = {
+                totalCount: this.pool.totalCount,
+                idleCount: this.pool.idleCount,
+                waitingCount: this.pool.waitingCount
+            };
+            
+            return {
+                status: 'healthy',
+                latency,
+                connected: this.isConnected,
+                queryCount: this.queryCount,
+                poolStats
+            };
+        } catch (error) {
+            return {
+                status: 'unhealthy',
+                error: error.message,
+                connected: false
+            };
+        }
+    }
+
+    /**
+     * Get database statistics
+     */
+    async getStats() {
+        const health = await this.healthCheck();
+        
+        return {
+            ...health,
+            connectionAttempts: this.connectionAttempts,
+            maxRetries: this.maxRetries,
+            migrationsLoaded: this.migrations.size
+        };
+    }
+
+    /**
+     * Disconnect from database
+     */
+    async disconnect() {
+        if (this.pool) {
+            this.logger.info('🔌 Closing database connections...');
+            
+            try {
+                await this.pool.end();
+                this.isConnected = false;
+                this.logger.success('✅ Database disconnected successfully');
+            } catch (error) {
+                this.logger.error('❌ Error closing database connections:', error);
+            }
+        }
+    }
+
+    /**
+     * Test connection
+     */
+    async testConnection() {
+        try {
+            await this.query('SELECT NOW() as current_time');
+            return true;
+        } catch (error) {
+            this.logger.error('Database connection test failed:', error);
+            return false;
+        }
+    }
+}
+
+// Export singleton instance
+module.exports = new DatabaseManager();
