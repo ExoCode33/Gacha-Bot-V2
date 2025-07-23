@@ -98,4 +98,39 @@ class SystemMonitor {
         // CPU threshold
         const cpuPercent = os.loadavg()[0] * 100;
         if (cpuPercent > thresholds.cpu) {
-            this.logger.warn(`⚠️ High CPU usage: ${cpu
+            this.logger.warn(`⚠️ High CPU usage: ${cpuPercent.toFixed(2)}%`);
+        }
+        
+        // Database latency
+        if (metrics.database.latency > thresholds.latency) {
+            this.logger.warn(`⚠️ High database latency: ${metrics.database.latency}ms`);
+        }
+    }
+    
+    incrementCommand() {
+        this.metrics.commandsExecuted++;
+    }
+    
+    incrementMessage() {
+        this.metrics.messagesSent++;
+    }
+    
+    incrementError() {
+        this.metrics.errorsLogged++;
+    }
+    
+    getMetrics() {
+        return this.collectMetrics();
+    }
+    
+    getUptimeString() {
+        const uptime = Date.now() - this.metrics.startTime;
+        const days = Math.floor(uptime / (24 * 60 * 60 * 1000));
+        const hours = Math.floor((uptime % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+        const minutes = Math.floor((uptime % (60 * 60 * 1000)) / (60 * 1000));
+        
+        return `${days}d ${hours}h ${minutes}m`;
+    }
+}
+
+module.exports = SystemMonitor;
