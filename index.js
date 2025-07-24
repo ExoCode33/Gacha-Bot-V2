@@ -1,153 +1,457 @@
-// Database Debug Test - Replace index.js temporarily
-console.log('🔍 === DATABASE DEBUG TEST ===');
-console.log('Time:', new Date().toISOString());
+// index.js - Professional One Piece Devil Fruit Gacha Bot v4.0
 
-// Check environment variables
-console.log('\n📋 Environment Variables:');
+// =============================================================================
+// DEBUG SECTION - Environment Variables Check
+// =============================================================================
+console.log('🔍 === RAILWAY ENVIRONMENT DEBUG ===');
+console.log('Timestamp:', new Date().toISOString());
+console.log('Node.js Version:', process.version);
+console.log('Platform:', process.platform);
+console.log('Working Directory:', process.cwd());
+console.log('');
+
+console.log('🔍 ENVIRONMENT VARIABLES CHECK:');
+console.log('DISCORD_TOKEN exists:', 'DISCORD_TOKEN' in process.env);
 console.log('DATABASE_URL exists:', 'DATABASE_URL' in process.env);
 console.log('DATABASE_PUBLIC_URL exists:', 'DATABASE_PUBLIC_URL' in process.env);
-console.log('DATABASE_PRIVATE_URL exists:', 'DATABASE_PRIVATE_URL' in process.env);
+console.log('DISCORD_TOKEN value:', process.env.DISCORD_TOKEN ? `${process.env.DISCORD_TOKEN.substring(0, 20)}...` : 'UNDEFINED');
+console.log('DATABASE_URL value:', process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'UNDEFINED');
+console.log('DATABASE_PUBLIC_URL value:', process.env.DATABASE_PUBLIC_URL ? `${process.env.DATABASE_PUBLIC_URL.substring(0, 30)}...` : 'UNDEFINED');
+console.log('');
 
-if (process.env.DATABASE_URL) {
-    console.log('DATABASE_URL value:', process.env.DATABASE_URL);
-    console.log('DATABASE_URL length:', process.env.DATABASE_URL.length);
-} else {
-    console.log('DATABASE_URL: NOT SET');
-}
+console.log('🔍 RAILWAY DETECTION:');
+console.log('RAILWAY_ENVIRONMENT_NAME:', process.env.RAILWAY_ENVIRONMENT_NAME || 'NOT SET');
+console.log('RAILWAY_SERVICE_NAME:', process.env.RAILWAY_SERVICE_NAME || 'NOT SET');
+console.log('RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME || 'NOT SET');
+console.log('');
 
+console.log('🔍 DATABASE URL ANALYSIS:');
 if (process.env.DATABASE_PUBLIC_URL) {
-    console.log('DATABASE_PUBLIC_URL value:', process.env.DATABASE_PUBLIC_URL);
-    console.log('DATABASE_PUBLIC_URL length:', process.env.DATABASE_PUBLIC_URL.length);
-} else {
-    console.log('DATABASE_PUBLIC_URL: NOT SET');
+    console.log('Using DATABASE_PUBLIC_URL (preferred)');
+    console.log('Contains proxy:', process.env.DATABASE_PUBLIC_URL.includes('proxy.rlwy.net'));
+    console.log('Contains internal:', process.env.DATABASE_PUBLIC_URL.includes('railway.internal'));
+} else if (process.env.DATABASE_URL) {
+    console.log('Using DATABASE_URL (fallback)');
+    console.log('Contains proxy:', process.env.DATABASE_URL.includes('proxy.rlwy.net'));
+    console.log('Contains internal:', process.env.DATABASE_URL.includes('railway.internal'));
 }
+console.log('');
 
-if (process.env.DATABASE_PRIVATE_URL) {
-    console.log('DATABASE_PRIVATE_URL value:', process.env.DATABASE_PRIVATE_URL);
-    console.log('DATABASE_PRIVATE_URL length:', process.env.DATABASE_PRIVATE_URL.length);
-} else {
-    console.log('DATABASE_PRIVATE_URL: NOT SET');
-}
-
-// Test which URL to use
-const testUrls = [
-    { name: 'DATABASE_PUBLIC_URL', url: process.env.DATABASE_PUBLIC_URL },
-    { name: 'DATABASE_URL', url: process.env.DATABASE_URL },
-    { name: 'DATABASE_PRIVATE_URL', url: process.env.DATABASE_PRIVATE_URL }
-];
-
-console.log('\n🧪 URL Analysis:');
-testUrls.forEach(({ name, url }) => {
-    if (url) {
-        console.log(`\n${name}:`);
-        console.log('  Full URL:', url);
-        console.log('  Contains "internal":', url.includes('railway.internal'));
-        console.log('  Contains "proxy":', url.includes('proxy.rlwy.net'));
-        console.log('  Contains "containers":', url.includes('containers-'));
-        console.log('  Starts with "postgresql":', url.startsWith('postgresql://'));
-        
-        // Try to parse URL
-        try {
-            const parsedUrl = new URL(url);
-            console.log('  Host:', parsedUrl.hostname);
-            console.log('  Port:', parsedUrl.port);
-            console.log('  Database:', parsedUrl.pathname);
-            console.log('  Username:', parsedUrl.username);
-            console.log('  Has password:', !!parsedUrl.password);
-        } catch (error) {
-            console.log('  URL parsing failed:', error.message);
-        }
+console.log('🔍 RELATED ENVIRONMENT VARIABLES:');
+const allKeys = Object.keys(process.env);
+const relevantKeys = allKeys.filter(key => 
+    key.includes('DISCORD') || 
+    key.includes('TOKEN') || 
+    key.includes('DATABASE') || 
+    key.includes('POSTGRES') ||
+    key.includes('DB_')
+);
+relevantKeys.forEach(key => {
+    const value = process.env[key];
+    if (key.includes('TOKEN') || key.includes('PASSWORD')) {
+        console.log(`${key}: ${value ? `${value.substring(0, 10)}...` : 'NOT SET'}`);
     } else {
-        console.log(`${name}: NOT SET`);
+        console.log(`${key}: ${value || 'NOT SET'}`);
     }
 });
+console.log('');
 
-// Test actual connection
-const { Pool } = require('pg');
+console.log('🔍 TOTAL ENVIRONMENT VARIABLES:', allKeys.length);
+console.log('🔍 === END DEBUG ===');
+console.log('');
 
-async function testConnection(name, url) {
-    if (!url) {
-        console.log(`\n❌ ${name}: No URL to test`);
-        return;
+require('dotenv').config(); // Load environment variables FIRST
+
+console.log('🔍 POST-DOTENV CHECK:');
+console.log('DISCORD_TOKEN after dotenv:', process.env.DISCORD_TOKEN ? 'SET' : 'NOT SET');
+console.log('DATABASE_URL after dotenv:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('DATABASE_PUBLIC_URL after dotenv:', process.env.DATABASE_PUBLIC_URL ? 'SET' : 'NOT SET');
+console.log('');
+
+const { Client, GatewayIntentBits, Collection, ActivityType } = require('discord.js');
+const { REST } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v10');
+const path = require('path');
+const fs = require('fs');
+
+// Core modules
+const Logger = require('./src/utils/Logger');
+const Config = require('./src/config/Config');
+const DatabaseManager = require('./src/database/DatabaseManager');
+const EventManager = require('./src/events/EventManager');
+const CommandManager = require('./src/commands/CommandManager');
+const SystemMonitor = require('./src/utils/SystemMonitor');
+const ErrorHandler = require('./src/utils/ErrorHandler');
+
+class OnePieceGachaBot {
+    constructor() {
+        this.client = null;
+        this.commandManager = null;
+        this.logger = new Logger('BOT_CORE');
+        this.isReady = false;
+        this.startTime = Date.now();
+        
+        // Initialize error handlers
+        this.setupGlobalErrorHandlers();
+        
+        this.logger.info('🏴‍☠️ One Piece Devil Fruit Gacha Bot v4.0 Initializing...');
     }
-    
-    console.log(`\n🔄 Testing ${name}...`);
-    console.log('URL:', url.substring(0, 50) + '...');
-    
-    const pool = new Pool({
-        connectionString: url,
-        ssl: { rejectUnauthorized: false },
-        connectionTimeoutMillis: 10000,
-        statement_timeout: 10000,
-        query_timeout: 10000
-    });
-    
-    try {
-        const client = await pool.connect();
-        console.log(`✅ ${name}: Connection successful!`);
-        
-        try {
-            const result = await client.query('SELECT NOW() as time, version() as version');
-            console.log('  Database time:', result.rows[0].time);
-            console.log('  PostgreSQL version:', result.rows[0].version.split(' ')[0]);
-        } catch (queryError) {
-            console.log('  Query failed:', queryError.message);
-        } finally {
-            client.release();
-        }
-        
-        await pool.end();
-        return true;
-        
-    } catch (error) {
-        console.log(`❌ ${name}: Connection failed`);
-        console.log('  Error code:', error.code);
-        console.log('  Error message:', error.message);
-        console.log('  Error errno:', error.errno);
-        console.log('  Error syscall:', error.syscall);
-        console.log('  Error address:', error.address);
-        console.log('  Error port:', error.port);
-        
-        try {
-            await pool.end();
-        } catch (poolError) {
-            // Ignore pool cleanup errors
-        }
-        
-        return false;
-    }
-}
 
-async function runTests() {
-    console.log('\n🧪 === CONNECTION TESTS ===');
-    
-    for (const { name, url } of testUrls) {
-        if (url) {
-            const success = await testConnection(name, url);
-            if (success) {
-                console.log(`\n🎉 SUCCESS: ${name} works! Use this one.`);
-                break;
+    /**
+     * Initialize and start the bot
+     */
+    async start() {
+        try {
+            console.log('🔍 === BOT STARTUP DEBUG ===');
+            console.log('About to initialize configuration...');
+            console.log('Current process.env.DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING');
+            console.log('Current process.env.DATABASE_URL:', process.env.DATABASE_URL ? 'EXISTS' : 'MISSING');
+            console.log('Current process.env.DATABASE_PUBLIC_URL:', process.env.DATABASE_PUBLIC_URL ? 'EXISTS' : 'MISSING');
+            console.log('');
+            
+            // Load and validate configuration
+            await this.initializeConfig();
+            
+            // Initialize database connection
+            await this.initializeDatabase();
+            
+            // Create Discord client
+            this.createClient();
+            
+            // Load commands and events
+            await this.loadCommands();
+            await this.loadEvents();
+            
+            // Register slash commands
+            await this.registerCommands();
+            
+            // Login to Discord
+            await this.login();
+            
+            // Start monitoring systems
+            this.startMonitoring();
+            
+            this.logger.success('🎉 Bot started successfully!');
+            
+        } catch (error) {
+            this.logger.error('Failed to start bot:', error);
+            await this.shutdown(1);
+        }
+    }
+
+    /**
+     * Initialize configuration
+     */
+    async initializeConfig() {
+        try {
+            console.log('🔍 === CONFIG INITIALIZATION DEBUG ===');
+            console.log('About to load configuration...');
+            console.log('Current process.env.DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING');
+            console.log('Current process.env.DATABASE_URL:', process.env.DATABASE_URL ? 'EXISTS' : 'MISSING');
+            console.log('Current process.env.DATABASE_PUBLIC_URL:', process.env.DATABASE_PUBLIC_URL ? 'EXISTS' : 'MISSING');
+            
+            if (process.env.DISCORD_TOKEN) {
+                console.log('DISCORD_TOKEN length:', process.env.DISCORD_TOKEN.length);
+                console.log('DISCORD_TOKEN type:', typeof process.env.DISCORD_TOKEN);
+                console.log('DISCORD_TOKEN preview:', process.env.DISCORD_TOKEN.substring(0, 30) + '...');
             }
+            
+            if (process.env.DATABASE_PUBLIC_URL) {
+                console.log('DATABASE_PUBLIC_URL length:', process.env.DATABASE_PUBLIC_URL.length);
+                console.log('DATABASE_PUBLIC_URL type:', typeof process.env.DATABASE_PUBLIC_URL);
+                console.log('DATABASE_PUBLIC_URL preview:', process.env.DATABASE_PUBLIC_URL.substring(0, 40) + '...');
+                console.log('DATABASE_PUBLIC_URL contains proxy:', process.env.DATABASE_PUBLIC_URL.includes('proxy.rlwy.net'));
+            }
+            
+            if (process.env.DATABASE_URL) {
+                console.log('DATABASE_URL length:', process.env.DATABASE_URL.length);
+                console.log('DATABASE_URL type:', typeof process.env.DATABASE_URL);
+                console.log('DATABASE_URL preview:', process.env.DATABASE_URL.substring(0, 40) + '...');
+                console.log('DATABASE_URL contains internal:', process.env.DATABASE_URL.includes('railway.internal'));
+            }
+            
+            console.log('Calling Config.load()...');
+            await Config.load();
+            console.log('Config.load() completed successfully');
+            
+            this.logger.info('✅ Configuration loaded successfully');
+            
+            // Additional validation
+            const required = ['DISCORD_TOKEN'];
+            const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+            
+            if (!databaseUrl) {
+                required.push('DATABASE_URL or DATABASE_PUBLIC_URL');
+            }
+            
+            const missing = required.filter(key => !process.env[key] && key !== 'DATABASE_URL or DATABASE_PUBLIC_URL');
+            
+            if (missing.length > 0) {
+                console.log('❌ VALIDATION FAILED - Missing variables:', missing);
+                throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+            }
+            
+            console.log('✅ All required environment variables validated');
+            console.log('Database URL being used:', databaseUrl ? databaseUrl.substring(0, 50) + '...' : 'NONE');
+            console.log('🔍 === CONFIG INITIALIZATION COMPLETE ===');
+            
+        } catch (error) {
+            console.log('❌ CONFIG INITIALIZATION FAILED');
+            console.log('Error name:', error.name);
+            console.log('Error message:', error.message);
+            console.log('Error stack:', error.stack);
+            
+            this.logger.error('Failed to initialize configuration:', error);
+            throw error;
         }
     }
-    
-    console.log('\n📋 === RAILWAY SETUP INSTRUCTIONS ===');
-    console.log('1. Go to your PostgreSQL service in Railway');
-    console.log('2. Click "Connect" tab');
-    console.log('3. Copy the "Public Network" connection string');
-    console.log('4. In your bot service, set: DATABASE_URL=<public_connection_string>');
-    console.log('5. Make sure the URL starts with postgresql:// and contains containers- or proxy.rlwy.net');
-    
-    console.log('\n🔍 === TEST COMPLETE ===');
+
+    /**
+     * Initialize database connection
+     */
+    async initializeDatabase() {
+        try {
+            this.logger.info('🗄️ Initializing database connection...');
+            
+            // Add Railway-recommended delay for database connectivity
+            console.log('⏰ Adding 3-second delay for Railway networking...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            await DatabaseManager.connect();
+            await DatabaseManager.migrate();
+            
+            this.logger.success('✅ Database initialized successfully');
+            
+        } catch (error) {
+            this.logger.error('Failed to initialize database:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create Discord client with optimized settings
+     */
+    createClient() {
+        this.client = new Client({
+            intents: [
+                GatewayIntentBits.Guilds,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.GuildMembers,
+                GatewayIntentBits.MessageContent
+            ],
+            allowedMentions: { parse: ['users', 'roles'], repliedUser: false },
+            presence: {
+                activities: [{
+                    name: 'the Grand Line for Devil Fruits! 🍈',
+                    type: ActivityType.Watching
+                }],
+                status: 'online'
+            },
+            // Optimize for performance
+            sweepers: {
+                messages: {
+                    interval: 300, // 5 minutes
+                    lifetime: 1800 // 30 minutes
+                },
+                users: {
+                    interval: 3600, // 1 hour
+                    filter: () => user => user.bot && user.id !== this.client.user.id
+                }
+            }
+        });
+
+        // Initialize command collection
+        this.client.commands = new Collection();
+        this.client.config = Config;
+        this.client.logger = this.logger;
+        this.client.db = DatabaseManager;
+
+        this.logger.info('✅ Discord client created');
+    }
+
+    /**
+     * Load all commands
+     */
+    async loadCommands() {
+        try {
+            this.logger.info('📁 Loading commands...');
+            
+            this.commandManager = new CommandManager(this.client);
+            this.client.commandManager = this.commandManager; // Store reference
+            await this.commandManager.loadCommands();
+            
+            this.logger.success(`✅ Loaded ${this.client.commands.size} commands`);
+            
+        } catch (error) {
+            this.logger.error('Failed to load commands:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Load all events
+     */
+    async loadEvents() {
+        try {
+            this.logger.info('📁 Loading events...');
+            
+            const eventManager = new EventManager(this.client);
+            const eventCount = await eventManager.loadEvents();
+            
+            this.logger.success(`✅ Loaded ${eventCount} events`);
+            
+        } catch (error) {
+            this.logger.error('Failed to load events:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Register slash commands with Discord
+     */
+    async registerCommands() {
+        try {
+            if (!this.client.commands.size) {
+                this.logger.warn('No commands to register');
+                return;
+            }
+
+            this.logger.info('🔄 Registering slash commands...');
+            
+            const commands = Array.from(this.client.commands.values())
+                .map(command => command.data.toJSON());
+
+            const rest = new REST({ version: '10' }).setToken(Config.discord.token);
+            
+            // Get client ID from token if not provided
+            const clientId = Config.discord.clientId || this.getClientIdFromToken(Config.discord.token);
+            
+            await rest.put(
+                Routes.applicationCommands(clientId),
+                { body: commands }
+            );
+
+            this.logger.success(`✅ Registered ${commands.length} slash commands`);
+            
+        } catch (error) {
+            this.logger.error('Failed to register commands:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Extract client ID from token if needed
+     */
+    getClientIdFromToken(token) {
+        try {
+            const base64 = token.split('.')[0];
+            const decoded = Buffer.from(base64, 'base64').toString('ascii');
+            return decoded;
+        } catch (error) {
+            this.logger.warn('Could not extract client ID from token');
+            return 'temp';
+        }
+    }
+
+    /**
+     * Login to Discord
+     */
+    async login() {
+        try {
+            this.logger.info('🔐 Logging in to Discord...');
+            
+            await this.client.login(Config.discord.token);
+            
+            // Wait for ready event
+            await new Promise((resolve) => {
+                this.client.once('ready', resolve);
+            });
+            
+            this.isReady = true;
+            this.logger.success(`✅ Logged in as ${this.client.user.tag}`);
+            
+        } catch (error) {
+            this.logger.error('Failed to login to Discord:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Start monitoring systems
+     */
+    startMonitoring() {
+        const monitor = new SystemMonitor(this.client);
+        monitor.start();
+        
+        this.logger.info('✅ System monitoring started');
+    }
+
+    /**
+     * Setup global error handlers
+     */
+    setupGlobalErrorHandlers() {
+        process.on('unhandledRejection', (reason, promise) => {
+            ErrorHandler.handleUnhandledRejection(reason, promise);
+        });
+
+        process.on('uncaughtException', (error) => {
+            ErrorHandler.handleUncaughtException(error);
+            this.shutdown(1);
+        });
+
+        process.on('SIGINT', () => this.shutdown(0));
+        process.on('SIGTERM', () => this.shutdown(0));
+    }
+
+    /**
+     * Graceful shutdown
+     */
+    async shutdown(exitCode = 0) {
+        this.logger.info('🛑 Initiating graceful shutdown...');
+        
+        try {
+            if (this.client) {
+                this.logger.info('📡 Destroying Discord client...');
+                this.client.destroy();
+            }
+            
+            this.logger.info('🗄️ Closing database connections...');
+            await DatabaseManager.disconnect();
+            
+            this.logger.success('✅ Shutdown complete');
+            
+        } catch (error) {
+            this.logger.error('Error during shutdown:', error);
+        } finally {
+            process.exit(exitCode);
+        }
+    }
+
+    /**
+     * Get bot statistics
+     */
+    getStats() {
+        if (!this.isReady) return null;
+
+        return {
+            uptime: Date.now() - this.startTime,
+            guilds: this.client.guilds.cache.size,
+            users: this.client.users.cache.size,
+            commands: this.client.commands.size,
+            memory: process.memoryUsage(),
+            version: '4.0.0'
+        };
+    }
 }
 
-// Run the tests
-runTests().catch(error => {
-    console.error('Test failed:', error);
-}).finally(() => {
-    // Keep process alive for a minute to see results
-    setTimeout(() => {
-        console.log('Exiting...');
-        process.exit(0);
-    }, 60000);
+// Create and start bot instance
+const bot = new OnePieceGachaBot();
+
+// Handle startup
+bot.start().catch((error) => {
+    console.error('Failed to start bot:', error);
+    process.exit(1);
 });
+
+// Export for testing
+module.exports = { OnePieceGachaBot, bot };
