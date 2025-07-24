@@ -1,11 +1,57 @@
 // index.js - Professional One Piece Devil Fruit Gacha Bot v4.0
-// DEBUG: Check environment variables BEFORE anything else
-console.log('🔍 PRE-CONFIG DEBUG:');
-console.log('DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'SET' : 'NOT SET');
-console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
-console.log('Environment keys:', Object.keys(process.env).filter(k => k.includes('DISCORD') || k.includes('DATABASE')));
+
+// =============================================================================
+// DEBUG SECTION - Environment Variables Check
+// =============================================================================
+console.log('🔍 === RAILWAY ENVIRONMENT DEBUG ===');
+console.log('Timestamp:', new Date().toISOString());
+console.log('Node.js Version:', process.version);
+console.log('Platform:', process.platform);
+console.log('Working Directory:', process.cwd());
+console.log('');
+
+console.log('🔍 ENVIRONMENT VARIABLES CHECK:');
+console.log('DISCORD_TOKEN exists:', 'DISCORD_TOKEN' in process.env);
+console.log('DATABASE_URL exists:', 'DATABASE_URL' in process.env);
+console.log('DISCORD_TOKEN value:', process.env.DISCORD_TOKEN ? `${process.env.DISCORD_TOKEN.substring(0, 20)}...` : 'UNDEFINED');
+console.log('DATABASE_URL value:', process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'UNDEFINED');
+console.log('');
+
+console.log('🔍 RAILWAY DETECTION:');
+console.log('RAILWAY_ENVIRONMENT_NAME:', process.env.RAILWAY_ENVIRONMENT_NAME || 'NOT SET');
+console.log('RAILWAY_SERVICE_NAME:', process.env.RAILWAY_SERVICE_NAME || 'NOT SET');
+console.log('RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME || 'NOT SET');
+console.log('');
+
+console.log('🔍 RELATED ENVIRONMENT VARIABLES:');
+const allKeys = Object.keys(process.env);
+const relevantKeys = allKeys.filter(key => 
+    key.includes('DISCORD') || 
+    key.includes('TOKEN') || 
+    key.includes('DATABASE') || 
+    key.includes('POSTGRES') ||
+    key.includes('DB_')
+);
+relevantKeys.forEach(key => {
+    const value = process.env[key];
+    if (key.includes('TOKEN') || key.includes('PASSWORD')) {
+        console.log(`${key}: ${value ? `${value.substring(0, 10)}...` : 'NOT SET'}`);
+    } else {
+        console.log(`${key}: ${value || 'NOT SET'}`);
+    }
+});
+console.log('');
+
+console.log('🔍 TOTAL ENVIRONMENT VARIABLES:', allKeys.length);
+console.log('🔍 === END DEBUG ===');
+console.log('');
 
 require('dotenv').config(); // Load environment variables FIRST
+
+console.log('🔍 POST-DOTENV CHECK:');
+console.log('DISCORD_TOKEN after dotenv:', process.env.DISCORD_TOKEN ? 'SET' : 'NOT SET');
+console.log('DATABASE_URL after dotenv:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('');
 
 const { Client, GatewayIntentBits, Collection, ActivityType } = require('discord.js');
 const { REST } = require('@discordjs/rest');
@@ -81,23 +127,47 @@ class OnePieceGachaBot {
      */
     async initializeConfig() {
         try {
-            // DEBUG: Check again right before config load
-            this.logger.info('🔍 Final environment check:');
-            this.logger.info(`process.env.DISCORD_TOKEN: ${process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING'}`);
-            this.logger.info(`process.env.DATABASE_URL: ${process.env.DATABASE_URL ? 'EXISTS' : 'MISSING'}`);
+            console.log('🔍 === CONFIG INITIALIZATION DEBUG ===');
+            console.log('About to load configuration...');
+            console.log('Current process.env.DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING');
+            console.log('Current process.env.DATABASE_URL:', process.env.DATABASE_URL ? 'EXISTS' : 'MISSING');
             
+            if (process.env.DISCORD_TOKEN) {
+                console.log('DISCORD_TOKEN length:', process.env.DISCORD_TOKEN.length);
+                console.log('DISCORD_TOKEN type:', typeof process.env.DISCORD_TOKEN);
+                console.log('DISCORD_TOKEN preview:', process.env.DISCORD_TOKEN.substring(0, 30) + '...');
+            }
+            
+            if (process.env.DATABASE_URL) {
+                console.log('DATABASE_URL length:', process.env.DATABASE_URL.length);
+                console.log('DATABASE_URL type:', typeof process.env.DATABASE_URL);
+                console.log('DATABASE_URL preview:', process.env.DATABASE_URL.substring(0, 40) + '...');
+            }
+            
+            console.log('Calling Config.load()...');
             await Config.load();
+            console.log('Config.load() completed successfully');
+            
             this.logger.info('✅ Configuration loaded successfully');
             
-            // Validate required environment variables (redundant check)
+            // Additional validation
             const required = ['DISCORD_TOKEN', 'DATABASE_URL'];
             const missing = required.filter(key => !process.env[key]);
             
             if (missing.length > 0) {
+                console.log('❌ VALIDATION FAILED - Missing variables:', missing);
                 throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
             }
             
+            console.log('✅ All required environment variables validated');
+            console.log('🔍 === CONFIG INITIALIZATION COMPLETE ===');
+            
         } catch (error) {
+            console.log('❌ CONFIG INITIALIZATION FAILED');
+            console.log('Error name:', error.name);
+            console.log('Error message:', error.message);
+            console.log('Error stack:', error.stack);
+            
             this.logger.error('Failed to initialize configuration:', error);
             throw error;
         }
