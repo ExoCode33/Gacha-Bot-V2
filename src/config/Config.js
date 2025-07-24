@@ -46,7 +46,7 @@ class ConfigManager {
 
         // Database Configuration
         this.config.database = {
-            url: process.env.DATABASE_URL,
+            url: process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL,
             ssl: this.environment === 'production',
             pool: {
                 min: parseInt(process.env.DB_POOL_MIN) || 2,
@@ -222,11 +222,12 @@ class ConfigManager {
         
         // Use direct environment variables instead of getConfigValue for validation
         const discordToken = process.env.DISCORD_TOKEN;
-        const databaseUrl = process.env.DATABASE_URL;
+        const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
         
         console.log('🔍 VALIDATION CHECK:');
         console.log('discordToken from env:', discordToken ? 'SET' : 'NOT SET');
         console.log('databaseUrl from env:', databaseUrl ? 'SET' : 'NOT SET');
+        console.log('Using DATABASE_PUBLIC_URL:', process.env.DATABASE_PUBLIC_URL ? 'YES' : 'NO');
         
         const errors = [];
         
@@ -242,6 +243,7 @@ class ConfigManager {
             errors.push('DATABASE_URL is required');
         } else {
             console.log('✅ DATABASE_URL validation passed');
+            console.log('Database URL preview:', databaseUrl.substring(0, 50) + '...');
         }
 
         if (errors.length > 0) {
