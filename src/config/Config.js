@@ -197,6 +197,7 @@ class ConfigManager {
         console.log('🔍 DIRECT ENVIRONMENT CHECK:');
         console.log('process.env.DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING');
         console.log('process.env.DATABASE_URL:', process.env.DATABASE_URL ? 'EXISTS' : 'MISSING');
+        console.log('process.env.DATABASE_PUBLIC_URL:', process.env.DATABASE_PUBLIC_URL ? 'EXISTS' : 'MISSING');
         
         // Check config object structure
         console.log('🔍 CONFIG OBJECT STRUCTURE:');
@@ -217,10 +218,16 @@ class ConfigManager {
             if (this.config.database.url) {
                 console.log('database.url length:', this.config.database.url.length);
                 console.log('database.url type:', typeof this.config.database.url);
+                console.log('database.url preview:', this.config.database.url.substring(0, 50) + '...');
+            } else {
+                console.log('❌ Config database.url is empty! Fixing...');
+                // Fix it directly here
+                this.config.database.url = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+                console.log('Fixed database.url:', this.config.database.url ? 'NOW SET' : 'STILL NOT SET');
             }
         }
         
-        // Use direct environment variables instead of getConfigValue for validation
+        // Use direct environment variables for validation
         const discordToken = process.env.DISCORD_TOKEN;
         const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
         
@@ -228,6 +235,13 @@ class ConfigManager {
         console.log('discordToken from env:', discordToken ? 'SET' : 'NOT SET');
         console.log('databaseUrl from env:', databaseUrl ? 'SET' : 'NOT SET');
         console.log('Using DATABASE_PUBLIC_URL:', process.env.DATABASE_PUBLIC_URL ? 'YES' : 'NO');
+        
+        // Make sure config object has the working URL
+        if (databaseUrl && (!this.config.database.url || this.config.database.url.includes('railway.internal'))) {
+            console.log('🔧 Forcing config to use working database URL...');
+            this.config.database.url = databaseUrl;
+            console.log('Config database URL updated to:', this.config.database.url.substring(0, 50) + '...');
+        }
         
         const errors = [];
         
@@ -244,6 +258,8 @@ class ConfigManager {
         } else {
             console.log('✅ DATABASE_URL validation passed');
             console.log('Database URL preview:', databaseUrl.substring(0, 50) + '...');
+            console.log('Database URL contains proxy:', databaseUrl.includes('proxy.rlwy.net'));
+            console.log('Database URL contains internal:', databaseUrl.includes('railway.internal'));
         }
 
         if (errors.length > 0) {
@@ -257,6 +273,7 @@ class ConfigManager {
         }
 
         console.log('✅ All validations passed');
+        console.log('Final config database URL:', this.config.database?.url ? this.config.database.url.substring(0, 50) + '...' : 'NOT SET');
         console.log('🔍 === CONFIG VALIDATION COMPLETE ===');
 
         // Validate numeric values
