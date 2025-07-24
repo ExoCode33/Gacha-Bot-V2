@@ -1,4 +1,10 @@
 // index.js - Professional One Piece Devil Fruit Gacha Bot v4.0
+// DEBUG: Check environment variables BEFORE anything else
+console.log('🔍 PRE-CONFIG DEBUG:');
+console.log('DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'SET' : 'NOT SET');
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('Environment keys:', Object.keys(process.env).filter(k => k.includes('DISCORD') || k.includes('DATABASE')));
+
 require('dotenv').config(); // Load environment variables FIRST
 
 const { Client, GatewayIntentBits, Collection, ActivityType } = require('discord.js');
@@ -35,6 +41,11 @@ class OnePieceGachaBot {
      */
     async start() {
         try {
+            // DEBUG: Check environment variables again
+            this.logger.info('🔍 Environment check before config load:');
+            this.logger.info(`DISCORD_TOKEN: ${process.env.DISCORD_TOKEN ? 'SET' : 'NOT SET'}`);
+            this.logger.info(`DATABASE_URL: ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}`);
+            
             // Load and validate configuration
             await this.initializeConfig();
             
@@ -70,10 +81,15 @@ class OnePieceGachaBot {
      */
     async initializeConfig() {
         try {
+            // DEBUG: Check again right before config load
+            this.logger.info('🔍 Final environment check:');
+            this.logger.info(`process.env.DISCORD_TOKEN: ${process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING'}`);
+            this.logger.info(`process.env.DATABASE_URL: ${process.env.DATABASE_URL ? 'EXISTS' : 'MISSING'}`);
+            
             await Config.load();
             this.logger.info('✅ Configuration loaded successfully');
             
-            // Validate required environment variables
+            // Validate required environment variables (redundant check)
             const required = ['DISCORD_TOKEN', 'DATABASE_URL'];
             const missing = required.filter(key => !process.env[key]);
             
