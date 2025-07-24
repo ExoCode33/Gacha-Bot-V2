@@ -14,7 +14,7 @@ class ConfigManager {
      */
     async load() {
         try {
-            // Load environment variables
+            // Load environment variables FIRST
             this.loadEnvironmentVariables();
             
             // Load default configuration
@@ -23,7 +23,7 @@ class ConfigManager {
             // Load environment-specific configuration
             await this.loadEnvironmentConfig();
             
-            // Validate configuration
+            // Validate configuration AFTER loading
             this.validateConfig();
             
             this.isLoaded = true;
@@ -198,12 +198,20 @@ class ConfigManager {
         const errors = [];
         
         for (const [path, message] of required) {
-            if (!this.getConfigValue(path)) {
+            const value = this.getConfigValue(path);
+            if (!value || value === null || value === undefined || value === '') {
                 errors.push(message);
             }
         }
 
         if (errors.length > 0) {
+            // Debug output to help troubleshoot
+            console.log('Current environment variables:');
+            console.log('DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'SET' : 'NOT SET');
+            console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+            console.log('Config discord.token:', this.config.discord?.token ? 'SET' : 'NOT SET');
+            console.log('Config database.url:', this.config.database?.url ? 'SET' : 'NOT SET');
+            
             throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
         }
 
@@ -229,7 +237,7 @@ class ConfigManager {
 
         for (const [path, min, max] of numericValidations) {
             const value = this.getConfigValue(path);
-            if (value < min || value > max) {
+            if (value !== undefined && (value < min || value > max)) {
                 throw new Error(`Configuration ${path} must be between ${min} and ${max}, got ${value}`);
             }
         }
