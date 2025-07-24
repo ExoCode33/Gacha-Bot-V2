@@ -181,6 +181,10 @@ class OnePieceGachaBot {
         try {
             this.logger.info('🗄️ Initializing database connection...');
             
+            // Add Railway-recommended delay for database connectivity
+            console.log('⏰ Adding 3-second delay for Railway private networking...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
             await DatabaseManager.connect();
             await DatabaseManager.migrate();
             
