@@ -27,49 +27,56 @@ class DatabaseManager {
 
                 const config = Config.database;
                 
+                // Log connection details for debugging
+                this.logger.info('📊 Connection details:', {
+                    url: config.url ? `${config.url.substring(0, 30)}...` : 'NOT SET',
+                    ssl: config.ssl,
+                    poolMax: config.pool?.max || 'default'
+                });
+                
                 this.pool = new Pool({
                     connectionString: config.url,
                     ssl: config.ssl ? { rejectUnauthorized: false } : false,
                     ...config.pool,
-                    // Additional Railway-specific settings
+                    // Railway-optimized settings
                     keepAlive: true,
                     keepAliveInitialDelayMillis: 10000,
                     statement_timeout: 30000,
                     query_timeout: 30000,
-                    connectionTimeoutMillis: 15000, // Increased for Railway
-                    // Railway-specific connection options
-                    connect_timeout: 60,
-                    application_name: 'OneGachaBot_V4',
-                    // Add connection retry settings
-                    max: 10, // Reduced max connections for Railway free tier
+                    connectionTimeoutMillis: 15000,
+                    // Connection pool settings for Railway
+                    max: 10, // Reduced for Railway free tier
+                    min: 2,
                     idleTimeoutMillis: 30000,
-                    acquireTimeoutMillis: 60000
+                    acquireTimeoutMillis: 60000,
+                    createTimeoutMillis: 30000,
+                    destroyTimeoutMillis: 5000,
+                    reapIntervalMillis: 1000,
+                    createRetryIntervalMillis: 200,
+                    // Additional PostgreSQL settings
+                    application_name: 'OnePieceGachaBot_v4'
                 });
 
-                // Test connection with timeout
-                const testPromise = new Promise(async (resolve, reject) => {
-                    try {
-                        const client = await this.pool.connect();
-                        const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
-                        client.release();
-                        
-                        this.logger.info('📊 Database info:', {
-                            time: result.rows[0].current_time,
-                            version: result.rows[0].pg_version.split(' ')[0]
-                        });
-                        
-                        resolve();
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
+                // Test connection with proper timeout handling
+                const client = await Promise.race([
+                    this.pool.connect(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Connection timeout after 30 seconds')), 30000)
+                    )
+                ]);
 
-                // Add timeout to connection test
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('Connection timeout after 30 seconds')), 30000);
-                });
-
-                await Promise.race([testPromise, timeoutPromise]);
+                try {
+                    const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+                    
+                    this.logger.info('📊 Database info:', {
+                        time: result.rows[0].current_time,
+                        version: result.rows[0].pg_version.split(' ')[0],
+                        connected: true
+                    });
+                    
+                } finally {
+                    client.release();
+                }
 
                 this.isConnected = true;
                 this.setupEventHandlers();
@@ -81,6 +88,9 @@ class DatabaseManager {
                 this.logger.error(`❌ Database connection failed (attempt ${this.connectionAttempts}):`, {
                     message: error.message,
                     code: error.code,
+                    errno: error.errno,
+                    syscall: error.syscall,
+                    hostname: error.hostname,
                     host: error.host || 'unknown',
                     port: error.port || 'unknown'
                 });
@@ -89,8 +99,8 @@ class DatabaseManager {
                     throw new Error(`Failed to connect to database after ${this.maxRetries} attempts: ${error.message}`);
                 }
                 
-                // Exponential backoff with Railway-specific delays
-                const delay = Math.min(2000 * Math.pow(2, this.connectionAttempts - 1), 15000);
+                // Exponential backoff with longer delays for Railway
+                const delay = Math.min(3000 * Math.pow(2, this.connectionAttempts - 1), 20000);
                 this.logger.info(`⏳ Retrying in ${delay}ms...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
@@ -110,7 +120,15 @@ class DatabaseManager {
         });
 
         this.pool.on('error', (error, client) => {
-            this.logger.error('💥 Database pool error:', error);
+            this.logger.error('💥 Database pool error:', {
+                message: error.message,
+                code: error.code,
+                severity: error.severity
+            });
+        });
+
+        this.pool.on('acquire', (client) => {
+            this.logger.debug('📡 Client acquired from pool');
         });
 
         // Graceful shutdown handling
@@ -140,13 +158,17 @@ class DatabaseManager {
                 this.logger.warn(`🐌 Slow query detected (${duration}ms):`, text.substring(0, 100));
             }
             
-            this.logger.debug(`✅ Query ${queryId} completed in ${duration}ms`);
+            this.logger.debug(`✅ Query ${queryId} completed in ${duration}ms, rows: ${result.rowCount}`);
             return result;
             
         } catch (error) {
             const duration = Date.now() - startTime;
-            this.logger.error(`❌ Query ${queryId} failed after ${duration}ms:`, error.message);
-            this.logger.debug('Failed query:', text);
+            this.logger.error(`❌ Query ${queryId} failed after ${duration}ms:`, {
+                error: error.message,
+                code: error.code,
+                detail: error.detail,
+                query: text.substring(0, 100)
+            });
             throw error;
         }
     }
@@ -161,9 +183,11 @@ class DatabaseManager {
             await client.query('BEGIN');
             const result = await callback(client);
             await client.query('COMMIT');
+            this.logger.debug('✅ Transaction committed successfully');
             return result;
         } catch (error) {
             await client.query('ROLLBACK');
+            this.logger.error('❌ Transaction rolled back:', error.message);
             throw error;
         } finally {
             client.release();
@@ -554,7 +578,7 @@ class DatabaseManager {
     async healthCheck() {
         try {
             const start = Date.now();
-            await this.query('SELECT 1');
+            const result = await this.query('SELECT 1 as health_check, NOW() as current_time');
             const latency = Date.now() - start;
             
             const poolStats = {
@@ -568,13 +592,15 @@ class DatabaseManager {
                 latency,
                 connected: this.isConnected,
                 queryCount: this.queryCount,
-                poolStats
+                poolStats,
+                dbTime: result.rows[0].current_time
             };
         } catch (error) {
             return {
                 status: 'unhealthy',
                 error: error.message,
-                connected: false
+                connected: false,
+                latency: null
             };
         }
     }
@@ -615,12 +641,47 @@ class DatabaseManager {
      */
     async testConnection() {
         try {
-            await this.query('SELECT NOW() as current_time');
+            const result = await this.query('SELECT NOW() as current_time, version() as pg_version');
+            this.logger.info('✅ Database connection test successful:', {
+                time: result.rows[0].current_time,
+                version: result.rows[0].pg_version.split(' ')[0]
+            });
             return true;
         } catch (error) {
-            this.logger.error('Database connection test failed:', error);
+            this.logger.error('❌ Database connection test failed:', error.message);
             return false;
         }
+    }
+
+    /**
+     * Get connection pool status
+     */
+    getPoolStatus() {
+        if (!this.pool) {
+            return { status: 'no_pool' };
+        }
+
+        return {
+            status: 'active',
+            totalCount: this.pool.totalCount,
+            idleCount: this.pool.idleCount,
+            waitingCount: this.pool.waitingCount,
+            maxSize: this.pool.options.max,
+            minSize: this.pool.options.min
+        };
+    }
+
+    /**
+     * Force reconnection
+     */
+    async reconnect() {
+        this.logger.info('🔄 Forcing database reconnection...');
+        
+        await this.disconnect();
+        this.connectionAttempts = 0;
+        this.isConnected = false;
+        
+        await this.connect();
     }
 }
 
