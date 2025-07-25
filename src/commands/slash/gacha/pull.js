@@ -75,22 +75,27 @@ class PullAnimator {
         const center = 9.5;
         const spreadRadius = Math.floor(frame * 1.0);
         
-        const bar = Array(barLength).fill('⬛');
-        const rainbowColors = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫'];
+        const bar = Array(barLength).fill('⬛'); // Start with black squares
+        const rainbowSquares = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫']; // Keep squares consistent
+        
+        // Get the appropriate square color for this rarity
+        const raritySquare = this.getRaritySquare(fruit.rarity);
         
         for (let i = 0; i < barLength; i++) {
             const distanceFromCenter = Math.abs(i - center);
             
             if (distanceFromCenter <= spreadRadius) {
-                bar[i] = rewardEmoji;
+                bar[i] = raritySquare; // Use rarity square instead of emoji
             } else {
-                const colorIndex = Math.floor(distanceFromCenter + frame * 0.5) % rainbowColors.length;
-                bar[i] = rainbowColors[colorIndex];
+                // Use rainbow squares for remaining positions
+                const colorIndex = Math.floor(distanceFromCenter + frame * 0.5) % rainbowSquares.length;
+                bar[i] = rainbowSquares[colorIndex];
             }
         }
 
         const pattern = bar.join(' ');
-        const progressDots = '●'.repeat(Math.floor(frame / 2)) + '○'.repeat(6 - Math.floor(frame / 2));
+        // Keep progress squares consistent
+        const progressSquares = '🟩'.repeat(Math.floor(frame / 2)) + '⬛'.repeat(6 - Math.floor(frame / 2));
         
         const mysteriousInfo = `✨ **Devil Fruit Manifestation** ✨\n\n${pattern}\n\n` +
             `📊 **Status:** Crystallizing${'.'.repeat((frame % 3) + 1)}\n` +
@@ -105,12 +110,26 @@ class PullAnimator {
             .setTitle('🏴‍☠️ Devil Fruit Hunt')
             .setDescription(`🔮 Mysterious power manifesting...\n\n${mysteriousInfo}`)
             .setColor(rewardColor)
-            .setFooter({ text: `⚡ Power crystallizing... ${progressDots}` });
+            .setFooter({ text: `⚡ Power crystallizing... ${progressSquares}` });
+    }
+
+    // Get the appropriate square emoji for each rarity
+    static getRaritySquare(rarity) {
+        const raritySquares = {
+            'common': '⬜',        // White square for common
+            'uncommon': '🟩',      // Green square for uncommon  
+            'rare': '🟦',          // Blue square for rare
+            'epic': '🟪',          // Purple square for epic
+            'mythical': '🟧',      // Orange square for mythical
+            'legendary': '🟨'      // Yellow square for legendary
+        };
+        return raritySquares[rarity] || '⬜';
     }
 
     // Create text reveal frame
     static createTextRevealFrame(frame, fruit, result, newBalance, rewardColor, rewardEmoji) {
-        const pattern = Array(20).fill(rewardEmoji).join(' ');
+        const raritySquare = this.getRaritySquare(fruit.rarity);
+        const pattern = Array(20).fill(raritySquare).join(' '); // Use rarity square
         const duplicateCount = result.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `📚 Total Owned: ${duplicateCount}`;
         const totalCp = result.fruit?.total_cp || 250;
@@ -120,7 +139,7 @@ class PullAnimator {
         description += `📊 **Status:** ${frame >= 0 ? duplicateText : '???'}\n`;
         description += `🍃 **Name:** ${frame >= 1 ? fruit.name : '???'}\n`;
         description += `🔮 **Type:** ${frame >= 2 ? fruit.type : '???'}\n`;
-        description += `⭐ **Rarity:** ${frame >= 3 ? `${RARITY_EMOJIS[fruit.rarity]} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}` : '???'}\n`;
+        description += `⭐ **Rarity:** ${frame >= 3 ? `${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}` : '???'}\n`;
         description += `💪 **CP Multiplier:** ${frame >= 4 ? `x${fruit.multiplier}` : '???'}\n`;
         description += `⚡ **Power:** ${frame >= 5 ? fruit.power : '???'}\n`;
         description += `🎯 **Description:** ${frame >= 6 ? fruit.description : '???'}\n\n`;
@@ -137,9 +156,9 @@ class PullAnimator {
 
     // Create final reveal
     static createFinalReveal(fruit, result, newBalance) {
-        const emoji = RARITY_EMOJIS[fruit.rarity];
+        const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
-        const pattern = Array(20).fill(emoji).join(' ');
+        const pattern = Array(20).fill(raritySquare).join(' '); // Use rarity square
         const duplicateCount = result.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `📚 Total Owned: ${duplicateCount}`;
         const totalCp = result.fruit?.total_cp || 250;
@@ -148,7 +167,7 @@ class PullAnimator {
             `📊 **Status:** ${duplicateText}\n` +
             `🍃 **Name:** ${fruit.name}\n` +
             `🔮 **Type:** ${fruit.type}\n` +
-            `⭐ **Rarity:** ${emoji} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
+            `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
             `💪 **CP Multiplier:** x${fruit.multiplier}\n` +
             `⚡ **Power:** ${fruit.power}\n` +
             `🎯 **Description:** ${fruit.description}\n\n` +
@@ -179,13 +198,13 @@ class PullAnimator {
 
     // Create quick reveal for 10x
     static createQuickReveal(fruit, pullNumber) {
-        const emoji = RARITY_EMOJIS[fruit.rarity];
+        const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
-        const pattern = Array(15).fill(emoji).join(' ');
+        const pattern = Array(15).fill(raritySquare).join(' '); // Use rarity square
         
         return new EmbedBuilder()
             .setTitle('🎰 10x Devil Fruit Hunt')
-            .setDescription(`**Pull ${pullNumber}/10** - ${emoji} **${fruit.rarity.toUpperCase()}**\n\n${pattern}\n\n🍃 **${fruit.name}**\n🔮 ${fruit.type}\n💪 x${fruit.multiplier} CP\n\n${pattern}`)
+            .setDescription(`**Pull ${pullNumber}/10** - ${raritySquare} **${fruit.rarity.toUpperCase()}**\n\n${pattern}\n\n🍃 **${fruit.name}**\n🔮 ${fruit.type}\n💪 x${fruit.multiplier} CP\n\n${pattern}`)
             .setColor(color)
             .setFooter({ text: `Pull ${pullNumber} of 10 - ✨ Acquired!` });
     }
@@ -201,8 +220,8 @@ class PullAnimator {
         let rarityText = '';
         rarityOrder.forEach(rarity => {
             if (rarityCounts[rarity] > 0) {
-                const emoji = RARITY_EMOJIS[rarity];
-                rarityText += `${emoji} **${rarity.charAt(0).toUpperCase() + rarity.slice(1)}**: ${rarityCounts[rarity]}\n`;
+                const raritySquare = this.getRaritySquare(rarity);
+                rarityText += `${raritySquare} **${rarity.charAt(0).toUpperCase() + rarity.slice(1)}**: ${rarityCounts[rarity]}\n`;
             }
         });
 
@@ -214,12 +233,12 @@ class PullAnimator {
             }
         });
 
-        const highestEmoji = RARITY_EMOJIS[highestRarity];
+        const highestSquare = this.getRaritySquare(highestRarity);
         const highestColor = RARITY_COLORS[highestRarity];
 
         return new EmbedBuilder()
             .setTitle('🎰 10x Devil Fruit Hunt Complete!')
-            .setDescription(`🎉 **10x Pull Complete!** 🎉\n\n**Highest Rarity:** ${highestEmoji} ${highestRarity.charAt(0).toUpperCase() + highestRarity.slice(1)}\n\n**Results:**\n${rarityText}\n💰 **Remaining Berries:** ${balance.toLocaleString()} 🍓\n\n✨ All fruits have been added to your collection!`)
+            .setDescription(`🎉 **10x Pull Complete!** 🎉\n\n**Highest Rarity:** ${highestSquare} ${highestRarity.charAt(0).toUpperCase() + highestRarity.slice(1)}\n\n**Results:**\n${rarityText}\n💰 **Remaining Berries:** ${balance.toLocaleString()} 🍓\n\n✨ All fruits have been added to your collection!`)
             .setColor(highestColor)
             .setFooter({ text: '🏴‍☠️ Continue your adventure on the Grand Line!' })
             .setTimestamp();
