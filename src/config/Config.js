@@ -20,14 +20,14 @@ class ConfigManager {
             console.log('Environment:', this.environment);
             console.log('');
             
-            // Load environment variables with Railway-specific approach
-            this.loadEnvironmentVariables();
-            
-            // Load default configuration (optional)
+            // Load default configuration first (optional)
             await this.loadDefaultConfig();
             
             // Load environment-specific configuration (optional)
             await this.loadEnvironmentConfig();
+            
+            // Load environment variables LAST to override any file configs
+            this.loadEnvironmentVariables();
             
             // Validate configuration
             this.validateConfig();
@@ -49,7 +49,7 @@ class ConfigManager {
      */
     loadEnvironmentVariables() {
         console.log('🔍 === RAILWAY ENVIRONMENT LOADING ===');
-        console.log('Loading environment variables...');
+        console.log('Loading environment variables (FINAL OVERRIDE)...');
         
         // Discord Configuration - Railway compatible
         const discordToken = process.env.DISCORD_TOKEN;
@@ -62,13 +62,16 @@ class ConfigManager {
             throw new Error('DISCORD_TOKEN environment variable is required');
         }
         
+        // FORCE override any existing discord config
         this.config.discord = {
             token: discordToken.trim(),
             clientId: discordClientId || this.extractClientIdFromToken(discordToken),
             guildId: process.env.DISCORD_GUILD_ID || null
         };
         
-        console.log('✅ Discord configuration loaded');
+        console.log('✅ Discord configuration FORCED override');
+        console.log('   Token length:', this.config.discord.token.length);
+        console.log('   Token preview:', this.config.discord.token.substring(0, 15) + '...');
 
         // Database Configuration - Railway compatible
         const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
@@ -79,6 +82,7 @@ class ConfigManager {
             throw new Error('DATABASE_URL or DATABASE_PUBLIC_URL environment variable is required');
         }
         
+        // FORCE override any existing database config
         this.config.database = {
             url: databaseUrl.trim(),
             ssl: this.environment === 'production',
@@ -92,77 +96,85 @@ class ConfigManager {
             }
         };
         
-        console.log('✅ Database configuration loaded');
+        console.log('✅ Database configuration FORCED override');
+        console.log('   URL preview:', this.config.database.url.substring(0, 40) + '...');
 
-        // Game Configuration
-        this.config.game = {
-            pullCost: parseInt(process.env.PULL_COST) || 1000,
-            baseIncome: parseInt(process.env.BASE_INCOME) || 50,
-            incomeRate: parseFloat(process.env.INCOME_RATE) || 0.1,
-            manualIncomeMultiplier: parseFloat(process.env.MANUAL_INCOME_MULTIPLIER) || 6,
-            manualIncomeCooldown: parseInt(process.env.MANUAL_INCOME_COOLDOWN) || 60,
-            autoIncomeInterval: parseInt(process.env.AUTO_INCOME_INTERVAL) || 10,
-            maxStoredHours: parseInt(process.env.MAX_STORED_HOURS) || 24
-        };
+        // Game Configuration - Override only if exists
+        if (!this.config.game) this.config.game = {};
+        Object.assign(this.config.game, {
+            pullCost: parseInt(process.env.PULL_COST) || this.config.game.pullCost || 1000,
+            baseIncome: parseInt(process.env.BASE_INCOME) || this.config.game.baseIncome || 50,
+            incomeRate: parseFloat(process.env.INCOME_RATE) || this.config.game.incomeRate || 0.1,
+            manualIncomeMultiplier: parseFloat(process.env.MANUAL_INCOME_MULTIPLIER) || this.config.game.manualIncomeMultiplier || 6,
+            manualIncomeCooldown: parseInt(process.env.MANUAL_INCOME_COOLDOWN) || this.config.game.manualIncomeCooldown || 60,
+            autoIncomeInterval: parseInt(process.env.AUTO_INCOME_INTERVAL) || this.config.game.autoIncomeInterval || 10,
+            maxStoredHours: parseInt(process.env.MAX_STORED_HOURS) || this.config.game.maxStoredHours || 24
+        });
 
-        // Logging Configuration
-        this.config.logging = {
-            level: process.env.LOG_LEVEL || 'info',
+        // Logging Configuration - Override only if exists
+        if (!this.config.logging) this.config.logging = {};
+        Object.assign(this.config.logging, {
+            level: process.env.LOG_LEVEL || this.config.logging.level || 'info',
             console: process.env.LOG_CONSOLE !== 'false',
             file: process.env.LOG_FILE === 'true',
-            filePath: process.env.LOG_FILE_PATH || './logs',
-            maxFiles: parseInt(process.env.LOG_MAX_FILES) || 14,
-            maxSize: process.env.LOG_MAX_SIZE || '20m'
-        };
+            filePath: process.env.LOG_FILE_PATH || this.config.logging.filePath || './logs',
+            maxFiles: parseInt(process.env.LOG_MAX_FILES) || this.config.logging.maxFiles || 14,
+            maxSize: process.env.LOG_MAX_SIZE || this.config.logging.maxSize || '20m'
+        });
 
-        // Performance Configuration
-        this.config.performance = {
-            commandCooldown: parseInt(process.env.COMMAND_COOLDOWN) || 3000,
+        // Performance Configuration - Override only if exists
+        if (!this.config.performance) this.config.performance = {};
+        Object.assign(this.config.performance, {
+            commandCooldown: parseInt(process.env.COMMAND_COOLDOWN) || this.config.performance.commandCooldown || 3000,
             rateLimit: {
-                window: parseInt(process.env.RATE_LIMIT_WINDOW) || 60000,
-                max: parseInt(process.env.RATE_LIMIT_MAX) || 30
+                window: parseInt(process.env.RATE_LIMIT_WINDOW) || this.config.performance.rateLimit?.window || 60000,
+                max: parseInt(process.env.RATE_LIMIT_MAX) || this.config.performance.rateLimit?.max || 30
             },
-            cacheSize: parseInt(process.env.CACHE_SIZE) || 1000,
-            cacheTTL: parseInt(process.env.CACHE_TTL) || 300000
-        };
+            cacheSize: parseInt(process.env.CACHE_SIZE) || this.config.performance.cacheSize || 1000,
+            cacheTTL: parseInt(process.env.CACHE_TTL) || this.config.performance.cacheTTL || 300000
+        });
 
-        // Monitoring Configuration  
-        this.config.monitoring = {
+        // Monitoring Configuration - Override only if exists
+        if (!this.config.monitoring) this.config.monitoring = {};
+        Object.assign(this.config.monitoring, {
             enabled: process.env.MONITORING_ENABLED !== 'false',
-            interval: parseInt(process.env.MONITORING_INTERVAL) || 30000,
+            interval: parseInt(process.env.MONITORING_INTERVAL) || this.config.monitoring.interval || 30000,
             alertThresholds: {
-                memory: parseInt(process.env.ALERT_MEMORY_THRESHOLD) || 256, // Reduced for Railway
-                cpu: parseInt(process.env.ALERT_CPU_THRESHOLD) || 80,
-                latency: parseInt(process.env.ALERT_LATENCY_THRESHOLD) || 300
+                memory: parseInt(process.env.ALERT_MEMORY_THRESHOLD) || this.config.monitoring.alertThresholds?.memory || 256,
+                cpu: parseInt(process.env.ALERT_CPU_THRESHOLD) || this.config.monitoring.alertThresholds?.cpu || 80,
+                latency: parseInt(process.env.ALERT_LATENCY_THRESHOLD) || this.config.monitoring.alertThresholds?.latency || 300
             }
-        };
+        });
 
-        // Security Configuration
-        this.config.security = {
-            adminUsers: process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(id => id.trim()) : [],
-            moderatorRoles: process.env.MODERATOR_ROLES ? process.env.MODERATOR_ROLES.split(',').map(role => role.trim()) : [],
-            rateLimitBypass: process.env.RATE_LIMIT_BYPASS ? process.env.RATE_LIMIT_BYPASS.split(',').map(id => id.trim()) : []
-        };
+        // Security Configuration - Override only if exists
+        if (!this.config.security) this.config.security = {};
+        Object.assign(this.config.security, {
+            adminUsers: process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(id => id.trim()) : this.config.security.adminUsers || [],
+            moderatorRoles: process.env.MODERATOR_ROLES ? process.env.MODERATOR_ROLES.split(',').map(role => role.trim()) : this.config.security.moderatorRoles || [],
+            rateLimitBypass: process.env.RATE_LIMIT_BYPASS ? process.env.RATE_LIMIT_BYPASS.split(',').map(id => id.trim()) : this.config.security.rateLimitBypass || []
+        });
 
-        // Development Configuration
-        this.config.development = {
+        // Development Configuration - Override only if exists
+        if (!this.config.development) this.config.development = {};
+        Object.assign(this.config.development, {
             hotReload: process.env.HOT_RELOAD === 'true',
             debugMode: process.env.DEBUG_MODE === 'true',
             testMode: process.env.TEST_MODE === 'true',
             mockData: process.env.MOCK_DATA === 'true'
-        };
+        });
 
-        // PvP Configuration (optional)
-        this.config.pvp = {
+        // PvP Configuration - Override only if exists
+        if (!this.config.pvp) this.config.pvp = {};
+        Object.assign(this.config.pvp, {
             enabled: process.env.PVP_ENABLED !== 'false',
-            maxQueueSize: parseInt(process.env.PVP_MAX_QUEUE_SIZE) || 20,
-            matchmakingTime: parseInt(process.env.PVP_MATCHMAKING_TIME) || 120,
-            battleCooldown: parseInt(process.env.PVP_BATTLE_COOLDOWN) || 300,
-            maxBattleTurns: parseInt(process.env.PVP_MAX_TURNS) || 15,
-            cpBalanceThreshold: parseFloat(process.env.PVP_CP_BALANCE_THRESHOLD) || 0.3
-        };
+            maxQueueSize: parseInt(process.env.PVP_MAX_QUEUE_SIZE) || this.config.pvp.maxQueueSize || 20,
+            matchmakingTime: parseInt(process.env.PVP_MATCHMAKING_TIME) || this.config.pvp.matchmakingTime || 120,
+            battleCooldown: parseInt(process.env.PVP_BATTLE_COOLDOWN) || this.config.pvp.battleCooldown || 300,
+            maxBattleTurns: parseInt(process.env.PVP_MAX_TURNS) || this.config.pvp.maxBattleTurns || 15,
+            cpBalanceThreshold: parseFloat(process.env.PVP_CP_BALANCE_THRESHOLD) || this.config.pvp.cpBalanceThreshold || 0.3
+        });
         
-        console.log('✅ All environment variables loaded successfully');
+        console.log('✅ All environment variables loaded successfully (WITH OVERRIDE)');
         console.log('🔍 === ENVIRONMENT LOADING COMPLETE ===');
     }
 
