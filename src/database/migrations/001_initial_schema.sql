@@ -1,5 +1,5 @@
 -- src/database/migrations/001_initial_schema.sql
--- Initial database schema for One Piece Devil Fruit Gacha Bot
+-- Fixed initial database schema for One Piece Devil Fruit Gacha Bot
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     berries BIGINT DEFAULT 0,
     total_earned BIGINT DEFAULT 0,
     total_spent BIGINT DEFAULT 0,
+    pity_count INTEGER DEFAULT 0,
     last_income TIMESTAMP DEFAULT NOW(),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -20,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Devil Fruits collection table
 CREATE TABLE IF NOT EXISTS user_devil_fruits (
     id SERIAL PRIMARY KEY,
-    user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
     fruit_id VARCHAR(100) NOT NULL,
     fruit_name VARCHAR(255) NOT NULL,
     fruit_type VARCHAR(50) NOT NULL,
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS user_devil_fruits (
 
 -- User level tracking
 CREATE TABLE IF NOT EXISTS user_levels (
-    user_id TEXT PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    user_id TEXT PRIMARY KEY,
     current_level INTEGER DEFAULT 0,
     role_name VARCHAR(50),
     base_cp INTEGER DEFAULT 100,
@@ -47,7 +48,7 @@ CREATE TABLE IF NOT EXISTS user_levels (
 -- Income tracking
 CREATE TABLE IF NOT EXISTS income_history (
     id SERIAL PRIMARY KEY,
-    user_id TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
     amount BIGINT NOT NULL,
     cp_at_time INTEGER NOT NULL,
     income_type VARCHAR(50) DEFAULT 'automatic',
@@ -58,7 +59,7 @@ CREATE TABLE IF NOT EXISTS income_history (
 CREATE TABLE IF NOT EXISTS pvp_battles (
     id SERIAL PRIMARY KEY,
     battle_id TEXT UNIQUE NOT NULL,
-    player1_id TEXT REFERENCES users(user_id),
+    player1_id TEXT,
     player2_id TEXT,
     winner_id TEXT,
     battle_type VARCHAR(50) DEFAULT 'pvp',
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS pvp_battles (
 -- Command usage statistics
 CREATE TABLE IF NOT EXISTS command_usage (
     id SERIAL PRIMARY KEY,
-    user_id TEXT REFERENCES users(user_id),
+    user_id TEXT,
     command_name VARCHAR(100) NOT NULL,
     guild_id TEXT,
     success BOOLEAN DEFAULT true,
@@ -95,6 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_users_level ON users(level);
 CREATE INDEX IF NOT EXISTS idx_users_total_cp ON users(total_cp DESC);
 CREATE INDEX IF NOT EXISTS idx_users_berries ON users(berries DESC);
 CREATE INDEX IF NOT EXISTS idx_users_guild ON users(guild_id);
+CREATE INDEX IF NOT EXISTS idx_users_pity_count ON users(pity_count);
 
 CREATE INDEX IF NOT EXISTS idx_devil_fruits_user ON user_devil_fruits(user_id);
 CREATE INDEX IF NOT EXISTS idx_devil_fruits_fruit_id ON user_devil_fruits(fruit_id);
@@ -118,18 +120,7 @@ CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(level);
 CREATE INDEX IF NOT EXISTS idx_system_logs_component ON system_logs(component);
 CREATE INDEX IF NOT EXISTS idx_system_logs_created ON system_logs(created_at DESC);
 
--- Add some useful constraints
-ALTER TABLE users ADD CONSTRAINT check_berries_non_negative CHECK (berries >= 0);
-ALTER TABLE users ADD CONSTRAINT check_level_non_negative CHECK (level >= 0);
-ALTER TABLE users ADD CONSTRAINT check_base_cp_positive CHECK (base_cp > 0);
-ALTER TABLE users ADD CONSTRAINT check_total_cp_positive CHECK (total_cp > 0);
-
-ALTER TABLE user_devil_fruits ADD CONSTRAINT check_duplicate_count_positive CHECK (duplicate_count > 0);
-ALTER TABLE user_devil_fruits ADD CONSTRAINT check_base_cp_positive CHECK (base_cp > 0);
-
-ALTER TABLE income_history ADD CONSTRAINT check_cp_at_time_positive CHECK (cp_at_time > 0);
-
--- Add trigger to update updated_at automatically
+-- Create trigger function for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -138,8 +129,15 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Create triggers
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at 
+    BEFORE UPDATE ON users
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_user_levels_updated_at BEFORE UPDATE ON user_levels
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_user_levels_updated_at ON user_levels;
+CREATE TRIGGER update_user_levels_updated_at 
+    BEFORE UPDATE ON user_levels
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
