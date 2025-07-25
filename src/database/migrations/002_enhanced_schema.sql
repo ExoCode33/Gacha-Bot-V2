@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS daily_challenges (
     UNIQUE(user_id, challenge_type, date)
 );
 
--- Leaderboards view for rankings
+-- Leaderboards view for rankings (FIXED)
 CREATE OR REPLACE VIEW user_rankings AS
 SELECT 
     u.user_id,
@@ -108,4 +108,61 @@ SELECT
     CASE 
         WHEN COALESCE(wins.value, 0) + COALESCE(losses.value, 0) = 0 THEN 0
         ELSE ROUND((COALESCE(wins.value, 0)::decimal / (COALESCE(wins.value, 0) + COALESCE(losses.value, 0))) * 100, 2)
-    END
+    END as win_rate
+FROM users u
+LEFT JOIN user_statistics wins ON u.user_id = wins.user_id AND wins.stat_type = 'pvp_wins'
+LEFT JOIN user_statistics losses ON u.user_id = losses.user_id AND losses.stat_type = 'pvp_losses';
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_user_statistics_user_stat ON user_statistics(user_id, stat_type);
+CREATE INDEX IF NOT EXISTS idx_user_statistics_stat_type ON user_statistics(stat_type);
+CREATE INDEX IF NOT EXISTS idx_user_statistics_updated ON user_statistics(updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_pvp_battles_battle_id ON pvp_battles(battle_id);
+CREATE INDEX IF NOT EXISTS idx_pvp_battles_players ON pvp_battles(player1_id, player2_id);
+CREATE INDEX IF NOT EXISTS idx_pvp_battles_type ON pvp_battles(battle_type);
+CREATE INDEX IF NOT EXISTS idx_pvp_battles_active ON pvp_battles(started_at) WHERE ended_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_battle_logs_battle ON battle_logs(battle_id);
+CREATE INDEX IF NOT EXISTS idx_battle_logs_player ON battle_logs(player_id);
+CREATE INDEX IF NOT EXISTS idx_battle_logs_turn ON battle_logs(turn_number);
+
+CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement ON user_achievements(achievement_id);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_completed ON user_achievements(completed);
+
+CREATE INDEX IF NOT EXISTS idx_battle_queue_user ON battle_queue(user_id);
+CREATE INDEX IF NOT EXISTS idx_battle_queue_type ON battle_queue(queue_type);
+CREATE INDEX IF NOT EXISTS idx_battle_queue_joined ON battle_queue(joined_at);
+
+CREATE INDEX IF NOT EXISTS idx_user_loadouts_user ON user_loadouts(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_loadouts_default ON user_loadouts(is_default) WHERE is_default = true;
+
+CREATE INDEX IF NOT EXISTS idx_daily_challenges_user ON daily_challenges(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_challenges_date ON daily_challenges(date);
+CREATE INDEX IF NOT EXISTS idx_daily_challenges_type ON daily_challenges(challenge_type);
+CREATE INDEX IF NOT EXISTS idx_daily_challenges_completed ON daily_challenges(completed);
+
+-- Add constraints for data integrity
+ALTER TABLE user_statistics ADD CONSTRAINT check_stat_value_non_negative CHECK (value >= 0);
+ALTER TABLE pvp_battles ADD CONSTRAINT check_different_players CHECK (player1_id != player2_id);
+ALTER TABLE battle_logs ADD CONSTRAINT check_turn_number_positive CHECK (turn_number > 0);
+ALTER TABLE user_achievements ADD CONSTRAINT check_progress_non_negative CHECK (progress >= 0);
+ALTER TABLE daily_challenges ADD CONSTRAINT check_target_value_positive CHECK (target_value > 0);
+ALTER TABLE daily_challenges ADD CONSTRAINT check_current_progress_non_negative CHECK (current_progress >= 0);
+ALTER TABLE daily_challenges ADD CONSTRAINT check_reward_berries_non_negative CHECK (reward_berries >= 0);
+
+-- Update trigger for user_loadouts
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_user_loadouts_updated_at BEFORE UPDATE ON user_loadouts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_statistics_updated_at BEFORE UPDATE ON user_statistics
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
