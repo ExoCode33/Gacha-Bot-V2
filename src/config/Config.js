@@ -1,4 +1,4 @@
-// src/config/Config.js - CPU-Optimized Railway Configuration (EMERGENCY FIX)
+// src/config/Config.js - FIXED CPU-Optimized Railway Configuration
 const path = require('path');
 const fs = require('fs');
 
@@ -11,7 +11,7 @@ class ConfigManager {
 
     async load() {
         try {
-            console.log('🔍 === CPU-OPTIMIZED CONFIG LOADING ===');
+            console.log('🔍 === CPU-OPTIMIZED CONFIG LOADING (FIXED) ===');
             console.log('Starting LIGHTWEIGHT configuration load...');
             console.log('Timestamp:', new Date().toISOString());
             console.log('Environment:', this.environment);
@@ -60,52 +60,52 @@ class ConfigManager {
             throw new Error('DATABASE_URL or DATABASE_PUBLIC_URL environment variable is required');
         }
         
-        // RAILWAY-OPTIMIZED DATABASE SETTINGS
+        // RAILWAY-OPTIMIZED DATABASE SETTINGS (FIXED)
         this.config.database = {
             url: databaseUrl.trim(),
             ssl: this.environment === 'production',
             pool: {
                 min: 1,                    // Reduced from 2
-                max: 5,                    // Reduced from 10
-                acquireTimeoutMillis: 15000,  // Reduced from 30000
-                createTimeoutMillis: 10000,   // Reduced from 15000
-                destroyTimeoutMillis: 3000,   // Reduced from 5000
-                idleTimeoutMillis: 20000,     // Reduced from 30000
-                reapIntervalMillis: 5000,     // Increased from 1000
-                createRetryIntervalMillis: 1000  // Increased from 200
+                max: 8,                    // Increased from 5 to 8 for stability
+                acquireTimeoutMillis: 20000,  // Increased from 15000
+                createTimeoutMillis: 15000,   // Increased from 10000
+                destroyTimeoutMillis: 5000,   // Kept same
+                idleTimeoutMillis: 30000,     // Increased from 20000
+                reapIntervalMillis: 10000,    // Increased from 5000
+                createRetryIntervalMillis: 500  // Reduced from 1000
             }
         };
 
-        // ULTRA-LIGHTWEIGHT PERFORMANCE SETTINGS
+        // FIXED PERFORMANCE SETTINGS
         this.config.performance = {
-            commandCooldown: parseInt(process.env.COMMAND_COOLDOWN) || 5000,  // Increased
+            commandCooldown: parseInt(process.env.COMMAND_COOLDOWN) || 3000,  // Reduced from 5000
             rateLimit: {
                 window: parseInt(process.env.RATE_LIMIT_WINDOW) || 60000,
-                max: parseInt(process.env.RATE_LIMIT_MAX) || 15  // Reduced from 30
+                max: parseInt(process.env.RATE_LIMIT_MAX) || 30  // Increased from 15
             },
-            cacheSize: parseInt(process.env.CACHE_SIZE) || 100,      // Reduced from 1000
-            cacheTTL: parseInt(process.env.CACHE_TTL) || 600000      // Increased from 300000
+            cacheSize: parseInt(process.env.CACHE_SIZE) || 500,      // Increased from 100
+            cacheTTL: parseInt(process.env.CACHE_TTL) || 300000      // Reduced from 600000
         };
 
-        // DISABLE HEAVY MONITORING
+        // FIXED MONITORING (Enable for debugging)
         this.config.monitoring = {
-            enabled: process.env.MONITORING_ENABLED === 'true',  // Default FALSE
-            interval: parseInt(process.env.MONITORING_INTERVAL) || 300000,  // 5 minutes instead of 30 seconds
+            enabled: process.env.MONITORING_ENABLED !== 'false',  // Default TRUE for debugging
+            interval: parseInt(process.env.MONITORING_INTERVAL) || 120000,  // 2 minutes
             alertThresholds: {
-                memory: parseInt(process.env.ALERT_MEMORY_THRESHOLD) || 128,  // Reduced
-                cpu: parseInt(process.env.ALERT_CPU_THRESHOLD) || 50,         // Reduced from 80
-                latency: parseInt(process.env.ALERT_LATENCY_THRESHOLD) || 1000 // Increased
+                memory: parseInt(process.env.ALERT_MEMORY_THRESHOLD) || 256,  // Increased
+                cpu: parseInt(process.env.ALERT_CPU_THRESHOLD) || 70,         // Increased from 50
+                latency: parseInt(process.env.ALERT_LATENCY_THRESHOLD) || 2000 // Increased
             }
         };
 
-        // MINIMAL LOGGING
+        // FIXED LOGGING (Enable info level for debugging)
         this.config.logging = {
-            level: process.env.LOG_LEVEL || 'warn',  // Changed from 'info' to 'warn'
+            level: process.env.LOG_LEVEL || 'info',  // CHANGED from 'warn' to 'info'
             console: process.env.LOG_CONSOLE !== 'false',
-            file: false,  // DISABLED file logging
+            file: process.env.LOG_FILE === 'true',  // Allow file logging if requested
             filePath: process.env.LOG_FILE_PATH || './logs',
-            maxFiles: 3,  // Reduced from 14
-            maxSize: '5m' // Reduced from 20m
+            maxFiles: 5,  // Reduced from 3
+            maxSize: '10m' // Increased from 5m
         };
 
         // GAME CONFIGURATION (unchanged)
@@ -122,26 +122,26 @@ class ConfigManager {
         // SECURITY (minimal)
         this.config.security = {
             adminUsers: process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(id => id.trim()) : [],
-            moderatorRoles: [],  // Simplified
-            rateLimitBypass: []  // Simplified
+            moderatorRoles: process.env.MODERATOR_ROLES ? process.env.MODERATOR_ROLES.split(',').map(id => id.trim()) : [],
+            rateLimitBypass: process.env.RATE_LIMIT_BYPASS ? process.env.RATE_LIMIT_BYPASS.split(',').map(id => id.trim()) : []
         };
 
-        // DEVELOPMENT (minimal)
+        // DEVELOPMENT (enable for debugging)
         this.config.development = {
-            hotReload: false,   // DISABLED
-            debugMode: false,   // DISABLED
-            testMode: false,    // DISABLED
-            mockData: false     // DISABLED
+            hotReload: process.env.NODE_ENV === 'development',   // Enable in dev
+            debugMode: process.env.DEBUG_MODE === 'true',       // Allow debug mode
+            testMode: process.env.TEST_MODE === 'true',         // Allow test mode
+            mockData: process.env.MOCK_DATA === 'true'          // Allow mock data
         };
 
-        // PVP (minimal)
+        // PVP (minimal but enabled)
         this.config.pvp = {
-            enabled: false,  // DISABLED to reduce CPU
-            maxQueueSize: 5,
-            matchmakingTime: 300,
-            battleCooldown: 600,
-            maxBattleTurns: 10,
-            cpBalanceThreshold: 0.5
+            enabled: process.env.PVP_ENABLED !== 'false',  // Default enabled
+            maxQueueSize: parseInt(process.env.PVP_MAX_QUEUE) || 10,
+            matchmakingTime: parseInt(process.env.PVP_MATCHMAKING_TIME) || 300,
+            battleCooldown: parseInt(process.env.PVP_BATTLE_COOLDOWN) || 600,
+            maxBattleTurns: parseInt(process.env.PVP_MAX_TURNS) || 15,
+            cpBalanceThreshold: parseFloat(process.env.PVP_CP_THRESHOLD) || 0.5
         };
         
         console.log('✅ CPU-optimized environment variables loaded');
@@ -179,6 +179,7 @@ class ConfigManager {
             const decoded = Buffer.from(base64, 'base64').toString('ascii');
             return decoded;
         } catch (error) {
+            console.log('⚠️ Could not extract client ID from token');
             return null;
         }
     }
@@ -197,11 +198,29 @@ class ConfigManager {
             errors.push('Database URL is missing');
         }
         
+        // Validate token format
+        if (this.config.discord?.token && !this.config.discord.token.startsWith('Bot ') && !this.config.discord.token.includes('.')) {
+            errors.push('Discord token appears to be invalid format');
+        }
+        
+        // Validate database URL format
+        if (this.config.database?.url && !this.config.database.url.startsWith('postgresql://') && !this.config.database.url.startsWith('postgres://')) {
+            errors.push('Database URL should start with postgresql:// or postgres://');
+        }
+        
         if (errors.length > 0) {
             throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
         }
         
         console.log('✅ Configuration validation passed (lightweight)');
+        
+        // Log config summary (without sensitive data)
+        console.log('📋 Configuration Summary:');
+        console.log(`   Discord: ${this.config.discord?.token ? '✅ Token Set' : '❌ No Token'}`);
+        console.log(`   Database: ${this.config.database?.url ? '✅ URL Set' : '❌ No URL'}`);
+        console.log(`   Log Level: ${this.config.logging?.level || 'unknown'}`);
+        console.log(`   Environment: ${this.environment}`);
+        console.log(`   Monitoring: ${this.config.monitoring?.enabled ? 'Enabled' : 'Disabled'}`);
     }
 
     // Getters (simplified)
@@ -230,9 +249,58 @@ class ConfigManager {
     get pvp() { return this.get('pvp'); }
 
     async reload() {
+        console.log('🔄 Reloading configuration...');
         this.config = {};
         this.isLoaded = false;
         await this.load();
+        console.log('✅ Configuration reloaded');
+    }
+
+    // Helper methods for debugging
+    logConfig() {
+        if (!this.isLoaded) {
+            console.log('❌ Configuration not loaded');
+            return;
+        }
+        
+        console.log('🔍 === CURRENT CONFIGURATION ===');
+        console.log('Discord Config:', {
+            hasToken: !!this.config.discord?.token,
+            tokenLength: this.config.discord?.token?.length || 0,
+            clientId: this.config.discord?.clientId || 'Not set'
+        });
+        console.log('Database Config:', {
+            hasUrl: !!this.config.database?.url,
+            ssl: this.config.database?.ssl,
+            poolMax: this.config.database?.pool?.max
+        });
+        console.log('Game Config:', this.config.game);
+        console.log('Logging Config:', this.config.logging);
+        console.log('=================================');
+    }
+
+    // Test configuration
+    async test() {
+        try {
+            console.log('🧪 Testing configuration...');
+            
+            // Test Discord token format
+            if (!this.config.discord?.token) {
+                throw new Error('No Discord token configured');
+            }
+            
+            // Test database URL format
+            if (!this.config.database?.url) {
+                throw new Error('No database URL configured');
+            }
+            
+            console.log('✅ Configuration test passed');
+            return true;
+            
+        } catch (error) {
+            console.log('❌ Configuration test failed:', error.message);
+            return false;
+        }
     }
 }
 
