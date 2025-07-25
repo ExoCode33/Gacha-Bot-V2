@@ -1,4 +1,4 @@
-// src/config/Config.js - Bulletproof Configuration Management
+// src/config/Config.js - Railway-Compatible Configuration Management
 const path = require('path');
 const fs = require('fs');
 
@@ -14,21 +14,22 @@ class ConfigManager {
      */
     async load() {
         try {
-            console.log('🔍 === BULLETPROOF CONFIG LOADING ===');
+            console.log('🔍 === RAILWAY-COMPATIBLE CONFIG LOADING ===');
             console.log('Starting configuration load process...');
             console.log('Timestamp:', new Date().toISOString());
+            console.log('Environment:', this.environment);
             console.log('');
             
-            // Load environment variables FIRST with bulletproof checking
+            // Load environment variables with Railway-specific approach
             this.loadEnvironmentVariables();
             
-            // Load default configuration
+            // Load default configuration (optional)
             await this.loadDefaultConfig();
             
-            // Load environment-specific configuration
+            // Load environment-specific configuration (optional)
             await this.loadEnvironmentConfig();
             
-            // Validate configuration AFTER loading
+            // Validate configuration
             this.validateConfig();
             
             this.isLoaded = true;
@@ -44,159 +45,54 @@ class ConfigManager {
     }
 
     /**
-     * Bulletproof environment variable loading
+     * Railway-compatible environment variable loading
      */
     loadEnvironmentVariables() {
-        console.log('🔍 === BULLETPROOF ENVIRONMENT LOADING ===');
+        console.log('🔍 === RAILWAY ENVIRONMENT LOADING ===');
         console.log('Loading environment variables...');
         
-        // Debug ALL environment variables first
-        const allEnvVars = Object.keys(process.env);
-        console.log('Total environment variables available:', allEnvVars.length);
+        // Discord Configuration - Railway compatible
+        const discordToken = process.env.DISCORD_TOKEN;
+        const discordClientId = process.env.DISCORD_CLIENT_ID;
         
-        // Find Discord/Token related variables
-        const tokenVars = allEnvVars.filter(key => 
-            key.includes('DISCORD') || 
-            key.includes('TOKEN') || 
-            key.includes('BOT')
-        );
-        
-        console.log('Token-related environment variables found:');
-        tokenVars.forEach(key => {
-            const value = process.env[key];
-            if (key.includes('TOKEN')) {
-                console.log(`  ${key}: ${value ? 'SET (' + value.length + ' chars)' : 'NOT SET'}`);
-            } else {
-                console.log(`  ${key}: ${value || 'NOT SET'}`);
-            }
-        });
-        
-        // Try to get Discord token with multiple fallbacks
-        let discordToken = null;
-        const tokenSources = [
-            'DISCORD_TOKEN',
-            'BOT_TOKEN',
-            'DISCORD_BOT_TOKEN',
-            'TOKEN'
-        ];
-        
-        console.log('🔍 Searching for Discord token...');
-        for (const source of tokenSources) {
-            const token = process.env[source];
-            if (token && typeof token === 'string' && token.trim().length > 0) {
-                discordToken = token.trim();
-                console.log(`✅ Found Discord token in ${source}`);
-                console.log(`   Token length: ${discordToken.length}`);
-                console.log(`   Token preview: ${discordToken.substring(0, 15)}...`);
-                break;
-            } else {
-                console.log(`❌ ${source}: ${token ? 'EMPTY/INVALID' : 'NOT SET'}`);
-            }
-        }
+        console.log('Discord Token:', discordToken ? 'FOUND' : 'NOT FOUND');
+        console.log('Discord Client ID:', discordClientId ? 'FOUND' : 'NOT FOUND');
         
         if (!discordToken) {
-            console.log('❌ NO DISCORD TOKEN FOUND IN ANY ENVIRONMENT VARIABLE!');
-            console.log('Available environment variables (first 50):');
-            allEnvVars.sort().slice(0, 50).forEach(key => {
-                console.log(`  ${key}: ${process.env[key] ? 'SET' : 'NOT SET'}`);
-            });
-            throw new Error('CRITICAL: No Discord token found in environment variables');
+            throw new Error('DISCORD_TOKEN environment variable is required');
         }
         
-        // Clean the token
-        const originalToken = discordToken;
-        discordToken = discordToken.replace(/^["']|["']$/g, ''); // Remove quotes
-        discordToken = discordToken.replace(/\s+/g, ''); // Remove whitespace
-        
-        if (originalToken !== discordToken) {
-            console.log('🔧 Token was cleaned (removed quotes/whitespace)');
-        }
-        
-        console.log('🔧 Final token length:', discordToken.length);
-        console.log('🔧 Final token preview:', discordToken.substring(0, 15) + '...');
-        
-        // Validate token format
-        const tokenParts = discordToken.split('.');
-        if (tokenParts.length !== 3) {
-            console.log('❌ Invalid token format - should have 3 parts separated by dots');
-            console.log('   Token parts found:', tokenParts.length);
-            console.log('   Token structure:', tokenParts.map(p => p.length + ' chars').join(', '));
-            throw new Error(`Invalid Discord token format: expected 3 parts, got ${tokenParts.length}`);
-        }
-        
-        if (discordToken.length < 50 || discordToken.length > 80) {
-            console.log('❌ Invalid token length');
-            console.log('   Expected: 50-80 characters');
-            console.log('   Actual:', discordToken.length, 'characters');
-            throw new Error(`Invalid Discord token length: ${discordToken.length} characters`);
-        }
-        
-        console.log('✅ Discord token validation passed');
-        
-        // Get Discord Client ID
-        let clientId = process.env.DISCORD_CLIENT_ID;
-        if (!clientId) {
-            console.log('⚠️  DISCORD_CLIENT_ID not set, will extract from token');
-            try {
-                const base64 = tokenParts[0];
-                const decoded = Buffer.from(base64, 'base64').toString('ascii');
-                clientId = decoded;
-                console.log('✅ Extracted client ID from token:', clientId);
-            } catch (error) {
-                console.log('❌ Failed to extract client ID from token:', error.message);
-            }
-        }
-
-        // Discord Configuration
         this.config.discord = {
-            token: discordToken,
-            clientId: clientId,
-            guildId: process.env.DISCORD_GUILD_ID // Optional for guild-specific commands
+            token: discordToken.trim(),
+            clientId: discordClientId || this.extractClientIdFromToken(discordToken),
+            guildId: process.env.DISCORD_GUILD_ID || null
         };
         
-        console.log('✅ Discord configuration set');
-        console.log('   Token: SET (' + this.config.discord.token.length + ' chars)');
-        console.log('   Client ID:', this.config.discord.clientId || 'NOT SET');
-        console.log('   Guild ID:', this.config.discord.guildId || 'NOT SET');
+        console.log('✅ Discord configuration loaded');
 
-        // Database Configuration with multiple fallbacks
-        console.log('');
-        console.log('🔍 Setting up database configuration...');
+        // Database Configuration - Railway compatible
+        const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
         
-        const databaseSources = [
-            'DATABASE_PUBLIC_URL',
-            'DATABASE_URL', 
-            'PGURL',
-            'DATABASE_PRIVATE_URL'
-        ];
+        console.log('Database URL:', databaseUrl ? 'FOUND' : 'NOT FOUND');
         
-        let databaseUrl = null;
-        for (const source of databaseSources) {
-            const url = process.env[source];
-            if (url && typeof url === 'string' && url.trim().length > 0) {
-                databaseUrl = url.trim();
-                console.log(`✅ Found database URL in ${source}`);
-                console.log(`   URL preview: ${databaseUrl.substring(0, 40)}...`);
-                break;
-            } else {
-                console.log(`❌ ${source}: ${url ? 'EMPTY/INVALID' : 'NOT SET'}`);
-            }
+        if (!databaseUrl) {
+            throw new Error('DATABASE_URL or DATABASE_PUBLIC_URL environment variable is required');
         }
         
         this.config.database = {
-            url: databaseUrl,
+            url: databaseUrl.trim(),
             ssl: this.environment === 'production',
             pool: {
                 min: parseInt(process.env.DB_POOL_MIN) || 2,
-                max: parseInt(process.env.DB_POOL_MAX) || 20,
-                acquireTimeoutMillis: parseInt(process.env.DB_ACQUIRE_TIMEOUT) || 60000,
-                createTimeoutMillis: parseInt(process.env.DB_CREATE_TIMEOUT) || 30000,
+                max: parseInt(process.env.DB_POOL_MAX) || 10, // Reduced for Railway
+                acquireTimeoutMillis: parseInt(process.env.DB_ACQUIRE_TIMEOUT) || 30000,
+                createTimeoutMillis: parseInt(process.env.DB_CREATE_TIMEOUT) || 15000,
                 destroyTimeoutMillis: parseInt(process.env.DB_DESTROY_TIMEOUT) || 5000,
-                idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 30000,
-                reapIntervalMillis: parseInt(process.env.DB_REAP_INTERVAL) || 1000,
-                createRetryIntervalMillis: parseInt(process.env.DB_CREATE_RETRY_INTERVAL) || 200
+                idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 30000
             }
         };
+        
+        console.log('✅ Database configuration loaded');
 
         // Game Configuration
         this.config.game = {
@@ -207,16 +103,6 @@ class ConfigManager {
             manualIncomeCooldown: parseInt(process.env.MANUAL_INCOME_COOLDOWN) || 60,
             autoIncomeInterval: parseInt(process.env.AUTO_INCOME_INTERVAL) || 10,
             maxStoredHours: parseInt(process.env.MAX_STORED_HOURS) || 24
-        };
-
-        // PvP Configuration
-        this.config.pvp = {
-            enabled: process.env.PVP_ENABLED !== 'false',
-            maxQueueSize: parseInt(process.env.PVP_MAX_QUEUE_SIZE) || 20,
-            matchmakingTime: parseInt(process.env.PVP_MATCHMAKING_TIME) || 120,
-            battleCooldown: parseInt(process.env.PVP_BATTLE_COOLDOWN) || 300,
-            maxBattleTurns: parseInt(process.env.PVP_MAX_TURNS) || 15,
-            cpBalanceThreshold: parseFloat(process.env.PVP_CP_BALANCE_THRESHOLD) || 0.3
         };
 
         // Logging Configuration
@@ -240,12 +126,12 @@ class ConfigManager {
             cacheTTL: parseInt(process.env.CACHE_TTL) || 300000
         };
 
-        // Monitoring Configuration
+        // Monitoring Configuration  
         this.config.monitoring = {
             enabled: process.env.MONITORING_ENABLED !== 'false',
             interval: parseInt(process.env.MONITORING_INTERVAL) || 30000,
             alertThresholds: {
-                memory: parseInt(process.env.ALERT_MEMORY_THRESHOLD) || 512,
+                memory: parseInt(process.env.ALERT_MEMORY_THRESHOLD) || 256, // Reduced for Railway
                 cpu: parseInt(process.env.ALERT_CPU_THRESHOLD) || 80,
                 latency: parseInt(process.env.ALERT_LATENCY_THRESHOLD) || 300
             }
@@ -253,9 +139,9 @@ class ConfigManager {
 
         // Security Configuration
         this.config.security = {
-            adminUsers: process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',') : [],
-            moderatorRoles: process.env.MODERATOR_ROLES ? process.env.MODERATOR_ROLES.split(',') : [],
-            rateLimitBypass: process.env.RATE_LIMIT_BYPASS ? process.env.RATE_LIMIT_BYPASS.split(',') : []
+            adminUsers: process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(id => id.trim()) : [],
+            moderatorRoles: process.env.MODERATOR_ROLES ? process.env.MODERATOR_ROLES.split(',').map(role => role.trim()) : [],
+            rateLimitBypass: process.env.RATE_LIMIT_BYPASS ? process.env.RATE_LIMIT_BYPASS.split(',').map(id => id.trim()) : []
         };
 
         // Development Configuration
@@ -265,14 +151,38 @@ class ConfigManager {
             testMode: process.env.TEST_MODE === 'true',
             mockData: process.env.MOCK_DATA === 'true'
         };
+
+        // PvP Configuration (optional)
+        this.config.pvp = {
+            enabled: process.env.PVP_ENABLED !== 'false',
+            maxQueueSize: parseInt(process.env.PVP_MAX_QUEUE_SIZE) || 20,
+            matchmakingTime: parseInt(process.env.PVP_MATCHMAKING_TIME) || 120,
+            battleCooldown: parseInt(process.env.PVP_BATTLE_COOLDOWN) || 300,
+            maxBattleTurns: parseInt(process.env.PVP_MAX_TURNS) || 15,
+            cpBalanceThreshold: parseFloat(process.env.PVP_CP_BALANCE_THRESHOLD) || 0.3
+        };
         
-        console.log('✅ All environment variables loaded');
+        console.log('✅ All environment variables loaded successfully');
         console.log('🔍 === ENVIRONMENT LOADING COMPLETE ===');
-        console.log('');
     }
 
     /**
-     * Load default configuration
+     * Extract client ID from Discord token
+     */
+    extractClientIdFromToken(token) {
+        try {
+            const base64 = token.split('.')[0];
+            const decoded = Buffer.from(base64, 'base64').toString('ascii');
+            console.log('✅ Extracted client ID from token:', decoded);
+            return decoded;
+        } catch (error) {
+            console.log('⚠️ Could not extract client ID from token:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Load default configuration (optional)
      */
     async loadDefaultConfig() {
         const defaultConfigPath = path.join(__dirname, 'default.json');
@@ -283,16 +193,15 @@ class ConfigManager {
                 this.mergeConfig(defaultConfig);
                 console.log('✅ Default configuration loaded');
             } catch (error) {
-                // Default config is optional
-                console.warn('⚠️  Could not load default configuration:', error.message);
+                console.log('⚠️ Could not load default configuration:', error.message);
             }
         } else {
-            console.log('ℹ️  No default configuration file found');
+            console.log('ℹ️ No default configuration file found (optional)');
         }
     }
 
     /**
-     * Load environment-specific configuration
+     * Load environment-specific configuration (optional)
      */
     async loadEnvironmentConfig() {
         const envConfigPath = path.join(__dirname, `${this.environment}.json`);
@@ -303,10 +212,10 @@ class ConfigManager {
                 this.mergeConfig(envConfig);
                 console.log(`✅ ${this.environment} configuration loaded`);
             } catch (error) {
-                console.warn(`⚠️  Could not load ${this.environment} configuration:`, error.message);
+                console.log(`⚠️ Could not load ${this.environment} configuration:`, error.message);
             }
         } else {
-            console.log(`ℹ️  No ${this.environment} configuration file found`);
+            console.log(`ℹ️ No ${this.environment} configuration file found (optional)`);
         }
     }
 
@@ -335,119 +244,48 @@ class ConfigManager {
     }
 
     /**
-     * Bulletproof configuration validation
+     * Simple but effective configuration validation
      */
     validateConfig() {
-        console.log('🔍 === BULLETPROOF CONFIG VALIDATION ===');
+        console.log('🔍 === CONFIG VALIDATION ===');
         console.log('Starting configuration validation...');
         
         const errors = [];
         
         // Validate Discord token
-        console.log('🔍 Validating Discord configuration...');
-        if (!this.config.discord || !this.config.discord.token) {
-            errors.push('Discord token is missing from configuration');
-            console.log('❌ Discord token missing');
+        if (!this.config.discord?.token) {
+            errors.push('Discord token is missing');
         } else {
             const token = this.config.discord.token;
-            console.log('✅ Discord token present in config');
-            console.log('   Length:', token.length);
-            console.log('   Preview:', token.substring(0, 15) + '...');
-            
-            // Validate token format
             const parts = token.split('.');
             if (parts.length !== 3) {
                 errors.push(`Discord token format invalid: ${parts.length} parts (expected 3)`);
-                console.log('❌ Token format invalid');
-            } else {
-                console.log('✅ Token format valid');
             }
-            
             if (token.length < 50 || token.length > 80) {
                 errors.push(`Discord token length invalid: ${token.length} characters`);
-                console.log('❌ Token length invalid');
-            } else {
-                console.log('✅ Token length valid');
             }
         }
         
         // Validate Database URL
-        console.log('🔍 Validating database configuration...');
-        if (!this.config.database || !this.config.database.url) {
-            errors.push('Database URL is missing from configuration');
-            console.log('❌ Database URL missing');
+        if (!this.config.database?.url) {
+            errors.push('Database URL is missing');
         } else {
             const dbUrl = this.config.database.url;
-            console.log('✅ Database URL present in config');
-            console.log('   Preview:', dbUrl.substring(0, 40) + '...');
-            
             if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
-                errors.push('Database URL format invalid (must start with postgresql:// or postgres://)');
-                console.log('❌ Database URL format invalid');
-            } else {
-                console.log('✅ Database URL format valid');
+                errors.push('Database URL format invalid (must be PostgreSQL)');
             }
         }
         
-        // Report validation results
         if (errors.length > 0) {
             console.log('❌ CONFIGURATION VALIDATION FAILED');
-            console.log('Errors found:');
             errors.forEach((error, index) => {
                 console.log(`   ${index + 1}. ${error}`);
             });
-            console.log('🔍 === VALIDATION FAILED ===');
             throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
         }
         
-        console.log('✅ All configuration validation passed');
+        console.log('✅ Configuration validation passed');
         console.log('🔍 === VALIDATION COMPLETE ===');
-        console.log('');
-
-        // Validate numeric values
-        this.validateNumericConfig();
-    }
-
-    /**
-     * Validate numeric configuration values
-     */
-    validateNumericConfig() {
-        const numericValidations = [
-            ['game.pullCost', 1, 100000],
-            ['game.baseIncome', 1, 1000],
-            ['game.incomeRate', 0.01, 10],
-            ['pvp.maxQueueSize', 1, 100],
-            ['pvp.matchmakingTime', 30, 600],
-            ['database.pool.max', 1, 100]
-        ];
-
-        for (const [path, min, max] of numericValidations) {
-            const value = this.getConfigValue(path);
-            if (value !== undefined && (value < min || value > max)) {
-                throw new Error(`Configuration ${path} must be between ${min} and ${max}, got ${value}`);
-            }
-        }
-    }
-
-    /**
-     * Get configuration value by dot notation path
-     */
-    getConfigValue(path) {
-        return path.split('.').reduce((obj, key) => obj?.[key], this.config);
-    }
-
-    /**
-     * Set configuration value by dot notation path
-     */
-    setConfigValue(path, value) {
-        const keys = path.split('.');
-        const lastKey = keys.pop();
-        const target = keys.reduce((obj, key) => {
-            if (!obj[key]) obj[key] = {};
-            return obj[key];
-        }, this.config);
-        
-        target[lastKey] = value;
     }
 
     /**
@@ -520,20 +358,6 @@ class ConfigManager {
     }
 
     /**
-     * Get PvP configuration
-     */
-    get pvp() {
-        return this.get('pvp');
-    }
-
-    /**
-     * Get logging configuration
-     */
-    get logging() {
-        return this.get('logging');
-    }
-
-    /**
      * Get performance configuration
      */
     get performance() {
@@ -552,6 +376,27 @@ class ConfigManager {
      */
     get security() {
         return this.get('security');
+    }
+
+    /**
+     * Get logging configuration
+     */
+    get logging() {
+        return this.get('logging');
+    }
+
+    /**
+     * Get development configuration
+     */
+    get development() {
+        return this.get('development');
+    }
+
+    /**
+     * Get PvP configuration
+     */
+    get pvp() {
+        return this.get('pvp');
     }
 
     /**
