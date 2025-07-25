@@ -1,4 +1,4 @@
-// src/commands/slash/economy/balance.js - Balance Command
+// src/commands/slash/economy/balance.js - Updated Balance Command
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const EconomyService = require('../../../services/EconomyService');
 const DatabaseManager = require('../../../database/DatabaseManager');
@@ -76,7 +76,7 @@ module.exports = {
                     }
                 )
                 .setFooter({ 
-                    text: `Use /income to collect berries • Use /pull to hunt for Devil Fruits` 
+                    text: `Use /income to collect berries • Use /summon to hunt for Devil Fruits` 
                 })
                 .setTimestamp();
             
