@@ -1,9 +1,9 @@
-// index.js - Professional One Piece Devil Fruit Gacha Bot v4.0
+// index.js - Professional One Piece Devil Fruit Gacha Bot v4.0 with Enhanced Debugging
 
 // =============================================================================
-// DEBUG SECTION - Environment Variables Check
+// ENHANCED ENVIRONMENT DEBUG SECTION
 // =============================================================================
-console.log('🔍 === RAILWAY ENVIRONMENT DEBUG ===');
+console.log('🔍 === ENHANCED ENVIRONMENT DEBUG ===');
 console.log('Timestamp:', new Date().toISOString());
 console.log('Node.js Version:', process.version);
 console.log('Platform:', process.platform);
@@ -11,62 +11,113 @@ console.log('Working Directory:', process.cwd());
 console.log('');
 
 console.log('🔍 ENVIRONMENT VARIABLES CHECK:');
-console.log('DISCORD_TOKEN exists:', 'DISCORD_TOKEN' in process.env);
-console.log('DATABASE_URL exists:', 'DATABASE_URL' in process.env);
-console.log('DATABASE_PUBLIC_URL exists:', 'DATABASE_PUBLIC_URL' in process.env);
-console.log('DISCORD_TOKEN value:', process.env.DISCORD_TOKEN ? `${process.env.DISCORD_TOKEN.substring(0, 20)}...` : 'UNDEFINED');
-console.log('DATABASE_URL value:', process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'UNDEFINED');
-console.log('DATABASE_PUBLIC_URL value:', process.env.DATABASE_PUBLIC_URL ? `${process.env.DATABASE_PUBLIC_URL.substring(0, 30)}...` : 'UNDEFINED');
+console.log('Total environment variables:', Object.keys(process.env).length);
 console.log('');
 
+// Check specifically for Discord token
+console.log('🔍 DISCORD TOKEN ANALYSIS:');
+console.log('DISCORD_TOKEN in process.env:', 'DISCORD_TOKEN' in process.env);
+console.log('DISCORD_TOKEN value exists:', !!process.env.DISCORD_TOKEN);
+console.log('DISCORD_TOKEN type:', typeof process.env.DISCORD_TOKEN);
+
+if (process.env.DISCORD_TOKEN) {
+    const rawToken = process.env.DISCORD_TOKEN;
+    console.log('Raw token length:', rawToken.length);
+    console.log('Raw token first 15 chars:', rawToken.substring(0, 15));
+    console.log('Raw token last 5 chars:', rawToken.substring(rawToken.length - 5));
+    console.log('Raw token has quotes:', rawToken.includes('"') || rawToken.includes("'"));
+    console.log('Raw token has spaces:', rawToken.includes(' '));
+    console.log('Raw token has newlines:', rawToken.includes('\n') || rawToken.includes('\r'));
+    
+    // Clean the token
+    let cleanToken = rawToken.trim();
+    
+    // Remove surrounding quotes if present
+    if ((cleanToken.startsWith('"') && cleanToken.endsWith('"')) ||
+        (cleanToken.startsWith("'") && cleanToken.endsWith("'"))) {
+        console.log('🔧 Removing surrounding quotes from token...');
+        cleanToken = cleanToken.slice(1, -1);
+    }
+    
+    // Remove any embedded quotes
+    if (cleanToken.includes('"') || cleanToken.includes("'")) {
+        console.log('🔧 Removing embedded quotes from token...');
+        cleanToken = cleanToken.replace(/['"]/g, '');
+    }
+    
+    console.log('Cleaned token length:', cleanToken.length);
+    console.log('Cleaned token first 15 chars:', cleanToken.substring(0, 15));
+    console.log('Cleaned token last 5 chars:', cleanToken.substring(cleanToken.length - 5));
+    
+    // Validate token format
+    const tokenParts = cleanToken.split('.');
+    console.log('Token parts count:', tokenParts.length);
+    if (tokenParts.length === 3) {
+        console.log('✅ Token has correct 3-part structure');
+        console.log('Part 1 length:', tokenParts[0].length);
+        console.log('Part 2 length:', tokenParts[1].length);
+        console.log('Part 3 length:', tokenParts[2].length);
+    } else {
+        console.log('❌ Token does not have 3 parts separated by dots');
+    }
+    
+    // Update environment with cleaned token
+    process.env.DISCORD_TOKEN = cleanToken;
+    console.log('🔧 Updated process.env.DISCORD_TOKEN with cleaned version');
+    
+} else {
+    console.log('❌ DISCORD_TOKEN is not set or is empty');
+}
+
+console.log('');
+
+// Check for database URLs
+console.log('🔍 DATABASE URLS:');
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('DATABASE_PUBLIC_URL exists:', !!process.env.DATABASE_PUBLIC_URL);
+console.log('DATABASE_PRIVATE_URL exists:', !!process.env.DATABASE_PRIVATE_URL);
+
+console.log('');
+
+// Show Railway-specific variables
 console.log('🔍 RAILWAY DETECTION:');
 console.log('RAILWAY_ENVIRONMENT_NAME:', process.env.RAILWAY_ENVIRONMENT_NAME || 'NOT SET');
 console.log('RAILWAY_SERVICE_NAME:', process.env.RAILWAY_SERVICE_NAME || 'NOT SET');
 console.log('RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME || 'NOT SET');
+
 console.log('');
 
-console.log('🔍 DATABASE URL ANALYSIS:');
-if (process.env.DATABASE_PUBLIC_URL) {
-    console.log('Using DATABASE_PUBLIC_URL (preferred)');
-    console.log('Contains proxy:', process.env.DATABASE_PUBLIC_URL.includes('proxy.rlwy.net'));
-    console.log('Contains internal:', process.env.DATABASE_PUBLIC_URL.includes('railway.internal'));
-} else if (process.env.DATABASE_URL) {
-    console.log('Using DATABASE_URL (fallback)');
-    console.log('Contains proxy:', process.env.DATABASE_URL.includes('proxy.rlwy.net'));
-    console.log('Contains internal:', process.env.DATABASE_URL.includes('railway.internal'));
-}
-console.log('');
-
-console.log('🔍 RELATED ENVIRONMENT VARIABLES:');
+// Show all Discord/Token related variables
+console.log('🔍 ALL DISCORD/TOKEN VARIABLES:');
 const allKeys = Object.keys(process.env);
 const relevantKeys = allKeys.filter(key => 
     key.includes('DISCORD') || 
     key.includes('TOKEN') || 
-    key.includes('DATABASE') || 
-    key.includes('POSTGRES') ||
-    key.includes('DB_')
+    key.includes('BOT')
 );
-relevantKeys.forEach(key => {
-    const value = process.env[key];
-    if (key.includes('TOKEN') || key.includes('PASSWORD')) {
-        console.log(`${key}: ${value ? `${value.substring(0, 10)}...` : 'NOT SET'}`);
-    } else {
-        console.log(`${key}: ${value || 'NOT SET'}`);
-    }
-});
+
+if (relevantKeys.length > 0) {
+    relevantKeys.forEach(key => {
+        const value = process.env[key];
+        if (key.includes('TOKEN')) {
+            console.log(`  ${key}: ${value ? value.substring(0, 15) + '...' : 'NOT SET'}`);
+        } else {
+            console.log(`  ${key}: ${value || 'NOT SET'}`);
+        }
+    });
+} else {
+    console.log('  No Discord/Token related variables found');
+}
+
+console.log('');
+console.log('🔍 === END ENHANCED DEBUG ===');
 console.log('');
 
-console.log('🔍 TOTAL ENVIRONMENT VARIABLES:', allKeys.length);
-console.log('🔍 === END DEBUG ===');
-console.log('');
+// =============================================================================
+// ORIGINAL BOT CODE CONTINUES
+// =============================================================================
 
 require('dotenv').config(); // Load environment variables FIRST
-
-console.log('🔍 POST-DOTENV CHECK:');
-console.log('DISCORD_TOKEN after dotenv:', process.env.DISCORD_TOKEN ? 'SET' : 'NOT SET');
-console.log('DATABASE_URL after dotenv:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
-console.log('DATABASE_PUBLIC_URL after dotenv:', process.env.DATABASE_PUBLIC_URL ? 'SET' : 'NOT SET');
-console.log('');
 
 const { Client, GatewayIntentBits, Collection, ActivityType } = require('discord.js');
 const { REST } = require('@discordjs/rest');
@@ -104,10 +155,6 @@ class OnePieceGachaBot {
         try {
             console.log('🔍 === BOT STARTUP DEBUG ===');
             console.log('About to initialize configuration...');
-            console.log('Current process.env.DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING');
-            console.log('Current process.env.DATABASE_URL:', process.env.DATABASE_URL ? 'EXISTS' : 'MISSING');
-            console.log('Current process.env.DATABASE_PUBLIC_URL:', process.env.DATABASE_PUBLIC_URL ? 'EXISTS' : 'MISSING');
-            console.log('');
             
             // Load and validate configuration
             await this.initializeConfig();
@@ -146,53 +193,21 @@ class OnePieceGachaBot {
         try {
             console.log('🔍 === CONFIG INITIALIZATION DEBUG ===');
             console.log('About to load configuration...');
-            console.log('Current process.env.DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'EXISTS' : 'MISSING');
-            console.log('Current process.env.DATABASE_URL:', process.env.DATABASE_URL ? 'EXISTS' : 'MISSING');
-            console.log('Current process.env.DATABASE_PUBLIC_URL:', process.env.DATABASE_PUBLIC_URL ? 'EXISTS' : 'MISSING');
             
-            if (process.env.DISCORD_TOKEN) {
-                console.log('DISCORD_TOKEN length:', process.env.DISCORD_TOKEN.length);
-                console.log('DISCORD_TOKEN type:', typeof process.env.DISCORD_TOKEN);
-                console.log('DISCORD_TOKEN preview:', process.env.DISCORD_TOKEN.substring(0, 30) + '...');
-            }
-            
-            if (process.env.DATABASE_PUBLIC_URL) {
-                console.log('DATABASE_PUBLIC_URL length:', process.env.DATABASE_PUBLIC_URL.length);
-                console.log('DATABASE_PUBLIC_URL type:', typeof process.env.DATABASE_PUBLIC_URL);
-                console.log('DATABASE_PUBLIC_URL preview:', process.env.DATABASE_PUBLIC_URL.substring(0, 40) + '...');
-                console.log('DATABASE_PUBLIC_URL contains proxy:', process.env.DATABASE_PUBLIC_URL.includes('proxy.rlwy.net'));
-            }
-            
-            if (process.env.DATABASE_URL) {
-                console.log('DATABASE_URL length:', process.env.DATABASE_URL.length);
-                console.log('DATABASE_URL type:', typeof process.env.DATABASE_URL);
-                console.log('DATABASE_URL preview:', process.env.DATABASE_URL.substring(0, 40) + '...');
-                console.log('DATABASE_URL contains internal:', process.env.DATABASE_URL.includes('railway.internal'));
-            }
-            
-            console.log('Calling Config.load()...');
             await Config.load();
             console.log('Config.load() completed successfully');
             
+            // Additional token validation
+            console.log('🔍 POST-CONFIG TOKEN CHECK:');
+            console.log('Config.discord exists:', !!Config.discord);
+            console.log('Config.discord.token exists:', !!Config.discord?.token);
+            
+            if (Config.discord?.token) {
+                console.log('Config token length:', Config.discord.token.length);
+                console.log('Config token preview:', Config.discord.token.substring(0, 15) + '...');
+            }
+            
             this.logger.info('✅ Configuration loaded successfully');
-            
-            // Additional validation
-            const required = ['DISCORD_TOKEN'];
-            const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
-            
-            if (!databaseUrl) {
-                required.push('DATABASE_URL or DATABASE_PUBLIC_URL');
-            }
-            
-            const missing = required.filter(key => !process.env[key] && key !== 'DATABASE_URL or DATABASE_PUBLIC_URL');
-            
-            if (missing.length > 0) {
-                console.log('❌ VALIDATION FAILED - Missing variables:', missing);
-                throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-            }
-            
-            console.log('✅ All required environment variables validated');
-            console.log('Database URL being used:', databaseUrl ? databaseUrl.substring(0, 50) + '...' : 'NONE');
             console.log('🔍 === CONFIG INITIALIZATION COMPLETE ===');
             
         } catch (error) {
@@ -354,13 +369,39 @@ class OnePieceGachaBot {
     }
 
     /**
-     * Login to Discord
+     * Login to Discord with enhanced debugging
      */
     async login() {
         try {
             this.logger.info('🔐 Logging in to Discord...');
             
-            await this.client.login(Config.discord.token);
+            // Enhanced login debugging
+            console.log('🔍 === FINAL LOGIN ATTEMPT DEBUG ===');
+            const tokenToUse = Config.discord.token;
+            console.log('Token source: Config.discord.token');
+            console.log('Token exists:', !!tokenToUse);
+            console.log('Token type:', typeof tokenToUse);
+            console.log('Token length:', tokenToUse ? tokenToUse.length : 0);
+            console.log('Token preview:', tokenToUse ? tokenToUse.substring(0, 15) + '...' : 'NONE');
+            
+            if (!tokenToUse) {
+                throw new Error('No Discord token available for login');
+            }
+            
+            // Validate token format before attempting login
+            const parts = tokenToUse.split('.');
+            if (parts.length !== 3) {
+                throw new Error(`Invalid token format - has ${parts.length} parts, should have 3`);
+            }
+            
+            if (tokenToUse.length < 50 || tokenToUse.length > 70) {
+                throw new Error(`Invalid token length - ${tokenToUse.length} characters, should be 50-70`);
+            }
+            
+            console.log('✅ Token format validation passed');
+            console.log('🔍 === ATTEMPTING DISCORD LOGIN ===');
+            
+            await this.client.login(tokenToUse);
             
             // Wait for ready event
             await new Promise((resolve) => {
@@ -371,6 +412,25 @@ class OnePieceGachaBot {
             this.logger.success(`✅ Logged in as ${this.client.user.tag}`);
             
         } catch (error) {
+            console.log('❌ LOGIN FAILED WITH ERROR:', error.message);
+            console.log('Error code:', error.code);
+            console.log('Error name:', error.name);
+            
+            if (error.code === 'TokenInvalid') {
+                console.log('');
+                console.log('🔧 TOKEN INVALID TROUBLESHOOTING:');
+                console.log('1. Go to https://discord.com/developers/applications');
+                console.log('2. Select your bot application');
+                console.log('3. Go to "Bot" section');
+                console.log('4. Click "Reset Token" to generate a new one');
+                console.log('5. Copy the new token (all of it, no quotes)');
+                console.log('6. In Railway: go to your service → Variables tab');
+                console.log('7. Edit DISCORD_TOKEN variable and paste the new token');
+                console.log('8. Make sure there are NO quotes around the token');
+                console.log('9. Save and redeploy');
+                console.log('');
+            }
+            
             this.logger.error('Failed to login to Discord:', error);
             throw error;
         }
