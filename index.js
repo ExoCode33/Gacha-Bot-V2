@@ -1,130 +1,51 @@
-// index.js - Professional One Piece Devil Fruit Gacha Bot v4.0 with Enhanced Debugging
+// index.js - Add this at the VERY TOP, before any other code
 
 // =============================================================================
-// ENHANCED ENVIRONMENT DEBUG SECTION
+// 🆘 EMERGENCY DEBUGGING - MUST BE FIRST
 // =============================================================================
-console.log('🔍 === ENHANCED ENVIRONMENT DEBUG ===');
+console.log('🆘 === EMERGENCY DEBUG START ===');
 console.log('Timestamp:', new Date().toISOString());
-console.log('Node.js Version:', process.version);
-console.log('Platform:', process.platform);
-console.log('Working Directory:', process.cwd());
+console.log('Node.js version:', process.version);
+console.log('File:', __filename);
+console.log('Directory:', __dirname);
 console.log('');
 
-console.log('🔍 ENVIRONMENT VARIABLES CHECK:');
-console.log('Total environment variables:', Object.keys(process.env).length);
-console.log('');
-
-// Check specifically for Discord token
-console.log('🔍 DISCORD TOKEN ANALYSIS:');
-console.log('DISCORD_TOKEN in process.env:', 'DISCORD_TOKEN' in process.env);
-console.log('DISCORD_TOKEN value exists:', !!process.env.DISCORD_TOKEN);
+console.log('🆘 IMMEDIATE ENVIRONMENT CHECK:');
+console.log('Total env vars:', Object.keys(process.env).length);
+console.log('DISCORD_TOKEN exists:', 'DISCORD_TOKEN' in process.env);
 console.log('DISCORD_TOKEN type:', typeof process.env.DISCORD_TOKEN);
-
-if (process.env.DISCORD_TOKEN) {
-    const rawToken = process.env.DISCORD_TOKEN;
-    console.log('Raw token length:', rawToken.length);
-    console.log('Raw token first 15 chars:', rawToken.substring(0, 15));
-    console.log('Raw token last 5 chars:', rawToken.substring(rawToken.length - 5));
-    console.log('Raw token has quotes:', rawToken.includes('"') || rawToken.includes("'"));
-    console.log('Raw token has spaces:', rawToken.includes(' '));
-    console.log('Raw token has newlines:', rawToken.includes('\n') || rawToken.includes('\r'));
-    
-    // Clean the token
-    let cleanToken = rawToken.trim();
-    
-    // Remove surrounding quotes if present
-    if ((cleanToken.startsWith('"') && cleanToken.endsWith('"')) ||
-        (cleanToken.startsWith("'") && cleanToken.endsWith("'"))) {
-        console.log('🔧 Removing surrounding quotes from token...');
-        cleanToken = cleanToken.slice(1, -1);
-    }
-    
-    // Remove any embedded quotes
-    if (cleanToken.includes('"') || cleanToken.includes("'")) {
-        console.log('🔧 Removing embedded quotes from token...');
-        cleanToken = cleanToken.replace(/['"]/g, '');
-    }
-    
-    console.log('Cleaned token length:', cleanToken.length);
-    console.log('Cleaned token first 15 chars:', cleanToken.substring(0, 15));
-    console.log('Cleaned token last 5 chars:', cleanToken.substring(cleanToken.length - 5));
-    
-    // Validate token format
-    const tokenParts = cleanToken.split('.');
-    console.log('Token parts count:', tokenParts.length);
-    if (tokenParts.length === 3) {
-        console.log('✅ Token has correct 3-part structure');
-        console.log('Part 1 length:', tokenParts[0].length);
-        console.log('Part 2 length:', tokenParts[1].length);
-        console.log('Part 3 length:', tokenParts[2].length);
-    } else {
-        console.log('❌ Token does not have 3 parts separated by dots');
-    }
-    
-    // Update environment with cleaned token
-    process.env.DISCORD_TOKEN = cleanToken;
-    console.log('🔧 Updated process.env.DISCORD_TOKEN with cleaned version');
-    
-} else {
-    console.log('❌ DISCORD_TOKEN is not set or is empty');
-}
-
+console.log('DISCORD_TOKEN length:', process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.length : 0);
+console.log('DISCORD_TOKEN preview:', process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.substring(0, 10) + '...' : 'NONE');
 console.log('');
 
-// Check for database URLs
-console.log('🔍 DATABASE URLS:');
-console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
-console.log('DATABASE_PUBLIC_URL exists:', !!process.env.DATABASE_PUBLIC_URL);
-console.log('DATABASE_PRIVATE_URL exists:', !!process.env.DATABASE_PRIVATE_URL);
-
+console.log('DATABASE_PUBLIC_URL exists:', 'DATABASE_PUBLIC_URL' in process.env);
+console.log('DATABASE_URL exists:', 'DATABASE_URL' in process.env);
+console.log('DATABASE_PUBLIC_URL preview:', process.env.DATABASE_PUBLIC_URL ? process.env.DATABASE_PUBLIC_URL.substring(0, 30) + '...' : 'NONE');
 console.log('');
 
-// Show Railway-specific variables
-console.log('🔍 RAILWAY DETECTION:');
+console.log('🆘 RAILWAY DETECTION:');
 console.log('RAILWAY_ENVIRONMENT_NAME:', process.env.RAILWAY_ENVIRONMENT_NAME || 'NOT SET');
 console.log('RAILWAY_SERVICE_NAME:', process.env.RAILWAY_SERVICE_NAME || 'NOT SET');
 console.log('RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME || 'NOT SET');
-
 console.log('');
 
-// Show all Discord/Token related variables
-console.log('🔍 ALL DISCORD/TOKEN VARIABLES:');
-const allKeys = Object.keys(process.env);
-const relevantKeys = allKeys.filter(key => 
-    key.includes('DISCORD') || 
-    key.includes('TOKEN') || 
-    key.includes('BOT')
-);
-
-if (relevantKeys.length > 0) {
-    relevantKeys.forEach(key => {
-        const value = process.env[key];
-        if (key.includes('TOKEN')) {
-            console.log(`  ${key}: ${value ? value.substring(0, 15) + '...' : 'NOT SET'}`);
-        } else {
-            console.log(`  ${key}: ${value || 'NOT SET'}`);
-        }
-    });
-} else {
-    console.log('  No Discord/Token related variables found');
-}
-
-console.log('');
-console.log('🔍 === END ENHANCED DEBUG ===');
+console.log('🆘 === EMERGENCY DEBUG END ===');
 console.log('');
 
 // =============================================================================
-// ORIGINAL BOT CODE CONTINUES
+// CONTINUE WITH ORIGINAL CODE
 // =============================================================================
 
 require('dotenv').config(); // Load environment variables FIRST
 
+console.log('📦 Loading Discord.js...');
 const { Client, GatewayIntentBits, Collection, ActivityType } = require('discord.js');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
 const path = require('path');
 const fs = require('fs');
 
+console.log('📦 Loading core modules...');
 // Core modules
 const Logger = require('./src/utils/Logger');
 const Config = require('./src/config/Config');
@@ -134,8 +55,11 @@ const CommandManager = require('./src/commands/CommandManager');
 const SystemMonitor = require('./src/utils/SystemMonitor');
 const ErrorHandler = require('./src/utils/ErrorHandler');
 
+console.log('📦 All modules loaded, creating bot class...');
+
 class OnePieceGachaBot {
     constructor() {
+        console.log('🤖 Bot constructor called');
         this.client = null;
         this.commandManager = null;
         this.logger = new Logger('BOT_CORE');
@@ -146,6 +70,7 @@ class OnePieceGachaBot {
         this.setupGlobalErrorHandlers();
         
         this.logger.info('🏴‍☠️ One Piece Devil Fruit Gacha Bot v4.0 Initializing...');
+        console.log('🤖 Bot constructor completed');
     }
 
     /**
@@ -153,34 +78,54 @@ class OnePieceGachaBot {
      */
     async start() {
         try {
+            console.log('🚀 Bot.start() called');
             console.log('🔍 === BOT STARTUP DEBUG ===');
             console.log('About to initialize configuration...');
             
             // Load and validate configuration
+            console.log('⚙️ About to call Config.load()...');
             await this.initializeConfig();
+            console.log('✅ Configuration initialization completed');
             
             // Initialize database connection
+            console.log('🗄️ About to initialize database...');
             await this.initializeDatabase();
+            console.log('✅ Database initialization completed');
             
             // Create Discord client
+            console.log('🤖 About to create Discord client...');
             this.createClient();
+            console.log('✅ Discord client created');
             
             // Load commands and events
+            console.log('📁 About to load commands...');
             await this.loadCommands();
+            console.log('✅ Commands loaded');
+            
+            console.log('📁 About to load events...');
             await this.loadEvents();
+            console.log('✅ Events loaded');
             
             // Register slash commands
+            console.log('🔄 About to register commands...');
             await this.registerCommands();
+            console.log('✅ Commands registered');
             
             // Login to Discord
+            console.log('🔐 About to login to Discord...');
             await this.login();
+            console.log('✅ Discord login completed');
             
             // Start monitoring systems
+            console.log('📊 About to start monitoring...');
             this.startMonitoring();
+            console.log('✅ Monitoring started');
             
             this.logger.success('🎉 Bot started successfully!');
             
         } catch (error) {
+            console.log('❌ Bot.start() failed with error:', error.message);
+            console.log('Error stack:', error.stack);
             this.logger.error('Failed to start bot:', error);
             await this.shutdown(1);
         }
@@ -191,24 +136,31 @@ class OnePieceGachaBot {
      */
     async initializeConfig() {
         try {
-            console.log('🔍 === CONFIG INITIALIZATION DEBUG ===');
+            console.log('⚙️ === CONFIG INITIALIZATION DEBUG ===');
             console.log('About to load configuration...');
+            console.log('Config module type:', typeof Config);
+            console.log('Config.load function exists:', typeof Config.load === 'function');
             
+            console.log('🔧 Calling Config.load()...');
             await Config.load();
-            console.log('Config.load() completed successfully');
+            console.log('🔧 Config.load() returned successfully');
             
             // Additional token validation
             console.log('🔍 POST-CONFIG TOKEN CHECK:');
+            console.log('Config object exists:', !!Config);
             console.log('Config.discord exists:', !!Config.discord);
             console.log('Config.discord.token exists:', !!Config.discord?.token);
             
             if (Config.discord?.token) {
                 console.log('Config token length:', Config.discord.token.length);
                 console.log('Config token preview:', Config.discord.token.substring(0, 15) + '...');
+            } else {
+                console.log('❌ Config.discord.token is NOT SET after Config.load()');
+                console.log('Config.discord contents:', Config.discord);
             }
             
             this.logger.info('✅ Configuration loaded successfully');
-            console.log('🔍 === CONFIG INITIALIZATION COMPLETE ===');
+            console.log('⚙️ === CONFIG INITIALIZATION COMPLETE ===');
             
         } catch (error) {
             console.log('❌ CONFIG INITIALIZATION FAILED');
@@ -385,23 +337,33 @@ class OnePieceGachaBot {
             console.log('Token preview:', tokenToUse ? tokenToUse.substring(0, 15) + '...' : 'NONE');
             
             if (!tokenToUse) {
-                throw new Error('No Discord token available for login');
+                console.log('❌ Token is null/undefined, trying direct environment access...');
+                const directToken = process.env.DISCORD_TOKEN;
+                console.log('Direct env token exists:', !!directToken);
+                if (directToken) {
+                    console.log('Direct env token length:', directToken.length);
+                    console.log('Direct env token preview:', directToken.substring(0, 15) + '...');
+                    console.log('🔧 Using direct environment token for login...');
+                    await this.client.login(directToken);
+                } else {
+                    throw new Error('No Discord token available for login - both Config and direct env access failed');
+                }
+            } else {
+                // Validate token format before attempting login
+                const parts = tokenToUse.split('.');
+                if (parts.length !== 3) {
+                    throw new Error(`Invalid token format - has ${parts.length} parts, should have 3`);
+                }
+                
+                if (tokenToUse.length < 50 || tokenToUse.length > 80) {
+                    throw new Error(`Invalid token length - ${tokenToUse.length} characters, should be 50-80`);
+                }
+                
+                console.log('✅ Token format validation passed');
+                console.log('🔍 === ATTEMPTING DISCORD LOGIN ===');
+                
+                await this.client.login(tokenToUse);
             }
-            
-            // Validate token format before attempting login
-            const parts = tokenToUse.split('.');
-            if (parts.length !== 3) {
-                throw new Error(`Invalid token format - has ${parts.length} parts, should have 3`);
-            }
-            
-            if (tokenToUse.length < 50 || tokenToUse.length > 70) {
-                throw new Error(`Invalid token length - ${tokenToUse.length} characters, should be 50-70`);
-            }
-            
-            console.log('✅ Token format validation passed');
-            console.log('🔍 === ATTEMPTING DISCORD LOGIN ===');
-            
-            await this.client.login(tokenToUse);
             
             // Wait for ready event
             await new Promise((resolve) => {
@@ -415,21 +377,6 @@ class OnePieceGachaBot {
             console.log('❌ LOGIN FAILED WITH ERROR:', error.message);
             console.log('Error code:', error.code);
             console.log('Error name:', error.name);
-            
-            if (error.code === 'TokenInvalid') {
-                console.log('');
-                console.log('🔧 TOKEN INVALID TROUBLESHOOTING:');
-                console.log('1. Go to https://discord.com/developers/applications');
-                console.log('2. Select your bot application');
-                console.log('3. Go to "Bot" section');
-                console.log('4. Click "Reset Token" to generate a new one');
-                console.log('5. Copy the new token (all of it, no quotes)');
-                console.log('6. In Railway: go to your service → Variables tab');
-                console.log('7. Edit DISCORD_TOKEN variable and paste the new token');
-                console.log('8. Make sure there are NO quotes around the token');
-                console.log('9. Save and redeploy');
-                console.log('');
-            }
             
             this.logger.error('Failed to login to Discord:', error);
             throw error;
@@ -504,12 +451,14 @@ class OnePieceGachaBot {
     }
 }
 
+console.log('🤖 Creating bot instance...');
 // Create and start bot instance
 const bot = new OnePieceGachaBot();
 
+console.log('🚀 Starting bot...');
 // Handle startup
 bot.start().catch((error) => {
-    console.error('Failed to start bot:', error);
+    console.error('❌ Failed to start bot:', error);
     process.exit(1);
 });
 
