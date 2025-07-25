@@ -66,7 +66,7 @@ class PullAnimator {
             .setTitle('🏴‍☠️ Devil Fruit Hunt')
             .setDescription(`${description}\n\n${mysteriousInfo}`)
             .setColor(color)
-            .setFooter({ text: `🌊 Searching the mysterious seas... Frame ${frame + 1}/6` });
+            .setFooter({ text: `🌊 Searching the mysterious seas...` });
     }
 
     // Create color spread frame
@@ -151,7 +151,7 @@ class PullAnimator {
             .setTitle('🏴‍☠️ Devil Fruit Hunt')
             .setDescription(description)
             .setColor(rewardColor)
-            .setFooter({ text: `🎉 Added to your collection! Revealing... ${frame + 1}/8` });
+            .setFooter({ text: `🎉 Added to your collection! Revealing...` });
     }
 
     // Create final reveal
