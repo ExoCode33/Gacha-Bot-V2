@@ -323,7 +323,21 @@ module.exports = {
         const result = results[0];
         const fruit = result.fruit;
         
-skill?.cooldown || 2
+        // Convert to display format
+        const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
+        const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
+            f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
+        );
+        
+        const displayFruit = {
+            name: result.fruit.fruit_name,
+            type: result.fruit.fruit_type,
+            rarity: result.fruit.fruit_rarity,
+            multiplier: (result.fruit.base_cp / 100).toFixed(1),
+            description: result.fruit.fruit_description,
+            skillName: actualFruit?.skill?.name || 'Unknown Ability',
+            skillDamage: actualFruit?.skill?.damage || 50,
+            skillCooldown: actualFruit?.skill?.cooldown || 2
         };
         
         console.log(`🎯 Single summon: ${displayFruit.name} (${displayFruit.rarity})`);
