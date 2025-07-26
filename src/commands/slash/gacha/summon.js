@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - Enhanced Summon Command with Old Pull Structure
+// src/commands/slash/gacha/summon.js - FIXED Enhanced Summon Command with Proper Animation
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -46,7 +46,7 @@ class SummonAnimator {
         return colors[frame % colors.length];
     }
 
-    // Create rainbow hunt frame
+    // FIXED: Create rainbow hunt frame - everything should be ???
     static createRainbowFrame(frame, fruit) {
         const pattern = this.getRainbowPattern(frame);
         const color = this.getRainbowColor(frame);
@@ -59,7 +59,10 @@ class SummonAnimator {
             `🔮 **Type:** ???\n` +
             `⭐ **Rarity:** ???\n` +
             `💪 **CP Multiplier:** ???\n` +
-            `⚡ **Power:** ???\n\n` +
+            `🎯 **Description:** ???\n` +
+            `⚔️ **Ability:** ???\n\n` +
+            `🔥 **Total CP:** ???\n` +
+            `💰 **Remaining Berries:** ???\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
@@ -69,7 +72,7 @@ class SummonAnimator {
             .setFooter({ text: `🌊 Searching the mysterious seas...` });
     }
 
-    // Create color spread frame
+    // FIXED: Create color spread frame - everything should STILL be ???
     static createColorSpreadFrame(frame, fruit, rewardColor, rewardEmoji) {
         const barLength = 20;
         const center = 9.5;
@@ -97,6 +100,7 @@ class SummonAnimator {
         // Keep progress squares consistent
         const progressSquares = '🟩'.repeat(Math.floor(frame / 2)) + '⬛'.repeat(6 - Math.floor(frame / 2));
         
+        // FIXED: Keep ALL information as ??? during color spread phase
         const mysteriousInfo = `✨ **Devil Fruit Manifestation** ✨\n\n${pattern}\n\n` +
             `📊 **Status:** ???\n` +
             `🍃 **Name:** ???\n` +
@@ -124,12 +128,13 @@ class SummonAnimator {
             'rare': '🟦',          // Blue square for rare
             'epic': '🟪',          // Purple square for epic
             'mythical': '🟧',      // Orange square for mythical
-            'legendary': '🟨'      // Yellow square for legendary
+            'legendary': '🟨',     // Yellow square for legendary
+            'divine': '✨'         // Sparkles for divine
         };
         return raritySquares[rarity] || '⬜';
     }
 
-    // Create text reveal frame
+    // FIXED: Create text reveal frame - information reveals gradually
     static createTextRevealFrame(frame, fruit, result, newBalance, rewardColor, rewardEmoji) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const pattern = Array(20).fill(raritySquare).join(' '); // Use rarity square
@@ -139,6 +144,8 @@ class SummonAnimator {
         
         const glowEffect = frame >= 7 ? '✨ ' : '';
         let description = `${glowEffect}**Devil Fruit Acquired!** ${glowEffect}\n\n${pattern}\n\n`;
+        
+        // FIXED: Gradual reveal based on frame number (0-7)
         description += `📊 **Status:** ${frame >= 0 ? duplicateText : '???'}\n`;
         description += `🍃 **Name:** ${frame >= 1 ? fruit.name : '???'}\n`;
         description += `🔮 **Type:** ${frame >= 2 ? fruit.type : '???'}\n`;
@@ -147,7 +154,7 @@ class SummonAnimator {
         description += `🎯 **Description:** ${frame >= 5 ? fruit.description : '???'}\n`;
         description += `⚔️ **Ability:** ${frame >= 6 ? `${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)` : '???'}\n\n`;
         description += `🔥 **Total CP:** ${frame >= 7 ? `${totalCp.toLocaleString()} CP` : '???'}\n`;
-        description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n`;
+        description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n`; // Always show remaining berries
         description += `${pattern}`;
 
         return new EmbedBuilder()
@@ -215,7 +222,7 @@ class SummonAnimator {
     // Create 10x summary
     static create10xSummary(fruits, results, balance) {
         const rarityCounts = {};
-        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythical', 'legendary'];
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythical', 'legendary', 'divine'];
         
         rarityOrder.forEach(rarity => { rarityCounts[rarity] = 0; });
         fruits.forEach(fruit => { rarityCounts[fruit.rarity]++; });
@@ -384,25 +391,25 @@ module.exports = {
     },
 
     async runFullAnimation(interaction, fruit, result, newBalance) {
-        // Phase 1: Rainbow hunt (5.4s)
+        // Phase 1: Rainbow hunt (5.4s) - Everything shows as ???
         await this.runRainbowPhase(interaction, fruit);
         
         // Small pause
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Phase 2: Color spread (4.8s)
+        // Phase 2: Color spread (4.8s) - Everything STILL shows as ???
         await this.runColorSpread(interaction, fruit);
         
         // Small pause
         await new Promise(resolve => setTimeout(resolve, 400));
         
-        // Phase 3: Text reveal (5.6s)
+        // Phase 3: Text reveal (5.6s) - Information reveals gradually
         await this.runTextReveal(interaction, fruit, result, newBalance);
         
         // Final pause
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Phase 4: Final reveal
+        // Phase 4: Final reveal - All information shown
         await this.showFinalReveal(interaction, fruit, result, newBalance);
     },
 
@@ -614,19 +621,4 @@ module.exports = {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('summon_again_disabled')
-                        .setLabel('🍈 Summon Again')
-                        .setStyle(ButtonStyle.Primary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('summon_10x_disabled')
-                        .setLabel('🎰 Summon 10x')
-                        .setStyle(ButtonStyle.Success)
-                        .setDisabled(true)
-                );
-
-            await interaction.editReply({ components: [disabledRow] });
-        } catch (error) {
-            console.log('Could not disable buttons - interaction may have been deleted');
-        }
-    }
-};
+                        .setLabel('
