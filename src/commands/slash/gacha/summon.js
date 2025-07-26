@@ -301,15 +301,6 @@ module.exports = {
     },
 
     async run10xSummon(interaction, newBalance) {
-        // Add skip animation button
-        const skipRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('skip_animation')
-                    .setLabel('⏭️ Skip Animation')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-        
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -320,6 +311,15 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         let skipAnimation = false;
+        
+        // Add skip animation button for first pull only
+        const skipRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('skip_animation')
+                    .setLabel('⏭️ Skip Animation')
+                    .setStyle(ButtonStyle.Secondary)
+            );
         
         for (let i = 0; i < 10; i++) {
             // Perform single pull
@@ -346,31 +346,38 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Check for skip button press
-            if (!skipAnimation) {
-                try {
-                    // Show animation with skip button
-                    if (i === 0) {
-                        const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 10, currentPity);
-                        await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
-                        
-                        // Wait for potential skip button press
-                        const filter = (buttonInteraction) => buttonInteraction.customId === 'skip_animation' && buttonInteraction.user.id === interaction.user.id;
-                        try {
-                            const buttonInteraction = await interaction.channel.awaitMessageComponent({ filter, time: 1000 });
-                            skipAnimation = true;
-                            await buttonInteraction.deferUpdate();
-                        } catch (error) {
-                            // No skip pressed, continue animation
-                        }
-                    }
-                    
-                    if (!skipAnimation) {
-                        await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
-                    }
-                } catch (error) {
-                    // Continue without animation if there's an error
+            // Handle skip animation for first pull only
+            if (i === 0 && !skipAnimation) {
+                const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 10, currentPity);
+                
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
+                } else {
+                    await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
                 }
+                
+                // Wait for potential skip button press - shorter timeout
+                try {
+                    const filter = (buttonInteraction) => {
+                        return buttonInteraction.customId === 'skip_animation' && 
+                               buttonInteraction.user.id === interaction.user.id;
+                    };
+                    
+                    const buttonInteraction = await interaction.channel.awaitMessageComponent({ 
+                        filter, 
+                        time: 2000 // 2 seconds to press skip
+                    });
+                    
+                    skipAnimation = true;
+                    await buttonInteraction.update({ components: [] }); // Remove skip button
+                } catch (error) {
+                    // No skip pressed, continue with animation
+                }
+            }
+            
+            // Run animation if not skipped
+            if (!skipAnimation) {
+                await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
             }
             
             // Update pity for next pull
@@ -389,15 +396,6 @@ module.exports = {
     },
 
     async run50xSummon(interaction, newBalance) {
-        // Add skip animation button
-        const skipRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('skip_animation')
-                    .setLabel('⏭️ Skip Animation')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-        
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -407,6 +405,15 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         let skipAnimation = false;
+        
+        // Add skip animation button for first pull only
+        const skipRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('skip_animation')
+                    .setLabel('⏭️ Skip Animation')
+                    .setStyle(ButtonStyle.Secondary)
+            );
         
         for (let i = 0; i < 50; i++) {
             // Perform single pull
@@ -433,31 +440,38 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Check for skip button press
-            if (!skipAnimation) {
-                try {
-                    // Show animation with skip button
-                    if (i === 0) {
-                        const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 50, currentPity);
-                        await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
-                        
-                        // Wait for potential skip button press
-                        const filter = (buttonInteraction) => buttonInteraction.customId === 'skip_animation' && buttonInteraction.user.id === interaction.user.id;
-                        try {
-                            const buttonInteraction = await interaction.channel.awaitMessageComponent({ filter, time: 1000 });
-                            skipAnimation = true;
-                            await buttonInteraction.deferUpdate();
-                        } catch (error) {
-                            // No skip pressed, continue animation
-                        }
-                    }
-                    
-                    if (!skipAnimation) {
-                        await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
-                    }
-                } catch (error) {
-                    // Continue without animation if there's an error
+            // Handle skip animation for first pull only
+            if (i === 0 && !skipAnimation) {
+                const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 50, currentPity);
+                
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
+                } else {
+                    await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
                 }
+                
+                // Wait for potential skip button press - shorter timeout
+                try {
+                    const filter = (buttonInteraction) => {
+                        return buttonInteraction.customId === 'skip_animation' && 
+                               buttonInteraction.user.id === interaction.user.id;
+                    };
+                    
+                    const buttonInteraction = await interaction.channel.awaitMessageComponent({ 
+                        filter, 
+                        time: 2000 // 2 seconds to press skip
+                    });
+                    
+                    skipAnimation = true;
+                    await buttonInteraction.update({ components: [] }); // Remove skip button
+                } catch (error) {
+                    // No skip pressed, continue with animation
+                }
+            }
+            
+            // Run animation if not skipped
+            if (!skipAnimation) {
+                await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
             }
             
             // Update pity for next pull
@@ -491,15 +505,6 @@ module.exports = {
     },
 
     async run100xSummon(interaction, newBalance) {
-        // Add skip animation button
-        const skipRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('skip_animation')
-                    .setLabel('⏭️ Skip Animation')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-        
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -509,6 +514,15 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         let skipAnimation = false;
+        
+        // Add skip animation button for first pull only
+        const skipRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('skip_animation')
+                    .setLabel('⏭️ Skip Animation')
+                    .setStyle(ButtonStyle.Secondary)
+            );
         
         for (let i = 0; i < 100; i++) {
             // Perform single pull
@@ -535,31 +549,38 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Check for skip button press
-            if (!skipAnimation) {
-                try {
-                    // Show animation with skip button
-                    if (i === 0) {
-                        const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 100, currentPity);
-                        await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
-                        
-                        // Wait for potential skip button press
-                        const filter = (buttonInteraction) => buttonInteraction.customId === 'skip_animation' && buttonInteraction.user.id === interaction.user.id;
-                        try {
-                            const buttonInteraction = await interaction.channel.awaitMessageComponent({ filter, time: 1000 });
-                            skipAnimation = true;
-                            await buttonInteraction.deferUpdate();
-                        } catch (error) {
-                            // No skip pressed, continue animation
-                        }
-                    }
-                    
-                    if (!skipAnimation) {
-                        await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
-                    }
-                } catch (error) {
-                    // Continue without animation if there's an error
+            // Handle skip animation for first pull only
+            if (i === 0 && !skipAnimation) {
+                const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 100, currentPity);
+                
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
+                } else {
+                    await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
                 }
+                
+                // Wait for potential skip button press - shorter timeout
+                try {
+                    const filter = (buttonInteraction) => {
+                        return buttonInteraction.customId === 'skip_animation' && 
+                               buttonInteraction.user.id === interaction.user.id;
+                    };
+                    
+                    const buttonInteraction = await interaction.channel.awaitMessageComponent({ 
+                        filter, 
+                        time: 2000 // 2 seconds to press skip
+                    });
+                    
+                    skipAnimation = true;
+                    await buttonInteraction.update({ components: [] }); // Remove skip button
+                } catch (error) {
+                    // No skip pressed, continue with animation
+                }
+            }
+            
+            // Run animation if not skipped
+            if (!skipAnimation) {
+                await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
             }
             
             // Update pity for next pull
