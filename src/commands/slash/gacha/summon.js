@@ -386,7 +386,7 @@ module.exports = {
     async run50xSummon(interaction, newBalance, skipAnimation = false) {
         // Start with animated summoning message
         let progressFrame = 0;
-        const maxProgressFrames = 6;
+        const maxProgressFrames = 12; // More frames for smoother animation
         
         // Show initial animated summoning message
         await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 50);
@@ -399,6 +399,12 @@ module.exports = {
         // Perform ALL 50 pulls one by one
         const allResults = [];
         const allDisplayFruits = [];
+        
+        // Start continuous animation
+        const animationInterval = setInterval(async () => {
+            progressFrame = (progressFrame + 1) % maxProgressFrames;
+            await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, allDisplayFruits.length, 50);
+        }, 600); // Update every 600ms for smooth flow
         
         for (let i = 0; i < 50; i++) {
             // Perform single pull
@@ -431,15 +437,15 @@ module.exports = {
                 if (i < 4) await new Promise(resolve => setTimeout(resolve, 300));
             }
             
-            // Update progress every 10 pulls with animation
-            if ((i + 1) % 10 === 0) {
-                progressFrame = (progressFrame + 1) % maxProgressFrames;
-                await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, i + 1, 50);
-            }
-            
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
+            
+            // Small delay between pulls
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
+        
+        // Stop animation
+        clearInterval(animationInterval);
         
         // Get final pity info
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
@@ -495,7 +501,7 @@ module.exports = {
     async run100xSummon(interaction, newBalance, skipAnimation = false) {
         // Start with animated summoning message
         let progressFrame = 0;
-        const maxProgressFrames = 6;
+        const maxProgressFrames = 12; // More frames for smoother animation
         
         // Show initial animated summoning message
         await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 100);
@@ -508,6 +514,12 @@ module.exports = {
         // Perform ALL 100 pulls one by one
         const allResults = [];
         const allDisplayFruits = [];
+        
+        // Start continuous animation
+        const animationInterval = setInterval(async () => {
+            progressFrame = (progressFrame + 1) % maxProgressFrames;
+            await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, allDisplayFruits.length, 100);
+        }, 600); // Update every 600ms for smooth flow
         
         for (let i = 0; i < 100; i++) {
             // Perform single pull
@@ -540,15 +552,15 @@ module.exports = {
                 if (i < 2) await new Promise(resolve => setTimeout(resolve, 200));
             }
             
-            // Update progress every 20 pulls with animation
-            if ((i + 1) % 20 === 0) {
-                progressFrame = (progressFrame + 1) % maxProgressFrames;
-                await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, i + 1, 100);
-            }
-            
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
+            
+            // Small delay between pulls
+            await new Promise(resolve => setTimeout(resolve, 80));
         }
+        
+        // Stop animation
+        clearInterval(animationInterval);
         
         // Get final pity info
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
@@ -602,10 +614,14 @@ module.exports = {
     },
 
     async showProgressAnimation(interaction, frame, maxFrames, currentPulls, totalPulls) {
-        const pattern = SummonAnimator.getRainbowPattern(frame, 20);
+        const pattern = SummonAnimator.getRainbowPattern(frame, 25); // Longer rainbow for more flow
         const color = SummonAnimator.getRainbowColor(frame);
         const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
-        const progressBar = '█'.repeat(Math.floor(progressPercent / 5)) + '░'.repeat(20 - Math.floor(progressPercent / 5));
+        
+        // Create flowing rainbow sections
+        const flowPattern1 = SummonAnimator.getRainbowPattern(frame, 20);
+        const flowPattern2 = SummonAnimator.getRainbowPattern(frame + 3, 20);
+        const flowPattern3 = SummonAnimator.getRainbowPattern(frame + 6, 20);
         
         const currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -613,19 +629,28 @@ module.exports = {
             .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
             .setDescription(
                 `🌊 **Scanning the Grand Line for Devil Fruits...**\n\n` +
-                `${pattern}\n\n` +
+                `${flowPattern1}\n` +
+                `${flowPattern2}\n` +
+                `${flowPattern3}\n\n` +
                 `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
-                `${progressBar}\n\n` +
                 `🎯 **Current Pity:** ${currentPity}/1500\n` +
                 `⚡ **Status:** Searching for legendary powers...\n\n` +
-                `${pattern}`
+                `${flowPattern1}\n` +
+                `${flowPattern2}\n` +
+                `${flowPattern3}`
             )
             .setColor(color)
             .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
             .setTimestamp();
         
-        await interaction.editReply({ embeds: [embed] });
-        await new Promise(resolve => setTimeout(resolve, 800));
+        try {
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            // Ignore rate limit errors during animation
+            if (error.code !== 10062 && error.code !== 50013) {
+                console.log('Animation update error:', error.message);
+            }
+        }
     },
 
     async runQuickAnimation(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
