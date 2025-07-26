@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - Enhanced Summon Command with Cinematic Animations
+// src/commands/slash/gacha/summon.js - Enhanced Summon Command with Old Pull Structure
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -59,7 +59,7 @@ class SummonAnimator {
             `🔮 **Type:** ???\n` +
             `⭐ **Rarity:** ???\n` +
             `💪 **CP Multiplier:** ???\n` +
-            `⚔️ **Ability:** ???\n\n` +
+            `⚡ **Power:** ???\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
@@ -103,7 +103,7 @@ class SummonAnimator {
             `🔮 **Type:** ???\n` +
             `⭐ **Rarity:** ???\n` +
             `💪 **CP Multiplier:** ???\n` +
-            `⚔️ **Ability:** ???\n\n` +
+            `⚡ **Power:** ???\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
@@ -141,8 +141,8 @@ class SummonAnimator {
         description += `🔮 **Type:** ${frame >= 2 ? fruit.type : '???'}\n`;
         description += `⭐ **Rarity:** ${frame >= 3 ? `${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}` : '???'}\n`;
         description += `💪 **CP Multiplier:** ${frame >= 4 ? `x${fruit.multiplier}` : '???'}\n`;
-        description += `📜 **Description:** ${frame >= 5 ? fruit.description : '???'}\n`;
-        description += `⚔️ **Ability:** ${frame >= 6 ? `${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)` : '???'}\n\n`;
+        description += `⚡ **Power:** ${frame >= 5 ? fruit.power : '???'}\n`;
+        description += `🎯 **Description:** ${frame >= 6 ? fruit.description : '???'}\n\n`;
         description += `🔥 **Total CP:** ${frame >= 7 ? `${totalCp.toLocaleString()} CP` : '???'}\n`;
         description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()} 🍓\n\n`;
         description += `${pattern}`;
@@ -169,8 +169,8 @@ class SummonAnimator {
             `🔮 **Type:** ${fruit.type}\n` +
             `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
             `💪 **CP Multiplier:** x${fruit.multiplier}\n` +
-            `📜 **Description:** ${fruit.description}\n` +
-            `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
+            `⚡ **Power:** ${fruit.power}\n` +
+            `🎯 **Description:** ${fruit.description}\n\n` +
             `🔥 **Total CP:** ${totalCp.toLocaleString()} CP\n` +
             `💰 **Remaining Berries:** ${newBalance.toLocaleString()} 🍓\n\n` +
             `${pattern}`;
@@ -184,29 +184,29 @@ class SummonAnimator {
     }
 
     // Create quick frame for 10x
-    static createQuickFrame(frame, fruit, pullNumber) {
+    static createQuickFrame(frame, fruit, summonNumber) {
         const pattern = this.getRainbowPattern(frame, 15);
         const color = this.getRainbowColor(frame);
         const progressDots = '●'.repeat(frame + 1) + '○'.repeat(4 - frame);
         
         return new EmbedBuilder()
             .setTitle('🎰 10x Devil Fruit Summoning')
-            .setDescription(`**Summon ${pullNumber}/10**\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n📊 **Status:** Analyzing... ${progressDots}\n🍃 **Fruit:** ???\n⭐ **Rarity:** ???\n\n${pattern}`)
+            .setDescription(`**Summon ${summonNumber}/10**\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n📊 **Status:** Analyzing... ${progressDots}\n🍃 **Fruit:** ???\n⭐ **Rarity:** ???\n\n${pattern}`)
             .setColor(color)
-            .setFooter({ text: `Summon ${pullNumber} of 10 - Searching...` });
+            .setFooter({ text: `Summon ${summonNumber} of 10 - Searching...` });
     }
 
     // Create quick reveal for 10x
-    static createQuickReveal(fruit, pullNumber) {
+    static createQuickReveal(fruit, summonNumber) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
         const pattern = Array(15).fill(raritySquare).join(' '); // Use rarity square
         
         return new EmbedBuilder()
             .setTitle('🎰 10x Devil Fruit Summoning')
-            .setDescription(`**Summon ${pullNumber}/10** - ${raritySquare} **${fruit.rarity.toUpperCase()}**\n\n${pattern}\n\n🍃 **${fruit.name}**\n🔮 ${fruit.type}\n💪 x${fruit.multiplier} CP\n⚔️ ${fruit.skillName} (${fruit.skillDamage} DMG)\n\n${pattern}`)
+            .setDescription(`**Summon ${summonNumber}/10** - ${raritySquare} **${fruit.rarity.toUpperCase()}**\n\n${pattern}\n\n🍃 **${fruit.name}**\n🔮 ${fruit.type}\n💪 x${fruit.multiplier} CP\n\n${pattern}`)
             .setColor(color)
-            .setFooter({ text: `Summon ${pullNumber} of 10 - ✨ Acquired!` });
+            .setFooter({ text: `Summon ${summonNumber} of 10 - ✨ Acquired!` });
     }
 
     // Create 10x summary
@@ -323,21 +323,14 @@ module.exports = {
         const result = results[0];
         const fruit = result.fruit;
         
-        // Convert to display format
-        const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
-        const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
-            f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
-        );
-        
+        // Convert database result to display format (USING OLD STRUCTURE)
         const displayFruit = {
-            name: result.fruit.fruit_name,
-            type: result.fruit.fruit_type,
-            rarity: result.fruit.fruit_rarity,
-            multiplier: (result.fruit.base_cp / 100).toFixed(1),
-            description: result.fruit.fruit_description,
-            skillName: actualFruit?.skill?.name || 'Unknown Ability',
-            skillDamage: actualFruit?.skill?.damage || 50,
-            skillCooldown: actualFruit?.skill?.cooldown || 2
+            name: fruit.fruit_name,
+            type: fruit.fruit_type,
+            rarity: fruit.fruit_rarity,
+            multiplier: (fruit.base_cp / 100).toFixed(1),
+            power: fruit.fruit_power || fruit.fruit_description || 'Unknown power',
+            description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power'
         };
         
         console.log(`🎯 Single summon: ${displayFruit.name} (${displayFruit.rarity})`);
@@ -351,24 +344,15 @@ module.exports = {
         // Get fruits from gacha service
         const results = await GachaService.performPulls(interaction.user.id, 10);
         
-        // Convert to display format
-        const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
-        const displayFruits = results.map(result => {
-            const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
-                f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
-            );
-            
-            return {
-                name: result.fruit.fruit_name,
-                type: result.fruit.fruit_type,
-                rarity: result.fruit.fruit_rarity,
-                multiplier: (result.fruit.base_cp / 100).toFixed(1),
-                description: result.fruit.fruit_description,
-                skillName: actualFruit?.skill?.name || 'Unknown Ability',
-                skillDamage: actualFruit?.skill?.damage || 50,
-                skillCooldown: actualFruit?.skill?.cooldown || 2
-            };
-        });
+        // Convert to display format (USING OLD STRUCTURE)
+        const displayFruits = results.map(result => ({
+            name: result.fruit.fruit_name,
+            type: result.fruit.fruit_type,
+            rarity: result.fruit.fruit_rarity,
+            multiplier: (result.fruit.base_cp / 100).toFixed(1),
+            power: result.fruit.fruit_power || result.fruit.fruit_description || 'Unknown power',
+            description: result.fruit.fruit_description || result.fruit.fruit_power || 'A mysterious Devil Fruit power'
+        }));
         
         console.log(`🎯 10x summon starting`);
         
