@@ -9,11 +9,11 @@ const { getFruitsByRarity, getRandomFruitByRarity } = require('../../../data/Dev
 // Animation Configuration
 const ANIMATION_CONFIG = {
     RAINBOW_FRAMES: 6,
-    RAINBOW_DELAY: 900,
+    RAINBOW_DELAY: 1200,  // Increased from 900 to 1200 (slower)
     SPREAD_FRAMES: 12,
-    SPREAD_DELAY: 400,
+    SPREAD_DELAY: 600,    // Increased from 400 to 600 (slower)
     REVEAL_FRAMES: 8,
-    REVEAL_DELAY: 700,
+    REVEAL_DELAY: 900,    // Increased from 700 to 900 (slower)
     QUICK_FRAMES: 5,
     QUICK_DELAY: 500
 };
@@ -63,7 +63,8 @@ class SummonAnimator {
         const color = this.getRainbowColor(frame);
         const description = HUNT_DESCRIPTIONS[frame] || HUNT_DESCRIPTIONS[5];
         
-        const loadingDots = '●●●●○';
+        // Animated loading dots that cycle
+        const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
         const mysteriousInfo = `✨ **Devil Fruit Summoning in Progress** ✨\n\n${pattern}\n\n` +
             `📊 **Status:** ${loadingDots}\n` +
             `🍃 **Name:** ${loadingDots}\n` +
@@ -104,7 +105,8 @@ class SummonAnimator {
         }
 
         const pattern = bar.join(' ');
-        const progressDots = '●●●●○';
+        // Animated loading dots that cycle through the frames
+        const progressDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
         
         const mysteriousInfo = `✨ **Devil Fruit Manifestation** ✨\n\n${pattern}\n\n` +
             `📊 **Status:** ${progressDots}\n` +
@@ -182,9 +184,10 @@ class SummonAnimator {
     }
 
     static createQuickFrame(frame, fruit, summonNumber) {
-        const pattern = this.getRainbowPattern(frame, 15);
+        const pattern = this.getRainbowPattern(frame, 20); // Changed from 15 to 20 to match single pull
         const color = this.getRainbowColor(frame);
-        const loadingDots = '●●●●○';
+        // Animated loading dots that cycle
+        const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
         
         const description = `**Summon ${summonNumber}/10**\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
             `📊 **Status:** ${loadingDots}\n` +
@@ -194,6 +197,8 @@ class SummonAnimator {
             `💪 **CP Multiplier:** ${loadingDots}\n` +
             `🎯 **Description:** ${loadingDots}\n` +
             `⚔️ **Ability:** ${loadingDots}\n\n` +
+            `🔥 **Total CP:** ${loadingDots}\n` +
+            `💰 **Remaining Berries:** ${loadingDots}\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
@@ -206,7 +211,7 @@ class SummonAnimator {
     static createQuickReveal(fruit, result, summonNumber) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
-        const pattern = Array(15).fill(raritySquare).join(' ');
+        const pattern = Array(20).fill(raritySquare).join(' '); // Changed from 15 to 20 to match single pull
         
         // Get the actual duplicate count from the result
         const duplicateCount = result.duplicateCount || 1;
@@ -220,6 +225,8 @@ class SummonAnimator {
             `💪 **CP Multiplier:** x${fruit.multiplier}\n` +
             `🎯 **Description:** ${fruit.description}\n` +
             `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
+            `🔥 **Total CP:** ${result.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
+            `💰 **Remaining Berries:** Loading...\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
