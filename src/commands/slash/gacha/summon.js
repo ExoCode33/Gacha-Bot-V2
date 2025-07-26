@@ -255,16 +255,25 @@ class SummonAnimator {
             detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
         });
 
-        // FIXED: Get highest rarity color properly
-        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythical', 'divine'];
-        let highestRarity = 'common';
+        // FIXED: Properly find highest rarity using rarity priority values
+        const rarityPriority = {
+            'common': 1,
+            'uncommon': 2,
+            'rare': 3,
+            'epic': 4,
+            'legendary': 5,
+            'mythical': 6,
+            'divine': 7
+        };
         
-        // Find the actual highest rarity in the results
-        rarityOrder.reverse().forEach(rarity => {
-            if (fruits.some(f => f.rarity === rarity)) {
-                if (rarityOrder.indexOf(rarity) > rarityOrder.indexOf(highestRarity)) {
-                    highestRarity = rarity;
-                }
+        let highestRarity = 'common';
+        let highestPriority = 0;
+        
+        fruits.forEach(fruit => {
+            const priority = rarityPriority[fruit.rarity] || 0;
+            if (priority > highestPriority) {
+                highestPriority = priority;
+                highestRarity = fruit.rarity;
             }
         });
 
