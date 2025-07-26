@@ -316,7 +316,7 @@ module.exports = {
         const skipRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('skip_animation')
+                    .setCustomId('skip_animation_10x')
                     .setLabel('⏭️ Skip Animation')
                     .setStyle(ButtonStyle.Secondary)
             );
@@ -356,23 +356,43 @@ module.exports = {
                     await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
                 }
                 
-                // Wait for potential skip button press - shorter timeout
-                try {
-                    const filter = (buttonInteraction) => {
-                        return buttonInteraction.customId === 'skip_animation' && 
-                               buttonInteraction.user.id === interaction.user.id;
-                    };
-                    
-                    const buttonInteraction = await interaction.channel.awaitMessageComponent({ 
-                        filter, 
-                        time: 2000 // 2 seconds to press skip
+                // Set up collector for skip button
+                const message = await interaction.fetchReply();
+                const collector = message.createMessageComponentCollector({ 
+                    time: 3000, // 3 seconds to press skip
+                    max: 1 // Only collect one interaction
+                });
+                
+                // Wait for skip button or timeout
+                const skipPromise = new Promise((resolve) => {
+                    collector.on('collect', async (buttonInteraction) => {
+                        if (buttonInteraction.customId === 'skip_animation_10x' && buttonInteraction.user.id === interaction.user.id) {
+                            try {
+                                await buttonInteraction.update({ 
+                                    embeds: [initialEmbed], 
+                                    components: [] // Remove skip button
+                                });
+                                skipAnimation = true;
+                                resolve(true);
+                            } catch (error) {
+                                resolve(false);
+                            }
+                        } else {
+                            await buttonInteraction.reply({
+                                content: '❌ You can only skip your own animation!',
+                                ephemeral: true
+                            });
+                            resolve(false);
+                        }
                     });
                     
-                    skipAnimation = true;
-                    await buttonInteraction.update({ components: [] }); // Remove skip button
-                } catch (error) {
-                    // No skip pressed, continue with animation
-                }
+                    collector.on('end', () => {
+                        resolve(false);
+                    });
+                });
+                
+                await skipPromise;
+                collector.stop();
             }
             
             // Run animation if not skipped
@@ -410,7 +430,7 @@ module.exports = {
         const skipRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('skip_animation')
+                    .setCustomId('skip_animation_50x')
                     .setLabel('⏭️ Skip Animation')
                     .setStyle(ButtonStyle.Secondary)
             );
@@ -450,23 +470,43 @@ module.exports = {
                     await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
                 }
                 
-                // Wait for potential skip button press - shorter timeout
-                try {
-                    const filter = (buttonInteraction) => {
-                        return buttonInteraction.customId === 'skip_animation' && 
-                               buttonInteraction.user.id === interaction.user.id;
-                    };
-                    
-                    const buttonInteraction = await interaction.channel.awaitMessageComponent({ 
-                        filter, 
-                        time: 2000 // 2 seconds to press skip
+                // Set up collector for skip button
+                const message = await interaction.fetchReply();
+                const collector = message.createMessageComponentCollector({ 
+                    time: 3000, // 3 seconds to press skip
+                    max: 1 // Only collect one interaction
+                });
+                
+                // Wait for skip button or timeout
+                const skipPromise = new Promise((resolve) => {
+                    collector.on('collect', async (buttonInteraction) => {
+                        if (buttonInteraction.customId === 'skip_animation_50x' && buttonInteraction.user.id === interaction.user.id) {
+                            try {
+                                await buttonInteraction.update({ 
+                                    embeds: [initialEmbed], 
+                                    components: [] // Remove skip button
+                                });
+                                skipAnimation = true;
+                                resolve(true);
+                            } catch (error) {
+                                resolve(false);
+                            }
+                        } else {
+                            await buttonInteraction.reply({
+                                content: '❌ You can only skip your own animation!',
+                                ephemeral: true
+                            });
+                            resolve(false);
+                        }
                     });
                     
-                    skipAnimation = true;
-                    await buttonInteraction.update({ components: [] }); // Remove skip button
-                } catch (error) {
-                    // No skip pressed, continue with animation
-                }
+                    collector.on('end', () => {
+                        resolve(false);
+                    });
+                });
+                
+                await skipPromise;
+                collector.stop();
             }
             
             // Run animation if not skipped
@@ -519,7 +559,7 @@ module.exports = {
         const skipRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('skip_animation')
+                    .setCustomId('skip_animation_100x')
                     .setLabel('⏭️ Skip Animation')
                     .setStyle(ButtonStyle.Secondary)
             );
@@ -559,23 +599,43 @@ module.exports = {
                     await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
                 }
                 
-                // Wait for potential skip button press - shorter timeout
-                try {
-                    const filter = (buttonInteraction) => {
-                        return buttonInteraction.customId === 'skip_animation' && 
-                               buttonInteraction.user.id === interaction.user.id;
-                    };
-                    
-                    const buttonInteraction = await interaction.channel.awaitMessageComponent({ 
-                        filter, 
-                        time: 2000 // 2 seconds to press skip
+                // Set up collector for skip button
+                const message = await interaction.fetchReply();
+                const collector = message.createMessageComponentCollector({ 
+                    time: 3000, // 3 seconds to press skip
+                    max: 1 // Only collect one interaction
+                });
+                
+                // Wait for skip button or timeout
+                const skipPromise = new Promise((resolve) => {
+                    collector.on('collect', async (buttonInteraction) => {
+                        if (buttonInteraction.customId === 'skip_animation_100x' && buttonInteraction.user.id === interaction.user.id) {
+                            try {
+                                await buttonInteraction.update({ 
+                                    embeds: [initialEmbed], 
+                                    components: [] // Remove skip button
+                                });
+                                skipAnimation = true;
+                                resolve(true);
+                            } catch (error) {
+                                resolve(false);
+                            }
+                        } else {
+                            await buttonInteraction.reply({
+                                content: '❌ You can only skip your own animation!',
+                                ephemeral: true
+                            });
+                            resolve(false);
+                        }
                     });
                     
-                    skipAnimation = true;
-                    await buttonInteraction.update({ components: [] }); // Remove skip button
-                } catch (error) {
-                    // No skip pressed, continue with animation
-                }
+                    collector.on('end', () => {
+                        resolve(false);
+                    });
+                });
+                
+                await skipPromise;
+                collector.stop();
             }
             
             // Run animation if not skipped
