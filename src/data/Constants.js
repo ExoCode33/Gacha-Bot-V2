@@ -1,4 +1,4 @@
-// src/data/Constants.js - Updated Game Constants with NEW Rarity Rates
+// src/data/Constants.js - Updated with NEW Pity System
 module.exports = {
     // Economy Constants
     PULL_COST: 1000,
@@ -41,6 +41,47 @@ module.exports = {
         divine: 'Divine'       // Divine Tier
     },
     
+    // UPDATED Pull Rates (NEW DIVINE & MYTHICAL RATES)
+    BASE_PULL_RATES: {
+        common: 47,
+        uncommon: 30,
+        rare: 15,
+        epic: 5,
+        legendary: 2,
+        mythical: 0.4,         // UPDATED from 0.8%
+        divine: 0.05           // UPDATED from 0.2%
+    },
+
+    // NEW PITY SYSTEM - Premium Rates Proc System
+    PITY_SYSTEM: {
+        HARD_PITY_LIMIT: 1500,     // Hard pity at 1500 pulls
+        
+        // Premium rates when pity procs
+        PREMIUM_RATES: {
+            legendary: 60.0,        // 60% when pity procs
+            mythical: 39.8,         // 39.8% when pity procs  
+            divine: 0.2             // 0.2% when pity procs
+        },
+        
+        // Pity proc chance calculation
+        BASE_PITY_CHANCE: 0.0,      // Base chance at 0 pulls
+        MAX_PITY_CHANCE: 100.0,     // 100% chance at 1500 pulls
+        
+        // Pity resets when you get legendary/mythical/divine
+        RESET_RARITIES: ['legendary', 'mythical', 'divine']
+    },
+
+    // UPDATED Rarity Drop Rates for Display
+    RARITY_DROP_RATES: {
+        common: '47%',
+        uncommon: '30%', 
+        rare: '15%',
+        epic: '5%',
+        legendary: '2%',
+        mythical: '0.4%',      // UPDATED from 0.8%
+        divine: '0.05%'        // UPDATED from 0.2%
+    },
+    
     // Enhanced PvP Battle System Constants
     BATTLE_CONSTANTS: {
         MAX_TURNS: 20,         // Increased for more strategic battles
@@ -69,27 +110,6 @@ module.exports = {
         // Status effect durations
         MAX_STATUS_DURATION: 5,
         STATUS_STACK_LIMIT: 3
-    },
-    
-    // UPDATED Pull Rates (NEW DIVINE & MYTHICAL RATES)
-    BASE_PULL_RATES: {
-        common: 47,
-        uncommon: 30,
-        rare: 15,
-        epic: 5,
-        legendary: 2,
-        mythical: 0.4,         // UPDATED from 0.8%
-        divine: 0.05           // UPDATED from 0.2%
-    },
-
-    // Enhanced Pity System
-    PITY_SYSTEM: {
-        SOFT_PITY_START: 50,
-        HARD_PITY_START: 75,
-        GUARANTEED_LEGENDARY: 90,
-        GUARANTEED_MYTHICAL: 150,  // Very rare guarantee
-        GUARANTEED_DIVINE: 500,    // Ultra rare guarantee
-        PITY_INCREASE_PER_PULL: 0.5 // % increase per pull
     },
     
     // CP Multipliers by rarity (enhanced)
@@ -350,17 +370,6 @@ module.exports = {
         WIN: '🏆',
         LOSE: '💀',
         DRAW: '🤝'
-    },
-
-    // UPDATED Rarity Drop Rates for Display
-    RARITY_DROP_RATES: {
-        common: '47%',
-        uncommon: '30%', 
-        rare: '15%',
-        epic: '5%',
-        legendary: '2%',
-        mythical: '0.4%',      // UPDATED from 0.8%
-        divine: '0.05%'        // UPDATED from 0.2%
     },
 
     // Maximum values for various systems
