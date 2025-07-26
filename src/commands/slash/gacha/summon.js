@@ -307,19 +307,45 @@ module.exports = {
         // Get all fruits data BEFORE performing pulls to track pity changes
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
-        // Perform pulls one by one to track pity in real-time
-        const allResults = [];
-        const allDisplayFruits = [];
-        let skipAnimation = false;
-        
-        // Add skip animation button for first pull only
+        // Simple skip system - just show a message asking if they want to skip
         const skipRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('skip_animation_10x')
-                    .setLabel('⏭️ Skip Animation')
+                    .setCustomId(`skip_10x_${interaction.user.id}`)
+                    .setLabel('⏭️ Skip All Animations')
                     .setStyle(ButtonStyle.Secondary)
             );
+        
+        const skipEmbed = new EmbedBuilder()
+            .setTitle('🍈 10x Devil Fruit Summoning')
+            .setDescription('🌊 **Preparing to summon 10 Devil Fruits...**\n\nWould you like to skip animations and see results immediately?')
+            .setColor(0x4A90E2)
+            .setFooter({ text: `Pity: ${currentPity}/1500 | You have 5 seconds to decide` });
+        
+        await interaction.reply({ embeds: [skipEmbed], components: [skipRow] });
+        
+        // Wait for skip decision
+        let skipAnimation = false;
+        try {
+            const filter = (btnInteraction) => btnInteraction.customId === `skip_10x_${interaction.user.id}` && btnInteraction.user.id === interaction.user.id;
+            const collected = await interaction.awaitMessageComponent({ filter, time: 5000 });
+            
+            await collected.update({ 
+                embeds: [skipEmbed.setDescription('⏭️ **Skipping animations - Processing pulls...**')], 
+                components: [] 
+            });
+            skipAnimation = true;
+        } catch {
+            // No skip selected, continue with animations
+            await interaction.editReply({ 
+                embeds: [skipEmbed.setDescription('🎬 **Starting animations...**')], 
+                components: [] 
+            });
+        }
+        
+        // Perform pulls one by one to track pity in real-time
+        const allResults = [];
+        const allDisplayFruits = [];
         
         for (let i = 0; i < 10; i++) {
             // Perform single pull
@@ -346,64 +372,14 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Handle skip animation for first pull only
-            if (i === 0 && !skipAnimation) {
-                const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 10, currentPity);
-                
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
-                } else {
-                    await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
-                }
-                
-                // Set up collector for skip button
-                const message = await interaction.fetchReply();
-                const collector = message.createMessageComponentCollector({ 
-                    time: 3000, // 3 seconds to press skip
-                    max: 1 // Only collect one interaction
-                });
-                
-                // Wait for skip button or timeout
-                const skipPromise = new Promise((resolve) => {
-                    collector.on('collect', async (buttonInteraction) => {
-                        if (buttonInteraction.customId === 'skip_animation_10x' && buttonInteraction.user.id === interaction.user.id) {
-                            try {
-                                await buttonInteraction.update({ 
-                                    embeds: [initialEmbed], 
-                                    components: [] // Remove skip button
-                                });
-                                skipAnimation = true;
-                                resolve(true);
-                            } catch (error) {
-                                resolve(false);
-                            }
-                        } else {
-                            await buttonInteraction.reply({
-                                content: '❌ You can only skip your own animation!',
-                                ephemeral: true
-                            });
-                            resolve(false);
-                        }
-                    });
-                    
-                    collector.on('end', () => {
-                        resolve(false);
-                    });
-                });
-                
-                await skipPromise;
-                collector.stop();
-            }
-            
             // Run animation if not skipped
             if (!skipAnimation) {
                 await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
+                if (i < 9) await new Promise(resolve => setTimeout(resolve, 800));
             }
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
-            
-            if (i < 9 && !skipAnimation) await new Promise(resolve => setTimeout(resolve, 800));
         }
         
         // Get final pity info
@@ -421,19 +397,45 @@ module.exports = {
         
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
-        // Perform ALL 50 pulls one by one with full animations
-        const allResults = [];
-        const allDisplayFruits = [];
-        let skipAnimation = false;
-        
-        // Add skip animation button for first pull only
+        // Simple skip system - just show a message asking if they want to skip
         const skipRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('skip_animation_50x')
-                    .setLabel('⏭️ Skip Animation')
+                    .setCustomId(`skip_50x_${interaction.user.id}`)
+                    .setLabel('⏭️ Skip All Animations')
                     .setStyle(ButtonStyle.Secondary)
             );
+        
+        const skipEmbed = new EmbedBuilder()
+            .setTitle('🍈 50x Devil Fruit Summoning')
+            .setDescription('🌊 **Preparing to summon 50 Devil Fruits...**\n\nWould you like to skip animations and see results immediately?')
+            .setColor(0x4A90E2)
+            .setFooter({ text: `Pity: ${currentPity}/1500 | You have 5 seconds to decide` });
+        
+        await interaction.reply({ embeds: [skipEmbed], components: [skipRow] });
+        
+        // Wait for skip decision
+        let skipAnimation = false;
+        try {
+            const filter = (btnInteraction) => btnInteraction.customId === `skip_50x_${interaction.user.id}` && btnInteraction.user.id === interaction.user.id;
+            const collected = await interaction.awaitMessageComponent({ filter, time: 5000 });
+            
+            await collected.update({ 
+                embeds: [skipEmbed.setDescription('⏭️ **Skipping animations - Processing pulls...**')], 
+                components: [] 
+            });
+            skipAnimation = true;
+        } catch {
+            // No skip selected, continue with animations
+            await interaction.editReply({ 
+                embeds: [skipEmbed.setDescription('🎬 **Starting animations...**')], 
+                components: [] 
+            });
+        }
+        
+        // Perform ALL 50 pulls one by one
+        const allResults = [];
+        const allDisplayFruits = [];
         
         for (let i = 0; i < 50; i++) {
             // Perform single pull
@@ -460,65 +462,14 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Handle skip animation for first pull only
-            if (i === 0 && !skipAnimation) {
-                const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 50, currentPity);
-                
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
-                } else {
-                    await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
-                }
-                
-                // Set up collector for skip button
-                const message = await interaction.fetchReply();
-                const collector = message.createMessageComponentCollector({ 
-                    time: 3000, // 3 seconds to press skip
-                    max: 1 // Only collect one interaction
-                });
-                
-                // Wait for skip button or timeout
-                const skipPromise = new Promise((resolve) => {
-                    collector.on('collect', async (buttonInteraction) => {
-                        if (buttonInteraction.customId === 'skip_animation_50x' && buttonInteraction.user.id === interaction.user.id) {
-                            try {
-                                await buttonInteraction.update({ 
-                                    embeds: [initialEmbed], 
-                                    components: [] // Remove skip button
-                                });
-                                skipAnimation = true;
-                                resolve(true);
-                            } catch (error) {
-                                resolve(false);
-                            }
-                        } else {
-                            await buttonInteraction.reply({
-                                content: '❌ You can only skip your own animation!',
-                                ephemeral: true
-                            });
-                            resolve(false);
-                        }
-                    });
-                    
-                    collector.on('end', () => {
-                        resolve(false);
-                    });
-                });
-                
-                await skipPromise;
-                collector.stop();
-            }
-            
             // Run animation if not skipped
             if (!skipAnimation) {
                 await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
+                if (i < 49) await new Promise(resolve => setTimeout(resolve, 600));
             }
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
-            
-            // Shorter delay for 50x
-            if (i < 49 && !skipAnimation) await new Promise(resolve => setTimeout(resolve, 600));
         }
         
         // Get final pity info
@@ -550,19 +501,45 @@ module.exports = {
         
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
-        // Perform ALL 100 pulls one by one with full animations
-        const allResults = [];
-        const allDisplayFruits = [];
-        let skipAnimation = false;
-        
-        // Add skip animation button for first pull only
+        // Simple skip system - just show a message asking if they want to skip
         const skipRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('skip_animation_100x')
-                    .setLabel('⏭️ Skip Animation')
+                    .setCustomId(`skip_100x_${interaction.user.id}`)
+                    .setLabel('⏭️ Skip All Animations')
                     .setStyle(ButtonStyle.Secondary)
             );
+        
+        const skipEmbed = new EmbedBuilder()
+            .setTitle('🍈 100x Devil Fruit Summoning')
+            .setDescription('🌊 **Preparing to summon 100 Devil Fruits...**\n\nWould you like to skip animations and see results immediately?')
+            .setColor(0x4A90E2)
+            .setFooter({ text: `Pity: ${currentPity}/1500 | You have 5 seconds to decide` });
+        
+        await interaction.reply({ embeds: [skipEmbed], components: [skipRow] });
+        
+        // Wait for skip decision
+        let skipAnimation = false;
+        try {
+            const filter = (btnInteraction) => btnInteraction.customId === `skip_100x_${interaction.user.id}` && btnInteraction.user.id === interaction.user.id;
+            const collected = await interaction.awaitMessageComponent({ filter, time: 5000 });
+            
+            await collected.update({ 
+                embeds: [skipEmbed.setDescription('⏭️ **Skipping animations - Processing pulls...**')], 
+                components: [] 
+            });
+            skipAnimation = true;
+        } catch {
+            // No skip selected, continue with animations
+            await interaction.editReply({ 
+                embeds: [skipEmbed.setDescription('🎬 **Starting animations...**')], 
+                components: [] 
+            });
+        }
+        
+        // Perform ALL 100 pulls one by one
+        const allResults = [];
+        const allDisplayFruits = [];
         
         for (let i = 0; i < 100; i++) {
             // Perform single pull
@@ -589,65 +566,14 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Handle skip animation for first pull only
-            if (i === 0 && !skipAnimation) {
-                const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 100, currentPity);
-                
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
-                } else {
-                    await interaction.editReply({ embeds: [initialEmbed], components: [skipRow] });
-                }
-                
-                // Set up collector for skip button
-                const message = await interaction.fetchReply();
-                const collector = message.createMessageComponentCollector({ 
-                    time: 3000, // 3 seconds to press skip
-                    max: 1 // Only collect one interaction
-                });
-                
-                // Wait for skip button or timeout
-                const skipPromise = new Promise((resolve) => {
-                    collector.on('collect', async (buttonInteraction) => {
-                        if (buttonInteraction.customId === 'skip_animation_100x' && buttonInteraction.user.id === interaction.user.id) {
-                            try {
-                                await buttonInteraction.update({ 
-                                    embeds: [initialEmbed], 
-                                    components: [] // Remove skip button
-                                });
-                                skipAnimation = true;
-                                resolve(true);
-                            } catch (error) {
-                                resolve(false);
-                            }
-                        } else {
-                            await buttonInteraction.reply({
-                                content: '❌ You can only skip your own animation!',
-                                ephemeral: true
-                            });
-                            resolve(false);
-                        }
-                    });
-                    
-                    collector.on('end', () => {
-                        resolve(false);
-                    });
-                });
-                
-                await skipPromise;
-                collector.stop();
-            }
-            
             // Run animation if not skipped
             if (!skipAnimation) {
                 await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
+                if (i < 99) await new Promise(resolve => setTimeout(resolve, 400));
             }
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
-            
-            // Shorter delay for 100x
-            if (i < 99 && !skipAnimation) await new Promise(resolve => setTimeout(resolve, 400));
         }
         
         // Get final pity info
