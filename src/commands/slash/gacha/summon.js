@@ -159,7 +159,7 @@ class SummonAnimator {
             title = `🍈 Devil Fruit Batch ${batchNumber}/${totalBatches} Complete!`;
         }
 
-        const pityDisplay = batchNumber === totalBatches ? GachaService.formatPityDisplay(pityInfo, pityUsedInSession) : '';
+        const pityDisplay = GachaService.formatPityDisplay(pityInfo, pityUsedInSession);
         const balanceText = batchNumber === totalBatches ? `💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n` : '';
 
         const embed = new EmbedBuilder()
@@ -168,7 +168,7 @@ class SummonAnimator {
             .setColor(highestColor)
             .setTimestamp();
 
-        let footerText = totalBatches > 1 ? `Batch ${batchNumber} of ${totalBatches}` : '🏴‍☠️ Your legend grows on the Grand Line!';
+        let footerText = totalBatches > 1 ? `Batch ${batchNumber} of ${totalBatches} | Pity: ${pityInfo.currentPity}/1500` : `🏴‍☠️ Your legend grows on the Grand Line! | Pity: ${pityInfo.currentPity}/1500`;
         if (pityUsedInSession && batchNumber === totalBatches) {
             footerText = '✨ PITY ACTIVATED THIS SESSION! | ' + footerText;
         }
@@ -233,7 +233,7 @@ class SummonAnimator {
             .setColor(color)
             .setTimestamp();
 
-        let footerText = '🏴‍☠️ Your legend grows on the Grand Line!';
+        let footerText = `🏴‍☠️ Your legend grows on the Grand Line! | Pity: ${pityInfo.currentPity}/1500`;
         if (pityUsedInSession) {
             footerText = '✨ PITY ACTIVATED THIS SESSION! | ' + footerText;
         }
@@ -384,11 +384,13 @@ module.exports = {
     },
 
     async run50xSummon(interaction, newBalance, skipAnimation = false) {
-        // Send initial status message
-        await interaction.editReply({
-            content: '🌊 Starting 50x Mega Summon... This may take a moment!'
-        });
-
+        // Start with animated summoning message
+        let progressFrame = 0;
+        const maxProgressFrames = 6;
+        
+        // Show initial animated summoning message
+        await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 50);
+        
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -429,11 +431,10 @@ module.exports = {
                 if (i < 4) await new Promise(resolve => setTimeout(resolve, 300));
             }
             
-            // Update progress every 10 pulls
+            // Update progress every 10 pulls with animation
             if ((i + 1) % 10 === 0) {
-                await interaction.editReply({
-                    content: `🌊 Progress: ${i + 1}/50 pulls completed...`
-                });
+                progressFrame = (progressFrame + 1) % maxProgressFrames;
+                await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, i + 1, 50);
             }
             
             // Update pity for next pull
@@ -492,10 +493,12 @@ module.exports = {
     },
 
     async run100xSummon(interaction, newBalance, skipAnimation = false) {
-        // Send initial status message
-        await interaction.editReply({
-            content: '🌊 Starting 100x Ultra Summon... This will take a moment!'
-        });
+        // Start with animated summoning message
+        let progressFrame = 0;
+        const maxProgressFrames = 6;
+        
+        // Show initial animated summoning message
+        await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 100);
 
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
@@ -537,11 +540,10 @@ module.exports = {
                 if (i < 2) await new Promise(resolve => setTimeout(resolve, 200));
             }
             
-            // Update progress every 20 pulls
+            // Update progress every 20 pulls with animation
             if ((i + 1) % 20 === 0) {
-                await interaction.editReply({
-                    content: `🌊 Progress: ${i + 1}/100 pulls completed...`
-                });
+                progressFrame = (progressFrame + 1) % maxProgressFrames;
+                await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, i + 1, 100);
             }
             
             // Update pity for next pull
@@ -597,6 +599,33 @@ module.exports = {
         
         // Show first batch with navigation
         await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
+    },
+
+    async showProgressAnimation(interaction, frame, maxFrames, currentPulls, totalPulls) {
+        const pattern = SummonAnimator.getRainbowPattern(frame, 20);
+        const color = SummonAnimator.getRainbowColor(frame);
+        const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
+        const progressBar = '█'.repeat(Math.floor(progressPercent / 5)) + '░'.repeat(20 - Math.floor(progressPercent / 5));
+        
+        const currentPity = await GachaService.getPityCount(interaction.user.id);
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
+            .setDescription(
+                `🌊 **Scanning the Grand Line for Devil Fruits...**\n\n` +
+                `${pattern}\n\n` +
+                `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
+                `${progressBar}\n\n` +
+                `🎯 **Current Pity:** ${currentPity}/1500\n` +
+                `⚡ **Status:** Searching for legendary powers...\n\n` +
+                `${pattern}`
+            )
+            .setColor(color)
+            .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
+            .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+        await new Promise(resolve => setTimeout(resolve, 800));
     },
 
     async runQuickAnimation(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
