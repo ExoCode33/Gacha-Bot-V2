@@ -277,14 +277,17 @@ class SummonAnimator {
             }
         });
 
-        const highestColor = RARITY_COLORS[highestRarity];
+        // For divine rarity, use red color but mark for special animation
+        const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity];
 
-        return new EmbedBuilder()
+        const embed = new EmbedBuilder()
             .setTitle('🍈 10x Devil Fruit Summoning Complete!')
             .setDescription(`🎉 **Congratulations! You've summoned 10 magnificent Devil Fruits!** 🎉\n\n${detailedResults}💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n✨ All fruits have been added to your collection!`)
             .setColor(highestColor)
             .setFooter({ text: '🏴‍☠️ Your legend grows on the Grand Line!' })
             .setTimestamp();
+
+        return { embed, isDivine: highestRarity === 'divine' };
     }
 }
 
@@ -585,8 +588,64 @@ module.exports = {
     },
 
     async show10xSummary(interaction, fruits, results, newBalance) {
-        const embed = SummonAnimator.create10xSummary(fruits, results, newBalance);
-        await interaction.editReply({ embeds: [embed] });
+        const summaryData = SummonAnimator.create10xSummary(fruits, results, newBalance);
+        
+        // Check if we got a divine fruit
+        if (summaryData.isDivine) {
+            await this.showDivineAnimation(interaction, summaryData.embed);
+        } else {
+            await interaction.editReply({ embeds: [summaryData.embed] });
+        }
+    },
+
+    async showDivineAnimation(interaction, baseEmbed) {
+        // Divine color animation - fast color changing for 20 seconds
+        const divineColors = [
+            0xFF0000, // Red
+            0xFF8000, // Orange  
+            0xFFFF00, // Yellow
+            0x00FF00, // Green
+            0x0080FF, // Blue
+            0x8000FF, // Purple
+            0xFF00FF, // Magenta
+            0x00FFFF, // Cyan
+            0xFFFFFF, // White
+            0xFFD700, // Gold
+            0xFF1493, // Deep Pink
+            0x00FA9A  // Medium Spring Green
+        ];
+        
+        const animationDuration = 20000; // 20 seconds
+        const frameDelay = 200; // Change color every 200ms
+        const totalFrames = animationDuration / frameDelay;
+        
+        for (let frame = 0; frame < totalFrames; frame++) {
+            const colorIndex = frame % divineColors.length;
+            const currentColor = divineColors[colorIndex];
+            
+            // Create new embed with changing color
+            const animatedEmbed = new EmbedBuilder()
+                .setTitle('🍈 10x Devil Fruit Summoning Complete!')
+                .setDescription(baseEmbed.data.description)
+                .setColor(currentColor)
+                .setFooter({ text: '✨ DIVINE POWER DETECTED! ✨' })
+                .setTimestamp();
+            
+            await interaction.editReply({ embeds: [animatedEmbed] });
+            
+            // Wait before next color change
+            await new Promise(resolve => setTimeout(resolve, frameDelay));
+        }
+        
+        // End with final divine red color
+        const finalEmbed = new EmbedBuilder()
+            .setTitle('🍈 10x Devil Fruit Summoning Complete!')
+            .setDescription(baseEmbed.data.description)
+            .setColor(0xFF0000) // Divine red
+            .setFooter({ text: '🏴‍☠️ Your legend grows on the Grand Line!' })
+            .setTimestamp();
+        
+        await interaction.editReply({ embeds: [finalEmbed] });
     },
 
     async setupButtons(interaction) {
