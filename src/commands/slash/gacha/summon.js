@@ -249,6 +249,11 @@ module.exports = {
                     { name: '50x Mega Summon', value: 50 },
                     { name: '100x Ultra Summon', value: 100 }
                 )
+        )
+        .addBooleanOption(option =>
+            option.setName('skip_animation')
+                .setDescription('Skip animations and show results immediately')
+                .setRequired(false)
         ),
     
     category: 'gacha',
@@ -257,6 +262,7 @@ module.exports = {
     async execute(interaction) {
         const userId = interaction.user.id;
         const summonCount = interaction.options.getInteger('count') || 10; // Default to 10x
+        const skipAnimation = interaction.options.getBoolean('skip_animation') || false;
         
         try {
             // Calculate cost WITHOUT DISCOUNTS - full price for all pulls
@@ -284,11 +290,11 @@ module.exports = {
             const newBalance = balance - cost;
             
             if (summonCount === 10) {
-                await this.run10xSummon(interaction, newBalance);
+                await this.run10xSummon(interaction, newBalance, skipAnimation);
             } else if (summonCount === 50) {
-                await this.run50xSummon(interaction, newBalance);
+                await this.run50xSummon(interaction, newBalance, skipAnimation);
             } else if (summonCount === 100) {
-                await this.run100xSummon(interaction, newBalance);
+                await this.run100xSummon(interaction, newBalance, skipAnimation);
             }
             
         } catch (error) {
@@ -300,48 +306,12 @@ module.exports = {
         }
     },
 
-    async run10xSummon(interaction, newBalance) {
+    async run10xSummon(interaction, newBalance, skipAnimation = false) {
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
         // Get all fruits data BEFORE performing pulls to track pity changes
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
-        
-        // Simple skip system - just show a message asking if they want to skip
-        const skipRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`skip_10x_${interaction.user.id}`)
-                    .setLabel('⏭️ Skip All Animations')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-        
-        const skipEmbed = new EmbedBuilder()
-            .setTitle('🍈 10x Devil Fruit Summoning')
-            .setDescription('🌊 **Preparing to summon 10 Devil Fruits...**\n\nWould you like to skip animations and see results immediately?')
-            .setColor(0x4A90E2)
-            .setFooter({ text: `Pity: ${currentPity}/1500 | You have 5 seconds to decide` });
-        
-        await interaction.reply({ embeds: [skipEmbed], components: [skipRow] });
-        
-        // Wait for skip decision
-        let skipAnimation = false;
-        try {
-            const filter = (btnInteraction) => btnInteraction.customId === `skip_10x_${interaction.user.id}` && btnInteraction.user.id === interaction.user.id;
-            const collected = await interaction.awaitMessageComponent({ filter, time: 5000 });
-            
-            await collected.update({ 
-                embeds: [skipEmbed.setDescription('⏭️ **Skipping animations - Processing pulls...**')], 
-                components: [] 
-            });
-            skipAnimation = true;
-        } catch {
-            // No skip selected, continue with animations
-            await interaction.editReply({ 
-                embeds: [skipEmbed.setDescription('🎬 **Starting animations...**')], 
-                components: [] 
-            });
-        }
         
         // Perform pulls one by one to track pity in real-time
         const allResults = [];
@@ -391,47 +361,11 @@ module.exports = {
         await this.setupButtons(interaction);
     },
 
-    async run50xSummon(interaction, newBalance) {
+    async run50xSummon(interaction, newBalance, skipAnimation = false) {
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
-        
-        // Simple skip system - just show a message asking if they want to skip
-        const skipRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`skip_50x_${interaction.user.id}`)
-                    .setLabel('⏭️ Skip All Animations')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-        
-        const skipEmbed = new EmbedBuilder()
-            .setTitle('🍈 50x Devil Fruit Summoning')
-            .setDescription('🌊 **Preparing to summon 50 Devil Fruits...**\n\nWould you like to skip animations and see results immediately?')
-            .setColor(0x4A90E2)
-            .setFooter({ text: `Pity: ${currentPity}/1500 | You have 5 seconds to decide` });
-        
-        await interaction.reply({ embeds: [skipEmbed], components: [skipRow] });
-        
-        // Wait for skip decision
-        let skipAnimation = false;
-        try {
-            const filter = (btnInteraction) => btnInteraction.customId === `skip_50x_${interaction.user.id}` && btnInteraction.user.id === interaction.user.id;
-            const collected = await interaction.awaitMessageComponent({ filter, time: 5000 });
-            
-            await collected.update({ 
-                embeds: [skipEmbed.setDescription('⏭️ **Skipping animations - Processing pulls...**')], 
-                components: [] 
-            });
-            skipAnimation = true;
-        } catch {
-            // No skip selected, continue with animations
-            await interaction.editReply({ 
-                embeds: [skipEmbed.setDescription('🎬 **Starting animations...**')], 
-                components: [] 
-            });
-        }
         
         // Perform ALL 50 pulls one by one
         const allResults = [];
@@ -495,47 +429,11 @@ module.exports = {
         await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
     },
 
-    async run100xSummon(interaction, newBalance) {
+    async run100xSummon(interaction, newBalance, skipAnimation = false) {
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
-        
-        // Simple skip system - just show a message asking if they want to skip
-        const skipRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`skip_100x_${interaction.user.id}`)
-                    .setLabel('⏭️ Skip All Animations')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-        
-        const skipEmbed = new EmbedBuilder()
-            .setTitle('🍈 100x Devil Fruit Summoning')
-            .setDescription('🌊 **Preparing to summon 100 Devil Fruits...**\n\nWould you like to skip animations and see results immediately?')
-            .setColor(0x4A90E2)
-            .setFooter({ text: `Pity: ${currentPity}/1500 | You have 5 seconds to decide` });
-        
-        await interaction.reply({ embeds: [skipEmbed], components: [skipRow] });
-        
-        // Wait for skip decision
-        let skipAnimation = false;
-        try {
-            const filter = (btnInteraction) => btnInteraction.customId === `skip_100x_${interaction.user.id}` && btnInteraction.user.id === interaction.user.id;
-            const collected = await interaction.awaitMessageComponent({ filter, time: 5000 });
-            
-            await collected.update({ 
-                embeds: [skipEmbed.setDescription('⏭️ **Skipping animations - Processing pulls...**')], 
-                components: [] 
-            });
-            skipAnimation = true;
-        } catch {
-            // No skip selected, continue with animations
-            await interaction.editReply({ 
-                embeds: [skipEmbed.setDescription('🎬 **Starting animations...**')], 
-                components: [] 
-            });
-        }
         
         // Perform ALL 100 pulls one by one
         const allResults = [];
