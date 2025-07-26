@@ -259,15 +259,8 @@ module.exports = {
         const summonCount = interaction.options.getInteger('count') || 10; // Default to 10x
         
         try {
-            // Calculate cost with bulk discounts
-            let cost;
-            if (summonCount === 10) {
-                cost = PULL_COST * 10 * 0.9; // 10% discount
-            } else if (summonCount === 50) {
-                cost = PULL_COST * 50 * 0.85; // 15% discount
-            } else if (summonCount === 100) {
-                cost = PULL_COST * 100 * 0.8; // 20% discount
-            }
+            // Calculate cost WITHOUT DISCOUNTS - full price for all pulls
+            const cost = PULL_COST * summonCount;
             
             const balance = await EconomyService.getBalance(userId);
             
@@ -599,3 +592,7 @@ module.exports = {
         
         await interaction.editReply({
             embeds: [currentEmbed],
+            components: [row]
+        });
+    }
+};
