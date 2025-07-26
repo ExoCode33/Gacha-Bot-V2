@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - COMPLETE Working File
+// src/commands/slash/gacha/summon.js - Updated with NEW Pity System Display
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -155,7 +155,7 @@ class SummonAnimator {
             .setFooter({ text: `🎉 Added to your collection! Revealing...` });
     }
 
-    static createFinalReveal(fruit, result, newBalance) {
+    static createFinalReveal(fruit, result, newBalance, pityInfo, pityUsed = false) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
         const pattern = Array(20).fill(raritySquare).join(' ');
@@ -175,12 +175,21 @@ class SummonAnimator {
             `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n` +
             `${pattern}`;
 
-        return new EmbedBuilder()
+        const embed = new EmbedBuilder()
             .setTitle('🏴‍☠️ Devil Fruit Summoning Complete!')
             .setDescription(description)
             .setColor(color)
-            .setFooter({ text: '🏴‍☠️ Your legend grows on the Grand Line!' })
             .setTimestamp();
+
+        // Add pity information to footer
+        let footerText = '🏴‍☠️ Your legend grows on the Grand Line!';
+        if (pityUsed) {
+            footerText = '✨ PITY ACTIVATED! Premium rates used! | ' + footerText;
+        }
+        
+        embed.setFooter({ text: footerText });
+
+        return embed;
     }
 
     static createQuickFrame(frame, fruit, summonNumber) {
@@ -211,7 +220,7 @@ class SummonAnimator {
     static createQuickReveal(fruit, result, summonNumber) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
-        const pattern = Array(20).fill(raritySquare).join(' '); // Changed from 15 to 20 to match single pull
+        const pattern = Array(20).fill(raritySquare).join(' ');
         
         // Get the actual duplicate count from the result
         const duplicateCount = result.duplicateCount || 1;
@@ -222,32 +231,38 @@ class SummonAnimator {
             `🍃 **Name:** ${fruit.name}\n` +
             `🔮 **Type:** ${fruit.type}\n` +
             `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
-            `💪 **CP Multiplier:** x${fruit.multiplier}\n` +
+            `💪 **CP Multiplier:** x${fruit.multiplier}` +
+            (result.pityUsed ? ' 🎯 **PITY!**' : '') + `\n` +
             `🎯 **Description:** ${fruit.description}\n` +
             `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
             `🔥 **Total CP:** ${result.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
             `💰 **Remaining Berries:** Loading...\n\n` +
             `${pattern}`;
         
+        let footerText = `Summon ${summonNumber} of 10 - ✨ Acquired!`;
+        if (result.pityUsed) {
+            footerText = `✨ PITY USED! | ${footerText}`;
+        }
+        
         return new EmbedBuilder()
             .setTitle('🍈 10x Devil Fruit Summoning')
             .setDescription(description)
             .setColor(color)
-            .setFooter({ text: `Summon ${summonNumber} of 10 - ✨ Acquired!` });
+            .setFooter({ text: footerText });
     }
 
-    static create10xSummary(fruits, results, balance) {
+    static create10xSummary(fruits, results, balance, pityInfo, pityUsedInSession) {
         let detailedResults = '';
         fruits.forEach((fruit, index) => {
-            const result = results[index]; // Get the corresponding result
+            const result = results[index];
             const raritySquare = this.getRaritySquare(fruit.rarity);
             const number = (index + 1).toString().padStart(2, '0');
             
-            // Get the actual duplicate count from the result
             const duplicateCount = result.duplicateCount || 1;
             const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
+            const pityIndicator = result.pityUsed ? ' 🎯' : '';
             
-            detailedResults += `**${number}.** ${raritySquare} **${fruit.name}** (${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)})\n`;
+            detailedResults += `**${number}.** ${raritySquare} **${fruit.name}**${pityIndicator} (${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)})\n`;
             detailedResults += `      📊 **Status:** ${duplicateText}\n`;
             detailedResults += `      🔮 **Type:** ${fruit.type}\n`;
             detailedResults += `      💪 **CP Multiplier:** x${fruit.multiplier}\n`;
@@ -255,7 +270,7 @@ class SummonAnimator {
             detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
         });
 
-        // FIXED: Properly find highest rarity using rarity priority values
+        // Find highest rarity using rarity priority values
         const rarityPriority = {
             'common': 1,
             'uncommon': 2,
@@ -277,15 +292,22 @@ class SummonAnimator {
             }
         });
 
-        // For divine rarity, use red color but mark for special animation
         const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity];
+
+        // Add pity display to summary
+        const pityDisplay = GachaService.formatPityDisplay(pityInfo, pityUsedInSession);
 
         const embed = new EmbedBuilder()
             .setTitle('🍈 10x Devil Fruit Summoning Complete!')
-            .setDescription(`🎉 **Congratulations! You've summoned 10 magnificent Devil Fruits!** 🎉\n\n${detailedResults}💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n✨ All fruits have been added to your collection!`)
+            .setDescription(`🎉 **Congratulations! You've summoned 10 magnificent Devil Fruits!** 🎉\n\n${detailedResults}💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n${pityDisplay}\n\n✨ All fruits have been added to your collection!`)
             .setColor(highestColor)
-            .setFooter({ text: '🏴‍☠️ Your legend grows on the Grand Line!' })
             .setTimestamp();
+
+        let footerText = '🏴‍☠️ Your legend grows on the Grand Line!';
+        if (pityUsedInSession) {
+            footerText = '✨ PITY ACTIVATED THIS SESSION! | ' + footerText;
+        }
+        embed.setFooter({ text: footerText });
 
         return { embed, isDivine: highestRarity === 'divine' };
     }
@@ -317,12 +339,16 @@ module.exports = {
             const balance = await EconomyService.getBalance(userId);
             
             if (balance < cost) {
+                // Get pity info for insufficient berries message
+                const pityInfo = await GachaService.getPityInfo(userId);
+                const pityDisplay = GachaService.formatPityDisplay(pityInfo);
+                
                 return interaction.reply({
                     embeds: [
                         new EmbedBuilder()
                             .setColor('#FF0000')
                             .setTitle('❌ Insufficient Berries')
-                            .setDescription(`You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries`)
+                            .setDescription(`You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries\n\n${pityDisplay}`)
                             .setFooter({ text: 'Use /income to earn more berries!' })
                     ],
                     ephemeral: true
@@ -348,9 +374,11 @@ module.exports = {
     },
 
     async runSingleSummon(interaction, newBalance) {
-        const results = await GachaService.performPulls(interaction.user.id, 1);
+        const pullData = await GachaService.performPulls(interaction.user.id, 1);
+        const results = pullData.results;
         const result = results[0];
         const fruit = result.fruit;
+        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
         
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
@@ -368,12 +396,14 @@ module.exports = {
             skillCooldown: actualFruit?.skill?.cooldown || 2
         };
         
-        await this.runFullAnimation(interaction, displayFruit, result, newBalance);
+        await this.runFullAnimation(interaction, displayFruit, result, newBalance, pityInfo, result.pityUsed);
         await this.setupButtons(interaction);
     },
 
     async run10xSummon(interaction, newBalance) {
-        const results = await GachaService.performPulls(interaction.user.id, 10);
+        const pullData = await GachaService.performPulls(interaction.user.id, 10);
+        const results = pullData.results;
+        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
         const displayFruits = results.map(result => {
@@ -393,28 +423,29 @@ module.exports = {
             };
         });
         
-        await this.run10xAnimation(interaction, displayFruits, results, newBalance);
+        await this.run10xAnimation(interaction, displayFruits, results, newBalance, pityInfo, pullData.pityUsedInSession);
         await this.setupButtons(interaction);
     },
 
-    async runFullAnimation(interaction, fruit, result, newBalance) {
+    async runFullAnimation(interaction, fruit, result, newBalance, pityInfo, pityUsed) {
         await this.runRainbowPhase(interaction, fruit);
         await new Promise(resolve => setTimeout(resolve, 300));
         await this.runColorSpread(interaction, fruit);
         await new Promise(resolve => setTimeout(resolve, 400));
         await this.runTextReveal(interaction, fruit, result, newBalance);
         await new Promise(resolve => setTimeout(resolve, 500));
-        await this.showFinalReveal(interaction, fruit, result, newBalance);
+        await this.showFinalReveal(interaction, fruit, result, newBalance, pityInfo, pityUsed);
     },
 
-    async run10xAnimation(interaction, fruits, results, newBalance) {
+    async run10xAnimation(interaction, fruits, results, newBalance, pityInfo, pityUsedInSession) {
         for (let i = 0; i < 10; i++) {
             const fruit = fruits[i];
+            const result = results[i];
             const summonNumber = i + 1;
-            await this.runQuickAnimation(interaction, fruit, summonNumber);
+            await this.runQuickAnimation(interaction, fruit, result, summonNumber);
             if (i < 9) await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        await this.show10xSummary(interaction, fruits, results, newBalance);
+        await this.show10xSummary(interaction, fruits, results, newBalance, pityInfo, pityUsedInSession);
     },
 
     async runRainbowPhase(interaction, fruit) {
@@ -561,7 +592,7 @@ module.exports = {
         }
     },
 
-    async runQuickAnimation(interaction, fruit, summonNumber) {
+    async runQuickAnimation(interaction, fruit, result, summonNumber) {
         for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
             const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber);
             
@@ -576,19 +607,25 @@ module.exports = {
         
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        const revealEmbed = SummonAnimator.createQuickReveal(fruit, summonNumber);
+        const revealEmbed = SummonAnimator.createQuickReveal(fruit, result, summonNumber);
         await interaction.editReply({ embeds: [revealEmbed] });
         
         await new Promise(resolve => setTimeout(resolve, 300));
     },
 
-    async showFinalReveal(interaction, fruit, result, newBalance) {
-        const embed = SummonAnimator.createFinalReveal(fruit, result, newBalance);
+    async showFinalReveal(interaction, fruit, result, newBalance, pityInfo, pityUsed) {
+        const embed = SummonAnimator.createFinalReveal(fruit, result, newBalance, pityInfo, pityUsed);
+        
+        // Add pity information to the description
+        const pityDisplay = GachaService.formatPityDisplay(pityInfo, pityUsed);
+        const currentDescription = embed.data.description;
+        embed.setDescription(currentDescription + '\n\n' + pityDisplay);
+        
         await interaction.editReply({ embeds: [embed] });
     },
 
-    async show10xSummary(interaction, fruits, results, newBalance) {
-        const summaryData = SummonAnimator.create10xSummary(fruits, results, newBalance);
+    async show10xSummary(interaction, fruits, results, newBalance, pityInfo, pityUsedInSession) {
+        const summaryData = SummonAnimator.create10xSummary(fruits, results, newBalance, pityInfo, pityUsedInSession);
         
         // Check if we got a divine fruit
         if (summaryData.isDivine) {
@@ -726,8 +763,11 @@ module.exports = {
         const balance = await EconomyService.getBalance(buttonInteraction.user.id);
         
         if (balance < cost) {
+            const pityInfo = await GachaService.getPityInfo(buttonInteraction.user.id);
+            const pityDisplay = GachaService.formatPityDisplay(pityInfo);
+            
             return buttonInteraction.reply({ 
-                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n💡 Use \`/income\` to collect berries.`, 
+                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n\n${pityDisplay}\n\n💡 Use \`/income\` to collect berries.`, 
                 ephemeral: true 
             });
         }
@@ -751,8 +791,11 @@ module.exports = {
         const balance = await EconomyService.getBalance(buttonInteraction.user.id);
         
         if (balance < cost) {
+            const pityInfo = await GachaService.getPityInfo(buttonInteraction.user.id);
+            const pityDisplay = GachaService.formatPityDisplay(pityInfo);
+            
             return buttonInteraction.reply({ 
-                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n💡 Use \`/income\` to collect berries.`, 
+                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n\n${pityDisplay}\n\n💡 Use \`/income\` to collect berries.`, 
                 ephemeral: true 
             });
         }
