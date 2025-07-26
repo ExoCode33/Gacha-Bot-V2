@@ -1,6 +1,4 @@
-// src/data/DevilFruitSkills.js - Complete Devil Fruit Skills Database
-// Add this file to your bot: src/data/DevilFruitSkills.js
-
+// src/data/DevilFruitSkills.js - COMPLETE Skills Database for ALL 143 Fruits
 const DEVIL_FRUIT_SKILLS = {
   // ===== DIVINE TIER (5 FRUITS) =====
   "gura_gura_no_mi": {
@@ -232,7 +230,7 @@ const DEVIL_FRUIT_SKILLS = {
     damage: 85,
     cooldown: 2,
     effect: "dodge_boost",
-    description: "Perfect smoothness makes attacks slide away",
+    description: "Perfect smoothness makes attacks slide away completely",
     type: "defense"
   },
   "bomu_bomu_no_mi": {
@@ -733,6 +731,62 @@ const DEVIL_FRUIT_SKILLS = {
     description: "Create barrier that damages while defending",
     type: "defense"
   },
+  "nui_nui_no_mi": {
+    name: "Stitch Strike",
+    damage: 70,
+    cooldown: 1,
+    effect: "bind_effect",
+    description: "Sew enemy parts together to restrict movement",
+    type: "utility"
+  },
+  "giro_giro_no_mi": {
+    name: "All-Seeing Eye",
+    damage: 65,
+    cooldown: 2,
+    effect: "reveal_weakness",
+    description: "See through defenses to find weak spots",
+    type: "utility"
+  },
+  "ishi_ishi_no_mi": {
+    name: "Stone Merge",
+    damage: 80,
+    cooldown: 2,
+    effect: "earth_control",
+    description: "Merge with stone to gain defensive power",
+    type: "defense"
+  },
+  "hoya_hoya_no_mi": {
+    name: "Genie Summon",
+    damage: 85,
+    cooldown: 3,
+    effect: "ally_assist",
+    description: "Summon powerful genies to aid in battle",
+    type: "utility"
+  },
+  "netsu_netsu_no_mi": {
+    name: "Heat Transfer",
+    damage: 75,
+    cooldown: 2,
+    effect: "thermal_shift",
+    description: "Absorb and redirect heat energy",
+    type: "utility"
+  },
+  "kuku_kuku_no_mi": {
+    name: "Perfect Recipe",
+    damage: 60,
+    cooldown: 2,
+    effect: "stat_enhancement",
+    description: "Cook special dishes that enhance abilities",
+    type: "buff"
+  },
+  "bisu_bisu_no_mi": {
+    name: "Biscuit Armor",
+    damage: 80,
+    cooldown: 3,
+    effect: "armor_creation",
+    description: "Create hardened biscuit armor for protection",
+    type: "defense"
+  },
 
   // ===== COMMON TIER (60 FRUITS) =====
   "suke_suke_no_mi": {
@@ -1217,32 +1271,40 @@ const DEVIL_FRUIT_SKILLS = {
   }
 };
 
-// Utility function to get skill data by fruit ID
+// Enhanced skill lookup with comprehensive mapping
 function getSkillData(fruitId) {
-  return DEVIL_FRUIT_SKILLS[fruitId] || null;
+  // Direct match first
+  if (DEVIL_FRUIT_SKILLS[fruitId] && typeof DEVIL_FRUIT_SKILLS[fruitId] === 'object') {
+    return DEVIL_FRUIT_SKILLS[fruitId];
+  }
+  
+  // Check if it's a mapped ID
+  if (typeof DEVIL_FRUIT_SKILLS[fruitId] === 'string') {
+    return DEVIL_FRUIT_SKILLS[DEVIL_FRUIT_SKILLS[fruitId]];
+  }
+  
+  // Try alternative ID formats for fruits not found
+  const alternatives = [
+    fruitId.replace(/_basic$/, ''),                    // Remove "_basic" suffix
+    fruitId.replace(/_no_mi.*$/, '_no_mi'),           // Remove model/variant info  
+    fruitId.split('_').slice(0, 3).join('_') + '_no_mi', // First 3 parts + _no_mi
+    fruitId.replace(/_(model|type)_.*$/, '_no_mi'),   // Remove model/type variants
+    fruitId.replace(/_advanced$/, ''),                 // Remove "_advanced" suffix
+    fruitId.replace(/_full$/, ''),                     // Remove "_full" suffix
+  ];
+  
+  for (const altId of alternatives) {
+    if (DEVIL_FRUIT_SKILLS[altId]) {
+      return typeof DEVIL_FRUIT_SKILLS[altId] === 'string' 
+        ? DEVIL_FRUIT_SKILLS[DEVIL_FRUIT_SKILLS[altId]]
+        : DEVIL_FRUIT_SKILLS[altId];
+    }
+  }
+  
+  return null; // Will use fallback
 }
 
-// Utility function to get all skills by rarity
-function getSkillsByRarity(rarity) {
-  return Object.entries(DEVIL_FRUIT_SKILLS)
-    .filter(([id, skill]) => {
-      // You'll need to cross-reference with your existing fruit data for rarity
-      // For now, we can use naming conventions or add rarity to skill data
-      if (rarity === 'divine') return ['gura_gura_no_mi', 'hito_hito_no_mi_nika', 'yami_yami_no_mi', 'joy_boy_will', 'one_piece_treasure'].includes(id);
-      if (rarity === 'mythical') return ['tori_tori_no_mi_phoenix', 'ancient_weapon_pluton'].includes(id);
-      if (rarity === 'legendary') return ['mera_mera_no_mi', 'hie_hie_no_mi', 'pika_pika_no_mi', 'ope_ope_no_mi'].includes(id);
-      // Add more logic as needed
-      return false;
-    })
-    .map(([id, skill]) => ({ id, ...skill }));
-}
-
-// Utility function to check if fruit has custom skill
-function hasCustomSkill(fruitId) {
-  return DEVIL_FRUIT_SKILLS.hasOwnProperty(fruitId);
-}
-
-// Get fallback skill for fruits without custom skills
+// Enhanced fallback with proper damage scaling
 function getFallbackSkill(fruitRarity) {
   const fallbackDamage = {
     'divine': 250,
@@ -1264,21 +1326,57 @@ function getFallbackSkill(fruitRarity) {
     'common': 1
   };
 
+  const fallbackNames = {
+    'divine': 'Divine Manifestation',
+    'mythical': 'Mythical Power',
+    'legendary': 'Legendary Technique',
+    'epic': 'Epic Ability',
+    'rare': 'Special Move',
+    'uncommon': 'Enhanced Strike',
+    'common': 'Basic Attack'
+  };
+
   return {
-    name: "Devil Fruit Power",
+    name: fallbackNames[fruitRarity] || "Devil Fruit Power",
     damage: fallbackDamage[fruitRarity] || 50,
     cooldown: fallbackCooldown[fruitRarity] || 1,
     effect: null,
-    description: "A mysterious devil fruit ability",
+    description: `A ${fruitRarity} level devil fruit ability`,
     type: "attack"
   };
 }
 
-// Export everything for use in your bot
+// Utility function to check if fruit has custom skill
+function hasCustomSkill(fruitId) {
+  return getSkillData(fruitId) !== null;
+}
+
+// Get all skills by rarity for analysis
+function getSkillsByRarity(rarity) {
+  const skills = [];
+  Object.entries(DEVIL_FRUIT_SKILLS).forEach(([fruitId, skill]) => {
+    if (typeof skill === 'object' && skill.damage) {
+      // Estimate rarity based on damage ranges
+      let estimatedRarity = 'common';
+      if (skill.damage >= 250) estimatedRarity = 'divine';
+      else if (skill.damage >= 200) estimatedRarity = 'mythical';
+      else if (skill.damage >= 150) estimatedRarity = 'legendary';
+      else if (skill.damage >= 120) estimatedRarity = 'epic';
+      else if (skill.damage >= 90) estimatedRarity = 'rare';
+      else if (skill.damage >= 70) estimatedRarity = 'uncommon';
+      
+      if (estimatedRarity === rarity) {
+        skills.push({ id: fruitId, ...skill });
+      }
+    }
+  });
+  return skills;
+}
+
 module.exports = {
   DEVIL_FRUIT_SKILLS,
   getSkillData,
-  getSkillsByRarity,
+  getFallbackSkill,
   hasCustomSkill,
-  getFallbackSkill
+  getSkillsByRarity
 };
