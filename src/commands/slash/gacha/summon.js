@@ -29,7 +29,7 @@ const HUNT_DESCRIPTIONS = [
 
 class SummonAnimator {
     static getRainbowPattern(frame, length = 20) {
-        const colors = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫'];
+        const colors = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬜'];
         const pattern = [];
         
         for (let i = 0; i < length; i++) {
@@ -41,7 +41,7 @@ class SummonAnimator {
     }
 
     static getRainbowColor(frame) {
-        const colors = [0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0080FF, 0x8000FF, 0x8B4513];
+        const colors = [0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0080FF, 0x8000FF, 0xFFFFFF];
         return colors[frame % colors.length];
     }
 
@@ -53,7 +53,7 @@ class SummonAnimator {
             'epic': '🟪',
             'mythical': '🟧',
             'legendary': '🟨',
-            'divine': '✨'
+            'divine': '🟥'
         };
         return raritySquares[rarity] || '⬜';
     }
@@ -63,17 +63,17 @@ class SummonAnimator {
         const color = this.getRainbowColor(frame);
         const description = HUNT_DESCRIPTIONS[frame] || HUNT_DESCRIPTIONS[5];
         
-        const animatedDots = '.'.repeat((frame % 3) + 1);
+        const loadingDots = '●●●●○';
         const mysteriousInfo = `✨ **Devil Fruit Summoning in Progress** ✨\n\n${pattern}\n\n` +
-            `📊 **Status:** Scanning${animatedDots}\n` +
-            `🍃 **Name:** ???\n` +
-            `🔮 **Type:** ???\n` +
-            `⭐ **Rarity:** ???\n` +
-            `💪 **CP Multiplier:** ???\n` +
-            `🎯 **Description:** ???\n` +
-            `⚔️ **Ability:** ???\n\n` +
-            `🔥 **Total CP:** ???\n` +
-            `💰 **Remaining Berries:** ???\n\n` +
+            `📊 **Status:** ${loadingDots}\n` +
+            `🍃 **Name:** ${loadingDots}\n` +
+            `🔮 **Type:** ${loadingDots}\n` +
+            `⭐ **Rarity:** ${loadingDots}\n` +
+            `💪 **CP Multiplier:** ${loadingDots}\n` +
+            `🎯 **Description:** ${loadingDots}\n` +
+            `⚔️ **Ability:** ${loadingDots}\n\n` +
+            `🔥 **Total CP:** ${loadingDots}\n` +
+            `💰 **Remaining Berries:** ${loadingDots}\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
@@ -89,7 +89,7 @@ class SummonAnimator {
         const spreadRadius = Math.floor(frame * 1.0);
         
         const bar = Array(barLength).fill('⬛');
-        const rainbowSquares = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫'];
+        const rainbowSquares = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬜'];
         const raritySquare = this.getRaritySquare(fruit.rarity);
         
         for (let i = 0; i < barLength; i++) {
@@ -104,25 +104,25 @@ class SummonAnimator {
         }
 
         const pattern = bar.join(' ');
-        const progressSquares = '🟩'.repeat(Math.floor(frame / 2)) + '⬛'.repeat(6 - Math.floor(frame / 2));
+        const progressDots = '●●●●○';
         
         const mysteriousInfo = `✨ **Devil Fruit Manifestation** ✨\n\n${pattern}\n\n` +
-            `📊 **Status:** ???\n` +
-            `🍃 **Name:** ???\n` +
-            `🔮 **Type:** ???\n` +
-            `⭐ **Rarity:** ???\n` +
-            `💪 **CP Multiplier:** ???\n` +
-            `🎯 **Description:** ???\n` +
-            `⚔️ **Ability:** ???\n\n` +
-            `🔥 **Total CP:** ???\n` +
-            `💰 **Remaining Berries:** ???\n\n` +
+            `📊 **Status:** ${progressDots}\n` +
+            `🍃 **Name:** ${progressDots}\n` +
+            `🔮 **Type:** ${progressDots}\n` +
+            `⭐ **Rarity:** ${progressDots}\n` +
+            `💪 **CP Multiplier:** ${progressDots}\n` +
+            `🎯 **Description:** ${progressDots}\n` +
+            `⚔️ **Ability:** ${progressDots}\n\n` +
+            `🔥 **Total CP:** ${progressDots}\n` +
+            `💰 **Remaining Berries:** ${progressDots}\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
             .setTitle('🏴‍☠️ Devil Fruit Summoning')
             .setDescription(`🔮 Mysterious power manifesting...\n\n${mysteriousInfo}`)
             .setColor(rewardColor)
-            .setFooter({ text: `⚡ Power crystallizing... ${progressSquares}` });
+            .setFooter({ text: `⚡ Power crystallizing... ${progressDots}` });
     }
 
     static createTextRevealFrame(frame, fruit, result, newBalance, rewardColor, rewardEmoji) {
@@ -184,22 +184,36 @@ class SummonAnimator {
     static createQuickFrame(frame, fruit, summonNumber) {
         const pattern = this.getRainbowPattern(frame, 15);
         const color = this.getRainbowColor(frame);
-        const progressDots = '●'.repeat(frame + 1) + '○'.repeat(4 - frame);
+        const loadingDots = '●●●●○';
+        
+        const description = `**Summon ${summonNumber}/10**\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
+            `📊 **Status:** ${loadingDots}\n` +
+            `🍃 **Name:** ${loadingDots}\n` +
+            `🔮 **Type:** ${loadingDots}\n` +
+            `⭐ **Rarity:** ${loadingDots}\n` +
+            `💪 **CP Multiplier:** ${loadingDots}\n` +
+            `🎯 **Description:** ${loadingDots}\n` +
+            `⚔️ **Ability:** ${loadingDots}\n\n` +
+            `${pattern}`;
         
         return new EmbedBuilder()
             .setTitle('🍈 10x Devil Fruit Summoning')
-            .setDescription(`**Summon ${summonNumber}/10**\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n📊 **Status:** Analyzing... ${progressDots}\n🍃 **Fruit:** ???\n⭐ **Rarity:** ???\n\n${pattern}`)
+            .setDescription(description)
             .setColor(color)
             .setFooter({ text: `Summon ${summonNumber} of 10 - Searching...` });
     }
 
-    static createQuickReveal(fruit, summonNumber) {
+    static createQuickReveal(fruit, result, summonNumber) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
         const pattern = Array(15).fill(raritySquare).join(' ');
         
+        // Get the actual duplicate count from the result
+        const duplicateCount = result.duplicateCount || 1;
+        const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
+        
         const description = `**Summon ${summonNumber}/10** - ✨ **ACQUIRED!**\n\n${pattern}\n\n` +
-            `📊 **Status:** ✨ New Discovery!\n` +
+            `📊 **Status:** ${duplicateText}\n` +
             `🍃 **Name:** ${fruit.name}\n` +
             `🔮 **Type:** ${fruit.type}\n` +
             `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
@@ -218,10 +232,16 @@ class SummonAnimator {
     static create10xSummary(fruits, results, balance) {
         let detailedResults = '';
         fruits.forEach((fruit, index) => {
+            const result = results[index]; // Get the corresponding result
             const raritySquare = this.getRaritySquare(fruit.rarity);
             const number = (index + 1).toString().padStart(2, '0');
+            
+            // Get the actual duplicate count from the result
+            const duplicateCount = result.duplicateCount || 1;
+            const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
+            
             detailedResults += `**${number}.** ${raritySquare} **${fruit.name}** (${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)})\n`;
-            detailedResults += `      📊 **Status:** ✨ New Discovery!\n`;
+            detailedResults += `      📊 **Status:** ${duplicateText}\n`;
             detailedResults += `      🔮 **Type:** ${fruit.type}\n`;
             detailedResults += `      💪 **CP Multiplier:** x${fruit.multiplier}\n`;
             detailedResults += `      🎯 **Description:** ${fruit.description}\n`;
