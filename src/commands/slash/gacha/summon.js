@@ -98,12 +98,15 @@ class SummonAnimator {
         const progressSquares = '🟩'.repeat(Math.floor(frame / 2)) + '⬛'.repeat(6 - Math.floor(frame / 2));
         
         const mysteriousInfo = `✨ **Devil Fruit Manifestation** ✨\n\n${pattern}\n\n` +
-            `📊 **Status:** Crystallizing${'.'.repeat((frame % 3) + 1)}\n` +
+            `📊 **Status:** ???\n` +
             `🍃 **Name:** ???\n` +
             `🔮 **Type:** ???\n` +
             `⭐ **Rarity:** ???\n` +
             `💪 **CP Multiplier:** ???\n` +
-            `⚡ **Power:** ???\n\n` +
+            `🎯 **Description:** ???\n` +
+            `⚔️ **Ability:** ???\n\n` +
+            `🔥 **Total CP:** ???\n` +
+            `💰 **Remaining Berries:** ???\n\n` +
             `${pattern}`;
         
         return new EmbedBuilder()
@@ -144,7 +147,7 @@ class SummonAnimator {
         description += `🎯 **Description:** ${frame >= 5 ? fruit.description : '???'}\n`;
         description += `⚔️ **Ability:** ${frame >= 6 ? `${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)` : '???'}\n\n`;
         description += `🔥 **Total CP:** ${frame >= 7 ? `${totalCp.toLocaleString()} CP` : '???'}\n`;
-        description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()} 🍓\n\n`;
+        description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n`;
         description += `${pattern}`;
 
         return new EmbedBuilder()
@@ -172,7 +175,7 @@ class SummonAnimator {
             `🎯 **Description:** ${fruit.description}\n` +
             `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
             `🔥 **Total CP:** ${totalCp.toLocaleString()} CP\n` +
-            `💰 **Remaining Berries:** ${newBalance.toLocaleString()} 🍓\n\n` +
+            `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n` +
             `${pattern}`;
 
         return new EmbedBuilder()
