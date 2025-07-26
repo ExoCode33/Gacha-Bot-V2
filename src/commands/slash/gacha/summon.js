@@ -386,12 +386,12 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // Show initial loading animation for both modes
+        // Show initial animation based on mode
         if (skipAnimation) {
             // Simple loading animation for skip mode
             await this.showSimpleLoadingAnimation(interaction, 0, 50);
         } else {
-            // Full animated progress for normal mode
+            // Your original full animated progress for normal mode
             await this.showProgressAnimation(interaction, 0, 12, 0, 50);
         }
         
@@ -424,16 +424,16 @@ module.exports = {
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
             // Show progress based on animation preference
-            if (!skipAnimation) {
-                // Full animated progress every few pulls
-                if ((i + 1) % 5 === 0) {
-                    const frame = Math.floor((i + 1) / 5) % 12;
-                    await this.showProgressAnimation(interaction, frame, 12, i + 1, 50);
-                }
-            } else {
+            if (skipAnimation) {
                 // Simple loading animation updates for skip mode
                 if ((i + 1) % 10 === 0) {
                     await this.showSimpleLoadingAnimation(interaction, i + 1, 50);
+                }
+            } else {
+                // Your original full rainbow animated progress every few pulls
+                if ((i + 1) % 5 === 0) {
+                    const frame = Math.floor((i + 1) / 5) % 12;
+                    await this.showProgressAnimation(interaction, frame, 12, i + 1, 50);
                 }
             }
             
@@ -503,12 +503,12 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // Show initial loading animation for both modes
+        // Show initial animation based on mode
         if (skipAnimation) {
             // Simple loading animation for skip mode
             await this.showSimpleLoadingAnimation(interaction, 0, 100);
         } else {
-            // Full animated progress for normal mode
+            // Your original full animated progress for normal mode
             await this.showProgressAnimation(interaction, 0, 12, 0, 100);
         }
         
@@ -541,16 +541,16 @@ module.exports = {
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
             // Show progress based on animation preference
-            if (!skipAnimation) {
-                // Full animated progress every few pulls
-                if ((i + 1) % 8 === 0) {
-                    const frame = Math.floor((i + 1) / 8) % 12;
-                    await this.showProgressAnimation(interaction, frame, 12, i + 1, 100);
-                }
-            } else {
+            if (skipAnimation) {
                 // Simple loading animation updates for skip mode
                 if ((i + 1) % 20 === 0) {
                     await this.showSimpleLoadingAnimation(interaction, i + 1, 100);
+                }
+            } else {
+                // Your original full rainbow animated progress every few pulls
+                if ((i + 1) % 8 === 0) {
+                    const frame = Math.floor((i + 1) / 8) % 12;
+                    await this.showProgressAnimation(interaction, frame, 12, i + 1, 100);
                 }
             }
             
