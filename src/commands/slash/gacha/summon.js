@@ -614,25 +614,27 @@ module.exports = {
         const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
         const currentPity = await GachaService.getPityCount(interaction.user.id);
         
-        // Create a simple loading animation with dots
-        const frame = Math.floor(Date.now() / 500) % 4; // Change every 500ms
-        const loadingDots = '●'.repeat(frame) + '○'.repeat(3 - frame);
+        // Create rainbow pattern like in the screenshot
+        const frame = Math.floor(Date.now() / 500) % 7; // Cycle through colors
+        const colors = ['🟧', '🟨', '🟩', '🟦', '🟪', '⬜', '🟥'];
+        const pattern = [];
         
-        // Create simple progress bar
-        const progressBarLength = 20;
-        const filledBars = Math.floor((currentPulls / totalPulls) * progressBarLength);
-        const emptyBars = progressBarLength - filledBars;
-        const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+        for (let i = 0; i < 20; i++) {
+            const colorIndex = (i + frame) % colors.length;
+            pattern.push(colors[colorIndex]);
+        }
+        
+        const rainbowPattern = pattern.join('');
         
         const embed = new EmbedBuilder()
-            .setTitle(`🍈 ${totalPulls}x Devil Fruit Summoning`)
+            .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
             .setDescription(
-                `🌊 **Searching the Grand Line for Devil Fruits...**\n\n` +
+                `🌊 **Scanning the Grand Line for Devil Fruits...**\n\n` +
+                `${rainbowPattern}\n\n` +
                 `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
-                `${progressBar}\n\n` +
                 `🎯 **Current Pity:** ${currentPity}/1500\n` +
-                `⚡ **Status:** Processing ${loadingDots}\n\n` +
-                `✨ *Skip animation enabled - faster processing!*`
+                `⚡ **Status:** Searching for legendary powers...\n\n` +
+                `${rainbowPattern}`
             )
             .setColor(0x4A90E2)
             .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
