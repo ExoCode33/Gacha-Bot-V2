@@ -1,7 +1,6 @@
 // src/data/Constants.js - FIXED: Much Lower Divine Rates + Balanced Pity
 module.exports = {
-    // Economy Constants
-    PULL_COST: 1000,
+: 1000,
     MULTI_PULL_DISCOUNT: 0.9, // 10% discount for 10-pulls
     BASE_INCOME: 50,
     INCOME_MULTIPLIER: 0.1,
@@ -52,19 +51,19 @@ module.exports = {
         divine: 0.01            // HEAVILY REDUCED from 0.05%
     },
 
-    // FIXED PITY SYSTEM - Remove Legendary, Higher Thresholds
+    // FIXED PITY SYSTEM - Remove Legendary, Divine 1% on Pity
     PITY_SYSTEM: {
-        HARD_PITY_LIMIT: 2000,     // Increased from 1500
+        HARD_PITY_LIMIT: 1500,     // Back to 1500
         
         // Premium rates when pity procs - ONLY Mythical/Divine
         PREMIUM_RATES: {
-            mythical: 95.0,         // 95% when pity procs  
-            divine: 5.0             // 5% when pity procs (much lower)
+            mythical: 99.0,         // 99% when pity procs  
+            divine: 1.0             // 1% when pity procs (very low)
         },
         
         // Pity proc chance calculation - MUCH SLOWER
         BASE_PITY_CHANCE: 0.0,      // Base chance at 0 pulls
-        MAX_PITY_CHANCE: 100.0,     // 100% chance at 2000 pulls
+        MAX_PITY_CHANCE: 100.0,     // 100% chance at 1500 pulls
         
         // Pity resets ONLY on mythical/divine (removed legendary)
         RESET_RARITIES: ['mythical', 'divine'],
@@ -160,11 +159,8 @@ module.exports = {
         REFLECT: { type: 'special', icon: '🪞' }
     },
 
-    // Enhanced Trading Constants  
-    TRADE_TAX: 0.05, // 5% tax on trades
-    MIN_TRADE_LEVEL: 5,
-    TRADE_COOLDOWN: 300, // 5 minutes
-    MAX_TRADE_VALUE: 1000000, // Max berries per trade
+    // Enhanced Trading Constants - REMOVED
+    // No trading system
     
     // Achievements System
     ACHIEVEMENTS: {
@@ -396,7 +392,6 @@ module.exports = {
         PULL: 3,                  
         INCOME: 60,               
         PVP_BATTLE: 300,          
-        TRADE: 300,               
         PRESTIGE: 86400,          
         DAILY_RESET: 86400        
     },
