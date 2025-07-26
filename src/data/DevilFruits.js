@@ -1,4 +1,4 @@
-// src/data/DevilFruits.js - Complete Devil Fruits Database with Standard PvP Effects
+// src/data/DevilFruits.js - Complete Devil Fruits Database with Updated Rarity Rates
 const DEVIL_FRUITS = {
   // =====================================================
   // COMMON FRUITS (30 fruits) - 1.0x to 1.2x CP
@@ -1353,15 +1353,15 @@ const DEVIL_FRUITS = {
   }
 };
 
-// Rarity weights for gacha system
+// UPDATED Rarity weights for gacha system
 const RARITY_WEIGHTS = {
   common: 47,      // 47%
   uncommon: 30,    // 30%  
   rare: 15,        // 15%
   epic: 5,         // 5%
   legendary: 2,    // 2%
-  mythical: 0.8,   // 0.8%
-  divine: 0.2      // 0.2%
+  mythical: 0.4,   // 0.4% (UPDATED from 0.8%)
+  divine: 0.05     // 0.05% (UPDATED from 0.2%)
 };
 
 // Rarity colors for embeds
