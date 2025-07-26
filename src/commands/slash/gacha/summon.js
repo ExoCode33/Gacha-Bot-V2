@@ -359,10 +359,9 @@ module.exports = {
             
             // Check skip animation setting
             if (skipAnimation) {
-                // Use simple rainbow animation (like 50x/100x skip)
-                if ((i + 1) % 2 === 0) { // Update every 2 pulls
-                    await this.showSimpleLoadingAnimation(interaction, i + 1, 10);
-                }
+                // Use simple rainbow animation (like 50x/100x skip) - CONSTANTLY UPDATE
+                await this.showSimpleLoadingAnimation(interaction, i + 1, 10);
+                await new Promise(resolve => setTimeout(resolve, 100)); // Short delay for constant updates
             } else {
                 // Use full individual fruit animation with rarity-stopped rainbow
                 await this.runQuickAnimationWithRarityStop(interaction, displayFruit, result, i + 1, 10, currentPity);
@@ -422,10 +421,9 @@ module.exports = {
             
             // Show animation based on skip_animation setting
             if (skipAnimation) {
-                // Use simple rainbow animation (like old 50x/100x)
-                if ((i + 1) % 10 === 0) {
-                    await this.showSimpleLoadingAnimation(interaction, i + 1, 50);
-                }
+                // Use simple rainbow animation - CONSTANTLY UPDATE
+                await this.showSimpleLoadingAnimation(interaction, i + 1, 50);
+                await new Promise(resolve => setTimeout(resolve, 50)); // Constant updates
             } else {
                 // Use full individual fruit animation with rarity-stopped rainbow
                 await this.runQuickAnimationWithRarityStop(interaction, displayFruit, result, i + 1, 50, currentPity);
@@ -528,10 +526,9 @@ module.exports = {
             
             // Show animation based on skip_animation setting
             if (skipAnimation) {
-                // Use simple rainbow animation (like old 50x/100x)
-                if ((i + 1) % 20 === 0) {
-                    await this.showSimpleLoadingAnimation(interaction, i + 1, 100);
-                }
+                // Use simple rainbow animation - CONSTANTLY UPDATE
+                await this.showSimpleLoadingAnimation(interaction, i + 1, 100);
+                await new Promise(resolve => setTimeout(resolve, 30)); // Constant updates
             } else {
                 // Use full individual fruit animation with rarity-stopped rainbow
                 await this.runQuickAnimationWithRarityStop(interaction, displayFruit, result, i + 1, 100, currentPity);
@@ -649,6 +646,9 @@ module.exports = {
     },
 
     async runQuickAnimationWithRarityStop(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
+        // Store the current rainbow position when we start this fruit
+        const startTime = Date.now();
+        
         // First, run the scanning animation with changing rainbow
         for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
             const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity);
@@ -657,39 +657,67 @@ module.exports = {
             await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
         }
         
+        // Calculate where the rainbow should be when we reveal
+        const rainbowPosition = Math.floor(Date.now() / 300) % 7;
+        
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // Then reveal with the rarity-specific color and stopped rainbow
-        const revealEmbed = this.createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity);
-        await interaction.editReply({ embeds: [revealEmbed] });
+        // Reveal: First stop rainbow on rarity color
+        const rarityStoppedEmbed = this.createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, 'stopped');
+        await interaction.editReply({ embeds: [rarityStoppedEmbed] });
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Then turn whole rainbow to rarity color for dramatic reveal
+        const fullRarityEmbed = this.createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, 'full');
+        await interaction.editReply({ embeds: [fullRarityEmbed] });
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Finally continue rainbow from where it stopped
+        const continuedEmbed = this.createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, 'continue');
+        await interaction.editReply({ embeds: [continuedEmbed] });
         
         await new Promise(resolve => setTimeout(resolve, 300));
     },
 
-    createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity) {
+    createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, phase) {
         const raritySquare = SummonAnimator.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
+        const colors = ['🟧', '🟨', '🟩', '🟦', '🟪', '⬜', '🟥'];
         
-        // Create pattern where leftmost squares are the rarity color, then fade to normal pattern
-        const pattern = [];
-        for (let i = 0; i < 20; i++) {
-            if (i < 3) {
-                // First 3 squares match the rarity
-                pattern.push(raritySquare);
-            } else {
-                // Rest is normal rainbow pattern
-                const colors = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬜'];
-                const colorIndex = (i - 3) % colors.length;
+        let pattern = [];
+        
+        if (phase === 'stopped') {
+            // Rainbow stops on the rarity color (leftmost square matches rarity)
+            for (let i = 0; i < 20; i++) {
+                if (i === 0) {
+                    // First square is the rarity color
+                    pattern.push(raritySquare);
+                } else {
+                    // Rest continues the rainbow from where it was
+                    const colorIndex = (rainbowPosition + i) % colors.length;
+                    pattern.push(colors[colorIndex]);
+                }
+            }
+        } else if (phase === 'full') {
+            // Whole rainbow turns to rarity color for dramatic effect
+            pattern = Array(20).fill(raritySquare);
+        } else if (phase === 'continue') {
+            // Rainbow continues from where it stopped, but shifted
+            const newPosition = (rainbowPosition + 1) % 7;
+            for (let i = 0; i < 20; i++) {
+                const colorIndex = (newPosition + i) % colors.length;
                 pattern.push(colors[colorIndex]);
             }
         }
         
-        const stoppedPattern = pattern.join(' ');
+        const rainbowPattern = pattern.join(' ');
         
         const duplicateCount = result.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
         
-        const description = `✨ **ACQUIRED!**\n\n${stoppedPattern}\n\n` +
+        const description = `✨ **ACQUIRED!**\n\n${rainbowPattern}\n\n` +
             `📊 **Status:** ${duplicateText}\n` +
             `🍃 **Name:** ${fruit.name}\n` +
             `🔮 **Type:** ${fruit.type}\n` +
@@ -700,7 +728,7 @@ module.exports = {
             `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
             `🔥 **Total CP:** ${result.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
             `💰 **Remaining Berries:** Loading...\n\n` +
-            `${stoppedPattern}`;
+            `${rainbowPattern}`;
         
         let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ Acquired! | Pity: ${currentPity}/1500`;
         if (result.pityUsed) {
