@@ -1,6 +1,7 @@
 // src/data/Constants.js - FIXED: Much Lower Divine Rates + Balanced Pity
 module.exports = {
-: 1000,
+    // Game Economy Constants
+    PULL_COST: 1000,
     MULTI_PULL_DISCOUNT: 0.9, // 10% discount for 10-pulls
     BASE_INCOME: 50,
     INCOME_MULTIPLIER: 0.1,
@@ -159,9 +160,6 @@ module.exports = {
         REFLECT: { type: 'special', icon: '🪞' }
     },
 
-    // Enhanced Trading Constants - REMOVED
-    // No trading system
-    
     // Achievements System
     ACHIEVEMENTS: {
         FIRST_PULL: { 
