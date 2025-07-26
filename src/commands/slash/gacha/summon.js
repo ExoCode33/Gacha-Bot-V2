@@ -141,8 +141,8 @@ class SummonAnimator {
         description += `🔮 **Type:** ${frame >= 2 ? fruit.type : '???'}\n`;
         description += `⭐ **Rarity:** ${frame >= 3 ? `${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}` : '???'}\n`;
         description += `💪 **CP Multiplier:** ${frame >= 4 ? `x${fruit.multiplier}` : '???'}\n`;
-        description += `⚡ **Power:** ${frame >= 5 ? fruit.power : '???'}\n`;
-        description += `🎯 **Description:** ${frame >= 6 ? fruit.description : '???'}\n\n`;
+        description += `🎯 **Description:** ${frame >= 5 ? fruit.description : '???'}\n`;
+        description += `⚔️ **Ability:** ${frame >= 6 ? `${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)` : '???'}\n\n`;
         description += `🔥 **Total CP:** ${frame >= 7 ? `${totalCp.toLocaleString()} CP` : '???'}\n`;
         description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()} 🍓\n\n`;
         description += `${pattern}`;
@@ -169,8 +169,8 @@ class SummonAnimator {
             `🔮 **Type:** ${fruit.type}\n` +
             `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
             `💪 **CP Multiplier:** x${fruit.multiplier}\n` +
-            `⚡ **Power:** ${fruit.power}\n` +
-            `🎯 **Description:** ${fruit.description}\n\n` +
+            `🎯 **Description:** ${fruit.description}\n` +
+            `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
             `🔥 **Total CP:** ${totalCp.toLocaleString()} CP\n` +
             `💰 **Remaining Berries:** ${newBalance.toLocaleString()} 🍓\n\n` +
             `${pattern}`;
@@ -323,14 +323,22 @@ module.exports = {
         const result = results[0];
         const fruit = result.fruit;
         
+        // Get actual fruit data for skill information
+        const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
+        const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
+            f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
+        );
+        
         // Convert database result to display format (USING OLD STRUCTURE)
         const displayFruit = {
             name: fruit.fruit_name,
             type: fruit.fruit_type,
             rarity: fruit.fruit_rarity,
             multiplier: (fruit.base_cp / 100).toFixed(1),
-            power: fruit.fruit_power || fruit.fruit_description || 'Unknown power',
-            description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power'
+            description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power',
+            skillName: actualFruit?.skill?.name || 'Unknown Ability',
+            skillDamage: actualFruit?.skill?.damage || 50,
+            skillCooldown: actualFruit?.skill?.cooldown || 2
         };
         
         console.log(`🎯 Single summon: ${displayFruit.name} (${displayFruit.rarity})`);
@@ -344,15 +352,26 @@ module.exports = {
         // Get fruits from gacha service
         const results = await GachaService.performPulls(interaction.user.id, 10);
         
+        // Get actual fruit data for skill information  
+        const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
+        
         // Convert to display format (USING OLD STRUCTURE)
-        const displayFruits = results.map(result => ({
-            name: result.fruit.fruit_name,
-            type: result.fruit.fruit_type,
-            rarity: result.fruit.fruit_rarity,
-            multiplier: (result.fruit.base_cp / 100).toFixed(1),
-            power: result.fruit.fruit_power || result.fruit.fruit_description || 'Unknown power',
-            description: result.fruit.fruit_description || result.fruit.fruit_power || 'A mysterious Devil Fruit power'
-        }));
+        const displayFruits = results.map(result => {
+            const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
+                f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
+            );
+            
+            return {
+                name: result.fruit.fruit_name,
+                type: result.fruit.fruit_type,
+                rarity: result.fruit.fruit_rarity,
+                multiplier: (result.fruit.base_cp / 100).toFixed(1),
+                description: result.fruit.fruit_description || result.fruit.fruit_power || 'A mysterious Devil Fruit power',
+                skillName: actualFruit?.skill?.name || 'Unknown Ability',
+                skillDamage: actualFruit?.skill?.damage || 50,
+                skillCooldown: actualFruit?.skill?.cooldown || 2
+            };
+        });
         
         console.log(`🎯 10x summon starting`);
         
