@@ -4,19 +4,19 @@ const { DEVIL_FRUITS, getFruitsByRarity, selectWeightedDivineFruit } = require('
 const { RARITY_COLORS, BASE_PULL_RATES } = require('../data/Constants');
 const Logger = require('../utils/Logger');
 
-// FIXED PITY SYSTEM - ONLY Mythical/Divine
+// FIXED PITY SYSTEM - ONLY Mythical/Divine, 1500 limit
 const FIXED_PITY_SYSTEM = {
-    HARD_PITY_LIMIT: 2000,     // Increased from 1500
+    HARD_PITY_LIMIT: 1500,     // Back to 1500
     
     // Premium rates when pity procs - ONLY mythical/divine
     PREMIUM_RATES: {
-        mythical: 95.0,         // 95% when pity procs
-        divine: 5.0             // 5% when pity procs (much lower)
+        mythical: 99.0,         // 99% when pity procs
+        divine: 1.0             // 1% when pity procs (very low)
     },
     
     // Pity proc chance calculation - MUCH SLOWER SCALING
     BASE_PITY_CHANCE: 0.0,      // Base chance at 0 pulls
-    MAX_PITY_CHANCE: 100.0,     // 100% chance at 2000 pulls
+    MAX_PITY_CHANCE: 100.0,     // 100% chance at 1500 pulls
     
     // Pity resets ONLY when you get mythical/divine (REMOVED legendary)
     RESET_RARITIES: ['mythical', 'divine'],
@@ -267,18 +267,18 @@ class GachaService {
     }
 
     /**
-     * Get next pity milestone description - Updated for 2000 limit
+     * Get next pity milestone description - Updated for 1500 limit
      */
     getNextPityMilestone(pityCount) {
         const milestones = [
-            { pulls: 500, description: 'Starting the journey' },
-            { pulls: 1000, description: 'Building momentum' },
-            { pulls: 1300, description: 'Getting warmer' },
-            { pulls: 1500, description: 'Approaching power' },
-            { pulls: 1700, description: 'Very close now' },
-            { pulls: 1850, description: 'Almost guaranteed' },
-            { pulls: 1950, description: 'Nearly there' },
-            { pulls: 2000, description: 'Guaranteed mythical/divine!' }
+            { pulls: 300, description: 'Starting the journey' },
+            { pulls: 600, description: 'Building momentum' },
+            { pulls: 900, description: 'Getting warmer' },
+            { pulls: 1100, description: 'Approaching power' },
+            { pulls: 1250, description: 'Very close now' },
+            { pulls: 1350, description: 'Almost guaranteed' },
+            { pulls: 1450, description: 'Nearly there' },
+            { pulls: 1500, description: 'Guaranteed mythical/divine!' }
         ];
         
         for (const milestone of milestones) {
@@ -298,7 +298,7 @@ class GachaService {
         const { currentPity, isAtHardPity } = pityInfo;
         
         // Simple pity display - just the count
-        let pityText = `🎯 **Pity:** ${currentPity}/2000 (Mythical/Divine only)`;
+        let pityText = `🎯 **Pity:** ${currentPity}/1500 (Mythical/Divine only)`;
         
         if (isAtHardPity) {
             pityText += ' 🔥 **GUARANTEED!**';
