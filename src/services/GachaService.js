@@ -282,22 +282,16 @@ class GachaService {
     }
 
     /**
-     * Format pity display text for embeds - HIDE activation chance from users
+     * Format pity display text for embeds - Simple format
      */
     formatPityDisplay(pityInfo, pityUsedInSession = false) {
         const { currentPity, isAtHardPity } = pityInfo;
         
-        // Hide the exact pity proc chance from users
-        let pityText = `🎯 **Pity:** ${currentPity}/1500 pulls`;
+        // Simple pity display - just the count
+        let pityText = `🎯 **Pity:** ${currentPity}/1500`;
         
         if (isAtHardPity) {
-            pityText += ' 🔥 **GUARANTEED PREMIUM!**';
-        } else if (currentPity >= 1200) {
-            pityText += ' ⚡ **Very Close**';
-        } else if (currentPity >= 1000) {
-            pityText += ' 🟡 **Building Up**';
-        } else if (currentPity >= 500) {
-            pityText += ' 🟠 **Progressing**';
+            pityText += ' 🔥 **GUARANTEED!**';
         }
         
         if (pityUsedInSession) {
