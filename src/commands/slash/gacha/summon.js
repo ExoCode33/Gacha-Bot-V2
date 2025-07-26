@@ -357,8 +357,8 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // ALWAYS use the simple rainbow animation for 10x (like old 50x/100x)
-            await this.showSimpleLoadingAnimation(interaction, i + 1, 10);
+            // Use full individual fruit animation (like 50x/100x without skip)
+            await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
             if (i < 9) await new Promise(resolve => setTimeout(resolve, 800));
             
             // Update pity for next pull
@@ -590,7 +590,7 @@ module.exports = {
         const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
         const currentPity = await GachaService.getPityCount(interaction.user.id);
         
-        // Create rainbow pattern like in the screenshot
+        // Create rainbow pattern with proper spacing like in your original
         const frame = Math.floor(Date.now() / 500) % 7; // Cycle through colors
         const colors = ['🟧', '🟨', '🟩', '🟦', '🟪', '⬜', '🟥'];
         const pattern = [];
@@ -600,7 +600,8 @@ module.exports = {
             pattern.push(colors[colorIndex]);
         }
         
-        const rainbowPattern = pattern.join('');
+        // Join with spaces for proper spacing like original
+        const rainbowPattern = pattern.join(' ');
         
         const embed = new EmbedBuilder()
             .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
