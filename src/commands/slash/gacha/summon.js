@@ -384,12 +384,19 @@ module.exports = {
     },
 
     async run50xSummon(interaction, newBalance, skipAnimation = false) {
-        // Start with animated summoning message
-        let progressFrame = 0;
-        const maxProgressFrames = 12; // More frames for smoother animation
-        
-        // Show initial animated summoning message
-        await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 50);
+        // Only show animated summoning message if animation is NOT skipped
+        if (!skipAnimation) {
+            let progressFrame = 0;
+            const maxProgressFrames = 12; // More frames for smoother animation
+            
+            // Show initial animated summoning message
+            await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 50);
+        } else {
+            // Show simple progress message for skip animation
+            await interaction.editReply({
+                content: '🌊 Starting 50x Mega Summon... Processing pulls quickly!'
+            });
+        }
         
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
@@ -400,11 +407,17 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // Start continuous animation
-        const animationInterval = setInterval(async () => {
-            progressFrame = (progressFrame + 1) % maxProgressFrames;
-            await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, allDisplayFruits.length, 50);
-        }, 600); // Update every 600ms for smooth flow
+        // Start continuous animation only if not skipped
+        let animationInterval = null;
+        let progressFrame = 0;
+        const maxProgressFrames = 12;
+        
+        if (!skipAnimation) {
+            animationInterval = setInterval(async () => {
+                progressFrame = (progressFrame + 1) % maxProgressFrames;
+                await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, allDisplayFruits.length, 50);
+            }, 600); // Update every 600ms for smooth flow
+        }
         
         for (let i = 0; i < 50; i++) {
             // Perform single pull
@@ -431,17 +444,24 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // NO INDIVIDUAL ANIMATIONS FOR 50x - just process pulls
-            
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
+            // Update progress for skip animation mode (simple text updates)
+            if (skipAnimation && (i + 1) % 10 === 0) {
+                await interaction.editReply({
+                    content: `🌊 Progress: ${i + 1}/50 pulls completed... (Pity: ${currentPity}/1500)`
+                });
+            }
+            
             // Small delay between pulls
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, skipAnimation ? 50 : 100));
         }
         
-        // Stop animation
-        clearInterval(animationInterval);
+        // Stop animation if it was running
+        if (animationInterval) {
+            clearInterval(animationInterval);
+        }
         
         // Get final pity info
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
@@ -495,12 +515,19 @@ module.exports = {
     },
 
     async run100xSummon(interaction, newBalance, skipAnimation = false) {
-        // Start with animated summoning message
-        let progressFrame = 0;
-        const maxProgressFrames = 12; // More frames for smoother animation
-        
-        // Show initial animated summoning message
-        await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 100);
+        // Only show animated summoning message if animation is NOT skipped
+        if (!skipAnimation) {
+            let progressFrame = 0;
+            const maxProgressFrames = 12; // More frames for smoother animation
+            
+            // Show initial animated summoning message
+            await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, 0, 100);
+        } else {
+            // Show simple progress message for skip animation
+            await interaction.editReply({
+                content: '🌊 Starting 100x Ultra Summon... Processing pulls quickly!'
+            });
+        }
 
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
@@ -511,11 +538,17 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // Start continuous animation
-        const animationInterval = setInterval(async () => {
-            progressFrame = (progressFrame + 1) % maxProgressFrames;
-            await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, allDisplayFruits.length, 100);
-        }, 600); // Update every 600ms for smooth flow
+        // Start continuous animation only if not skipped
+        let animationInterval = null;
+        let progressFrame = 0;
+        const maxProgressFrames = 12;
+        
+        if (!skipAnimation) {
+            animationInterval = setInterval(async () => {
+                progressFrame = (progressFrame + 1) % maxProgressFrames;
+                await this.showProgressAnimation(interaction, progressFrame, maxProgressFrames, allDisplayFruits.length, 100);
+            }, 600); // Update every 600ms for smooth flow
+        }
         
         for (let i = 0; i < 100; i++) {
             // Perform single pull
@@ -542,17 +575,24 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // NO INDIVIDUAL ANIMATIONS FOR 100x - just process pulls
-            
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
+            // Update progress for skip animation mode (simple text updates)
+            if (skipAnimation && (i + 1) % 20 === 0) {
+                await interaction.editReply({
+                    content: `🌊 Progress: ${i + 1}/100 pulls completed... (Pity: ${currentPity}/1500)`
+                });
+            }
+            
             // Small delay between pulls
-            await new Promise(resolve => setTimeout(resolve, 80));
+            await new Promise(resolve => setTimeout(resolve, skipAnimation ? 30 : 80));
         }
         
-        // Stop animation
-        clearInterval(animationInterval);
+        // Stop animation if it was running
+        if (animationInterval) {
+            clearInterval(animationInterval);
+        }
         
         // Get final pity info
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
