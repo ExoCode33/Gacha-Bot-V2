@@ -431,11 +431,7 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Run animation if not skipped (but much faster for 50x)
-            if (!skipAnimation && i < 5) { // Only animate first 5 for performance
-                await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
-                if (i < 4) await new Promise(resolve => setTimeout(resolve, 300));
-            }
+            // NO INDIVIDUAL ANIMATIONS FOR 50x - just process pulls
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
@@ -546,11 +542,7 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Run animation if not skipped (but only for first 3 for performance)
-            if (!skipAnimation && i < 3) {
-                await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
-                if (i < 2) await new Promise(resolve => setTimeout(resolve, 200));
-            }
+            // NO INDIVIDUAL ANIMATIONS FOR 100x - just process pulls
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
