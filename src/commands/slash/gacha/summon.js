@@ -9,11 +9,11 @@ const { getFruitsByRarity, getRandomFruitByRarity } = require('../../../data/Dev
 // Animation Configuration
 const ANIMATION_CONFIG = {
     RAINBOW_FRAMES: 6,
-    RAINBOW_DELAY: 1200,  // Increased from 900 to 1200 (slower)
+    RAINBOW_DELAY: 1000,  // Reduced from 1200 to 1000 (faster)
     SPREAD_FRAMES: 12,
-    SPREAD_DELAY: 600,    // Increased from 400 to 600 (slower)
+    SPREAD_DELAY: 500,    // Reduced from 600 to 500 (faster)
     REVEAL_FRAMES: 8,
-    REVEAL_DELAY: 900,    // Increased from 700 to 900 (slower)
+    REVEAL_DELAY: 750,    // Reduced from 900 to 750 (faster)
     QUICK_FRAMES: 5,
     QUICK_DELAY: 500
 };
@@ -184,7 +184,7 @@ class SummonAnimator {
     }
 
     static createQuickFrame(frame, fruit, summonNumber) {
-        const pattern = this.getRainbowPattern(frame, 20); // Changed from 15 to 20 to match single pull
+        const pattern = this.getRainbowPattern(frame, 20);
         const color = this.getRainbowColor(frame);
         // Animated loading dots that cycle
         const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
@@ -401,8 +401,29 @@ module.exports = {
     },
 
     async runRainbowPhase(interaction, fruit) {
-        for (let frame = 0; frame < ANIMATION_CONFIG.RAINBOW_FRAMES; frame++) {
-            const embed = SummonAnimator.createRainbowFrame(frame, fruit);
+        // Use same quick animation as 10x but with single pull styling
+        for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
+            const pattern = SummonAnimator.getRainbowPattern(frame, 20);
+            const color = SummonAnimator.getRainbowColor(frame);
+            const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
+            
+            const description = `🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
+                `📊 **Status:** ${loadingDots}\n` +
+                `🍃 **Name:** ${loadingDots}\n` +
+                `🔮 **Type:** ${loadingDots}\n` +
+                `⭐ **Rarity:** ${loadingDots}\n` +
+                `💪 **CP Multiplier:** ${loadingDots}\n` +
+                `🎯 **Description:** ${loadingDots}\n` +
+                `⚔️ **Ability:** ${loadingDots}\n\n` +
+                `🔥 **Total CP:** ${loadingDots}\n` +
+                `💰 **Remaining Berries:** ${loadingDots}\n\n` +
+                `${pattern}`;
+            
+            const embed = new EmbedBuilder()
+                .setTitle('🏴‍☠️ Devil Fruit Summoning')
+                .setDescription(description)
+                .setColor(color)
+                .setFooter({ text: `🌊 Searching the mysterious seas...` });
             
             if (frame === 0 && !interaction.replied && !interaction.deferred) {
                 await interaction.reply({ embeds: [embed] });
@@ -410,9 +431,7 @@ module.exports = {
                 await interaction.editReply({ embeds: [embed] });
             }
             
-            if (frame < ANIMATION_CONFIG.RAINBOW_FRAMES - 1) {
-                await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.RAINBOW_DELAY));
-            }
+            await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
         }
     },
 
@@ -432,10 +451,49 @@ module.exports = {
 
     async runTextReveal(interaction, fruit, result, newBalance) {
         const rewardColor = RARITY_COLORS[fruit.rarity];
-        const rewardEmoji = RARITY_EMOJIS[fruit.rarity];
+        const raritySquare = SummonAnimator.getRaritySquare(fruit.rarity);
+        const pattern = Array(20).fill(raritySquare).join(' ');
+        const duplicateCount = result.duplicateCount || 1;
+        const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
+        const totalCp = result.fruit?.total_cp || 250;
         
+        // Gradual reveal - each frame shows one more line
         for (let frame = 0; frame < ANIMATION_CONFIG.REVEAL_FRAMES; frame++) {
-            const embed = SummonAnimator.createTextRevealFrame(frame, fruit, result, newBalance, rewardColor, rewardEmoji);
+            let description = `✨ **Devil Fruit Acquired!** ✨\n\n${pattern}\n\n`;
+            
+            // Gradual reveal based on frame number (0-7)
+            if (frame >= 0) description += `📊 **Status:** ${duplicateText}\n`;
+            else description += `📊 **Status:** ●●●●○\n`;
+            
+            if (frame >= 1) description += `🍃 **Name:** ${fruit.name}\n`;
+            else description += `🍃 **Name:** ●●●●○\n`;
+            
+            if (frame >= 2) description += `🔮 **Type:** ${fruit.type}\n`;
+            else description += `🔮 **Type:** ●●●●○\n`;
+            
+            if (frame >= 3) description += `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n`;
+            else description += `⭐ **Rarity:** ●●●●○\n`;
+            
+            if (frame >= 4) description += `💪 **CP Multiplier:** x${fruit.multiplier}\n`;
+            else description += `💪 **CP Multiplier:** ●●●●○\n`;
+            
+            if (frame >= 5) description += `🎯 **Description:** ${fruit.description}\n`;
+            else description += `🎯 **Description:** ●●●●○\n`;
+            
+            if (frame >= 6) description += `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
+            else description += `⚔️ **Ability:** ●●●●○\n\n`;
+            
+            if (frame >= 7) description += `🔥 **Total CP:** ${totalCp.toLocaleString()} CP\n`;
+            else description += `🔥 **Total CP:** ●●●●○\n`;
+            
+            description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n${pattern}`;
+
+            const embed = new EmbedBuilder()
+                .setTitle('🏴‍☠️ Devil Fruit Summoning')
+                .setDescription(description)
+                .setColor(rewardColor)
+                .setFooter({ text: `🎉 Added to your collection! Revealing...` });
+
             await interaction.editReply({ embeds: [embed] });
             
             if (frame < ANIMATION_CONFIG.REVEAL_FRAMES - 1) {
@@ -496,7 +554,8 @@ module.exports = {
             components: [row]
         });
 
-        const collector = currentReply.createMessageComponentCollector({ time: 300000 });
+        // Setup collector with shorter timeout to prevent expired interactions
+        const collector = currentReply.createMessageComponentCollector({ time: 120000 }); // Reduced from 300000 to 120000 (2 minutes)
         collector.on('collect', async (buttonInteraction) => {
             await this.handleButtonInteraction(buttonInteraction, interaction.user.id);
         });
@@ -504,6 +563,7 @@ module.exports = {
     },
 
     async handleButtonInteraction(buttonInteraction, originalUserId) {
+        // Check if correct user
         if (buttonInteraction.user.id !== originalUserId) {
             return buttonInteraction.reply({
                 content: '❌ You can only interact with your own summon results!',
@@ -512,6 +572,12 @@ module.exports = {
         }
 
         try {
+            // Check if interaction is still valid
+            if (!buttonInteraction.isRepliable()) {
+                console.log('Interaction is no longer repliable (expired)');
+                return;
+            }
+
             if (buttonInteraction.customId === 'summon_again') {
                 await this.handleSummonAgain(buttonInteraction);
             } else if (buttonInteraction.customId === 'summon_10x') {
@@ -519,8 +585,23 @@ module.exports = {
             }
         } catch (error) {
             console.error('Button error:', error);
-            if (!buttonInteraction.replied && !buttonInteraction.deferred) {
-                await buttonInteraction.reply({ content: '❌ An error occurred.', ephemeral: true });
+            
+            // Better error handling for expired interactions
+            if (error.code === 10062) {
+                console.log('Interaction expired - buttons will be disabled');
+                return;
+            }
+            
+            // Only try to respond if interaction hasn't been responded to
+            if (!buttonInteraction.replied && !buttonInteraction.deferred && buttonInteraction.isRepliable()) {
+                try {
+                    await buttonInteraction.reply({ 
+                        content: '❌ An error occurred. Please try using the /summon command again.', 
+                        ephemeral: true 
+                    });
+                } catch (replyError) {
+                    console.log('Could not send error reply - interaction may be expired');
+                }
             }
         }
     },
@@ -538,6 +619,12 @@ module.exports = {
 
         await EconomyService.deductBerries(buttonInteraction.user.id, cost, 'summon_again');
         const newBalance = balance - cost;
+
+        // Check if interaction is still valid before deferring
+        if (!buttonInteraction.isRepliable()) {
+            console.log('Cannot defer - interaction expired');
+            return;
+        }
 
         await buttonInteraction.deferReply();
         await this.runSingleSummon(buttonInteraction, newBalance);
@@ -557,6 +644,12 @@ module.exports = {
 
         await EconomyService.deductBerries(buttonInteraction.user.id, cost, 'summon_10x');
         const newBalance = balance - cost;
+
+        // Check if interaction is still valid before deferring
+        if (!buttonInteraction.isRepliable()) {
+            console.log('Cannot defer - interaction expired');
+            return;
+        }
 
         await buttonInteraction.deferReply();
         await this.run10xSummon(buttonInteraction, newBalance);
