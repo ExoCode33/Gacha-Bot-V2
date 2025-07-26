@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - COMPLETE Multi-Pull System (10x Default, 50x, 100x)
+// src/commands/slash/gacha/summon.js - FIXED Complete Multi-Pull System with FULL Animations
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -58,12 +58,12 @@ class SummonAnimator {
         return raritySquares[rarity] || '⬜';
     }
 
-    static createQuickFrame(frame, fruit, summonNumber, totalSummons) {
+    static createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity) {
         const pattern = this.getRainbowPattern(frame, 20);
         const color = this.getRainbowColor(frame);
         const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
         
-        const description = `**Summon ${summonNumber}/${totalSummons}**\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
+        const description = `**Summon ${summonNumber}/${totalSummons}** - 🎯 Pity: ${currentPity}/1500\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
             `📊 **Status:** ${loadingDots}\n` +
             `🍃 **Name:** ${loadingDots}\n` +
             `🔮 **Type:** ${loadingDots}\n` +
@@ -79,10 +79,10 @@ class SummonAnimator {
             .setTitle(`🍈 ${totalSummons}x Devil Fruit Summoning`)
             .setDescription(description)
             .setColor(color)
-            .setFooter({ text: `Summon ${summonNumber} of ${totalSummons} - Searching...` });
+            .setFooter({ text: `Summon ${summonNumber} of ${totalSummons} - Searching... | Pity: ${currentPity}/1500` });
     }
 
-    static createQuickReveal(fruit, result, summonNumber, totalSummons) {
+    static createQuickReveal(fruit, result, summonNumber, totalSummons, currentPity) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
         const pattern = Array(20).fill(raritySquare).join(' ');
@@ -90,7 +90,7 @@ class SummonAnimator {
         const duplicateCount = result.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
         
-        const description = `**Summon ${summonNumber}/${totalSummons}** - ✨ **ACQUIRED!**\n\n${pattern}\n\n` +
+        const description = `**Summon ${summonNumber}/${totalSummons}** - 🎯 Pity: ${currentPity}/1500 - ✨ **ACQUIRED!**\n\n${pattern}\n\n` +
             `📊 **Status:** ${duplicateText}\n` +
             `🍃 **Name:** ${fruit.name}\n` +
             `🔮 **Type:** ${fruit.type}\n` +
@@ -103,7 +103,7 @@ class SummonAnimator {
             `💰 **Remaining Berries:** Loading...\n\n` +
             `${pattern}`;
         
-        let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ Acquired!`;
+        let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ Acquired! | Pity: ${currentPity}/1500`;
         if (result.pityUsed) {
             footerText = `✨ PITY USED! | ${footerText}`;
         }
@@ -308,75 +308,109 @@ module.exports = {
     },
 
     async run10xSummon(interaction, newBalance) {
-        const pullData = await GachaService.performPulls(interaction.user.id, 10);
-        const results = pullData.results;
-        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
+        // Get initial pity for tracking
+        let currentPity = await GachaService.getPityCount(interaction.user.id);
+        
+        // Get all fruits data BEFORE performing pulls to track pity changes
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
-        const displayFruits = results.map(result => {
+        // Perform pulls one by one to track pity in real-time
+        const allResults = [];
+        const allDisplayFruits = [];
+        
+        for (let i = 0; i < 10; i++) {
+            // Perform single pull
+            const pullData = await GachaService.performPulls(interaction.user.id, 1);
+            const result = pullData.results[0];
+            const fruit = result.fruit;
+            
+            allResults.push(result);
+            
             const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
-                f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
+                f.name === fruit.fruit_name || f.id === fruit.fruit_id
             );
             
-            return {
-                name: result.fruit.fruit_name,
-                type: result.fruit.fruit_type,
-                rarity: result.fruit.fruit_rarity,
-                multiplier: (result.fruit.base_cp / 100).toFixed(1),
-                description: result.fruit.fruit_description || result.fruit.fruit_power || 'A mysterious Devil Fruit power',
+            const displayFruit = {
+                name: fruit.fruit_name,
+                type: fruit.fruit_type,
+                rarity: fruit.fruit_rarity,
+                multiplier: (fruit.base_cp / 100).toFixed(1),
+                description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power',
                 skillName: actualFruit?.skill?.name || 'Unknown Ability',
                 skillDamage: actualFruit?.skill?.damage || 50,
                 skillCooldown: actualFruit?.skill?.cooldown || 2
             };
-        });
-        
-        // Run 10x animation
-        for (let i = 0; i < 10; i++) {
-            const fruit = displayFruits[i];
-            const result = results[i];
-            const summonNumber = i + 1;
-            await this.runQuickAnimation(interaction, fruit, result, summonNumber, 10);
-            if (i < 9) await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            allDisplayFruits.push(displayFruit);
+            
+            // Run animation with current pity
+            await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
+            
+            // Update pity for next pull
+            currentPity = await GachaService.getPityCount(interaction.user.id);
+            
+            if (i < 9) await new Promise(resolve => setTimeout(resolve, 800));
         }
         
+        // Get final pity info
+        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
+        const pityUsedInSession = allResults.some(r => r.pityUsed);
+        
         // Show summary
-        await this.show10xSummary(interaction, displayFruits, results, newBalance, pityInfo, pullData.pityUsedInSession);
+        await this.show10xSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession);
         await this.setupButtons(interaction);
     },
 
     async run50xSummon(interaction, newBalance) {
-        const pullData = await GachaService.performPulls(interaction.user.id, 50);
-        const allResults = pullData.results;
-        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
+        // Get initial pity for tracking
+        let currentPity = await GachaService.getPityCount(interaction.user.id);
+        
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
-        const allDisplayFruits = allResults.map(result => {
+        // Perform ALL 50 pulls one by one with full animations
+        const allResults = [];
+        const allDisplayFruits = [];
+        
+        for (let i = 0; i < 50; i++) {
+            // Perform single pull
+            const pullData = await GachaService.performPulls(interaction.user.id, 1);
+            const result = pullData.results[0];
+            const fruit = result.fruit;
+            
+            allResults.push(result);
+            
             const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
-                f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
+                f.name === fruit.fruit_name || f.id === fruit.fruit_id
             );
             
-            return {
-                name: result.fruit.fruit_name,
-                type: result.fruit.fruit_type,
-                rarity: result.fruit.fruit_rarity,
-                multiplier: (result.fruit.base_cp / 100).toFixed(1),
-                description: result.fruit.fruit_description || result.fruit.fruit_power || 'A mysterious Devil Fruit power',
+            const displayFruit = {
+                name: fruit.fruit_name,
+                type: fruit.fruit_type,
+                rarity: fruit.fruit_rarity,
+                multiplier: (fruit.base_cp / 100).toFixed(1),
+                description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power',
                 skillName: actualFruit?.skill?.name || 'Unknown Ability',
                 skillDamage: actualFruit?.skill?.damage || 50,
                 skillCooldown: actualFruit?.skill?.cooldown || 2
             };
-        });
-        
-        // Run 50x animation (show every 5th pull)
-        for (let i = 0; i < 50; i += 5) {
-            const fruit = allDisplayFruits[i];
-            const result = allResults[i];
-            const summonNumber = i + 1;
-            await this.runQuickAnimation(interaction, fruit, result, summonNumber, 50);
-            await new Promise(resolve => setTimeout(resolve, 600));
+            
+            allDisplayFruits.push(displayFruit);
+            
+            // Run animation with current pity
+            await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
+            
+            // Update pity for next pull
+            currentPity = await GachaService.getPityCount(interaction.user.id);
+            
+            // Shorter delay for 50x
+            if (i < 49) await new Promise(resolve => setTimeout(resolve, 600));
         }
         
-        // Show 5 batch summaries (10 fruits each)
+        // Get final pity info
+        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
+        const pityUsedInSession = allResults.some(r => r.pityUsed);
+        
+        // Show 5 batch summaries (10 fruits each) after all animations
         for (let batch = 0; batch < 5; batch++) {
             const startIdx = batch * 10;
             const endIdx = startIdx + 10;
@@ -384,50 +418,67 @@ module.exports = {
             const batchResults = allResults.slice(startIdx, endIdx);
             
             await new Promise(resolve => setTimeout(resolve, 1000));
-            await this.show10xSummary(interaction, batchFruits, batchResults, newBalance, pityInfo, pullData.pityUsedInSession, batch + 1, 5);
+            await this.show10xSummary(interaction, batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 5);
             
-            if (batch < 4) await new Promise(resolve => setTimeout(resolve, 2000));
+            if (batch < 4) await new Promise(resolve => setTimeout(resolve, 1500));
         }
         
         // Show mega summary
         await new Promise(resolve => setTimeout(resolve, 2000));
-        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pullData.pityUsedInSession, 50);
+        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 50);
         await this.setupButtons(interaction);
     },
 
     async run100xSummon(interaction, newBalance) {
-        const pullData = await GachaService.performPulls(interaction.user.id, 100);
-        const allResults = pullData.results;
-        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
+        // Get initial pity for tracking
+        let currentPity = await GachaService.getPityCount(interaction.user.id);
+        
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
-        const allDisplayFruits = allResults.map(result => {
+        // Perform ALL 100 pulls one by one with full animations
+        const allResults = [];
+        const allDisplayFruits = [];
+        
+        for (let i = 0; i < 100; i++) {
+            // Perform single pull
+            const pullData = await GachaService.performPulls(interaction.user.id, 1);
+            const result = pullData.results[0];
+            const fruit = result.fruit;
+            
+            allResults.push(result);
+            
             const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
-                f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
+                f.name === fruit.fruit_name || f.id === fruit.fruit_id
             );
             
-            return {
-                name: result.fruit.fruit_name,
-                type: result.fruit.fruit_type,
-                rarity: result.fruit.fruit_rarity,
-                multiplier: (result.fruit.base_cp / 100).toFixed(1),
-                description: result.fruit.fruit_description || result.fruit.fruit_power || 'A mysterious Devil Fruit power',
+            const displayFruit = {
+                name: fruit.fruit_name,
+                type: fruit.fruit_type,
+                rarity: fruit.fruit_rarity,
+                multiplier: (fruit.base_cp / 100).toFixed(1),
+                description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power',
                 skillName: actualFruit?.skill?.name || 'Unknown Ability',
                 skillDamage: actualFruit?.skill?.damage || 50,
                 skillCooldown: actualFruit?.skill?.cooldown || 2
             };
-        });
-        
-        // Run 100x animation (show every 10th pull)
-        for (let i = 0; i < 100; i += 10) {
-            const fruit = allDisplayFruits[i];
-            const result = allResults[i];
-            const summonNumber = i + 1;
-            await this.runQuickAnimation(interaction, fruit, result, summonNumber, 100);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            allDisplayFruits.push(displayFruit);
+            
+            // Run animation with current pity
+            await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
+            
+            // Update pity for next pull
+            currentPity = await GachaService.getPityCount(interaction.user.id);
+            
+            // Shorter delay for 100x
+            if (i < 99) await new Promise(resolve => setTimeout(resolve, 400));
         }
         
-        // Show 10 batch summaries (10 fruits each)
+        // Get final pity info
+        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
+        const pityUsedInSession = allResults.some(r => r.pityUsed);
+        
+        // Show 10 batch summaries (10 fruits each) after all animations
         for (let batch = 0; batch < 10; batch++) {
             const startIdx = batch * 10;
             const endIdx = startIdx + 10;
@@ -435,20 +486,20 @@ module.exports = {
             const batchResults = allResults.slice(startIdx, endIdx);
             
             await new Promise(resolve => setTimeout(resolve, 800));
-            await this.show10xSummary(interaction, batchFruits, batchResults, newBalance, pityInfo, pullData.pityUsedInSession, batch + 1, 10);
+            await this.show10xSummary(interaction, batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 10);
             
-            if (batch < 9) await new Promise(resolve => setTimeout(resolve, 1500));
+            if (batch < 9) await new Promise(resolve => setTimeout(resolve, 1200));
         }
         
         // Show mega summary
         await new Promise(resolve => setTimeout(resolve, 3000));
-        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pullData.pityUsedInSession, 100);
+        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 100);
         await this.setupButtons(interaction);
     },
 
-    async runQuickAnimation(interaction, fruit, result, summonNumber, totalSummons) {
+    async runQuickAnimation(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
         for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
-            const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons);
+            const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity);
             
             if (summonNumber === 1 && frame === 0 && !interaction.replied && !interaction.deferred) {
                 await interaction.reply({ embeds: [embed] });
@@ -461,7 +512,7 @@ module.exports = {
         
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        const revealEmbed = SummonAnimator.createQuickReveal(fruit, result, summonNumber, totalSummons);
+        const revealEmbed = SummonAnimator.createQuickReveal(fruit, result, summonNumber, totalSummons, currentPity);
         await interaction.editReply({ embeds: [revealEmbed] });
         
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -548,112 +599,3 @@ module.exports = {
         
         await interaction.editReply({
             embeds: [currentEmbed],
-            components: [row]
-        });
-
-        const collector = currentReply.createMessageComponentCollector({ time: 120000 });
-        collector.on('collect', async (buttonInteraction) => {
-            await this.handleButtonInteraction(buttonInteraction, interaction.user.id);
-        });
-        collector.on('end', () => this.disableButtons(interaction));
-    },
-
-    async handleSummon10x(buttonInteraction) {
-        const cost = PULL_COST * 10 * 0.9;
-        const balance = await EconomyService.getBalance(buttonInteraction.user.id);
-        
-        if (balance < cost) {
-            const pityInfo = await GachaService.getPityInfo(buttonInteraction.user.id);
-            const pityDisplay = GachaService.formatPityDisplay(pityInfo);
-            
-            return buttonInteraction.reply({ 
-                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n\n${pityDisplay}\n\n💡 Use \`/income\` to collect berries.`, 
-                ephemeral: true 
-            });
-        }
-
-        await EconomyService.deductBerries(buttonInteraction.user.id, cost, 'summon_10x');
-        const newBalance = balance - cost;
-
-        if (!buttonInteraction.isRepliable()) return;
-
-        await buttonInteraction.deferReply();
-        await this.run10xSummon(buttonInteraction, newBalance);
-        await this.setupButtons(buttonInteraction);
-    },
-
-    async handleSummon50x(buttonInteraction) {
-        const cost = PULL_COST * 50 * 0.85;
-        const balance = await EconomyService.getBalance(buttonInteraction.user.id);
-        
-        if (balance < cost) {
-            const pityInfo = await GachaService.getPityInfo(buttonInteraction.user.id);
-            const pityDisplay = GachaService.formatPityDisplay(pityInfo);
-            
-            return buttonInteraction.reply({ 
-                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n\n${pityDisplay}\n\n💡 Use \`/income\` to collect berries.`, 
-                ephemeral: true 
-            });
-        }
-
-        await EconomyService.deductBerries(buttonInteraction.user.id, cost, 'summon_50x');
-        const newBalance = balance - cost;
-
-        if (!buttonInteraction.isRepliable()) return;
-
-        await buttonInteraction.deferReply();
-        await this.run50xSummon(buttonInteraction, newBalance);
-        await this.setupButtons(buttonInteraction);
-    },
-
-    async handleSummon100x(buttonInteraction) {
-        const cost = PULL_COST * 100 * 0.8;
-        const balance = await EconomyService.getBalance(buttonInteraction.user.id);
-        
-        if (balance < cost) {
-            const pityInfo = await GachaService.getPityInfo(buttonInteraction.user.id);
-            const pityDisplay = GachaService.formatPityDisplay(pityInfo);
-            
-            return buttonInteraction.reply({ 
-                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n\n${pityDisplay}\n\n💡 Use \`/income\` to collect berries.`, 
-                ephemeral: true 
-            });
-        }
-
-        await EconomyService.deductBerries(buttonInteraction.user.id, cost, 'summon_100x');
-        const newBalance = balance - cost;
-
-        if (!buttonInteraction.isRepliable()) return;
-
-        await buttonInteraction.deferReply();
-        await this.run100xSummon(buttonInteraction, newBalance);
-        await this.setupButtons(buttonInteraction);
-    },
-
-    async disableButtons(interaction) {
-        try {
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('summon_10x_disabled')
-                        .setLabel('🍈 Summon 10x')
-                        .setStyle(ButtonStyle.Primary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('summon_50x_disabled')
-                        .setLabel('🍈 Summon 50x')
-                        .setStyle(ButtonStyle.Success)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('summon_100x_disabled')
-                        .setLabel('🍈 Summon 100x')
-                        .setStyle(ButtonStyle.Danger)
-                        .setDisabled(true)
-                );
-
-            await interaction.editReply({ components: [disabledRow] });
-        } catch (error) {
-            console.log('Could not disable buttons - interaction may have been deleted');
-        }
-    }
-};
