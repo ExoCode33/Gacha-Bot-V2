@@ -116,17 +116,41 @@ class SummonAnimator {
     }
 
     static create10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
+        // Create pairs of fruits and results for sorting
+        const fruitResultPairs = fruits.map((fruit, index) => ({
+            fruit,
+            result: results[index],
+            originalIndex: index
+        }));
+
+        // Sort by rarity (highest first), then by name
+        const rarityPriority = {
+            'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4,
+            'rare': 3, 'uncommon': 2, 'common': 1
+        };
+        
+        fruitResultPairs.sort((a, b) => {
+            const rarityA = rarityPriority[a.fruit.rarity] || 0;
+            const rarityB = rarityPriority[b.fruit.rarity] || 0;
+            
+            if (rarityA !== rarityB) {
+                return rarityB - rarityA; // Higher rarity first
+            }
+            
+            return a.fruit.name.localeCompare(b.fruit.name); // Then alphabetical
+        });
+
         let detailedResults = '';
-        fruits.forEach((fruit, index) => {
-            const result = results[index];
+        fruitResultPairs.forEach((pair, sortedIndex) => {
+            const { fruit, result } = pair;
             const raritySquare = this.getRaritySquare(fruit.rarity);
-            const globalNumber = ((batchNumber - 1) * 10 + index + 1).toString().padStart(2, '0');
+            const displayNumber = (sortedIndex + 1).toString().padStart(2, '0');
             
             const duplicateCount = result.duplicateCount || 1;
             const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
             const pityIndicator = result.pityUsed ? ' 🎯' : '';
             
-            detailedResults += `**${globalNumber}.** ${raritySquare} **${fruit.name}**${pityIndicator} (${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)})\n`;
+            detailedResults += `**${displayNumber}.** ${raritySquare} **${fruit.name}**${pityIndicator} (${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)})\n`;
             detailedResults += `      📊 **Status:** ${duplicateText}\n`;
             detailedResults += `      🔮 **Type:** ${fruit.type}\n`;
             detailedResults += `      💪 **CP Multiplier:** x${fruit.multiplier}\n`;
@@ -134,19 +158,15 @@ class SummonAnimator {
             detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
         });
 
-        const rarityPriority = {
-            'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4,
-            'legendary': 5, 'mythical': 6, 'divine': 7
-        };
         
         let highestRarity = 'common';
         let highestPriority = 0;
         
-        fruits.forEach(fruit => {
-            const priority = rarityPriority[fruit.rarity] || 0;
+        fruitResultPairs.forEach(pair => {
+            const priority = rarityPriority[pair.fruit.rarity] || 0;
             if (priority > highestPriority) {
                 highestPriority = priority;
-                highestRarity = fruit.rarity;
+                highestRarity = pair.fruit.rarity;
             }
         });
 
@@ -176,20 +196,44 @@ class SummonAnimator {
     }
 
     static createMegaSummary(allFruits, allResults, balance, pityInfo, pityUsedInSession, totalPulls) {
-        // Count rarities
+        // Create pairs of fruits and results for sorting
+        const fruitResultPairs = allFruits.map((fruit, index) => ({
+            fruit,
+            result: allResults[index],
+            originalIndex: index
+        }));
+
+        // Sort by rarity (highest first), then by name
+        const rarityPriority = {
+            'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4,
+            'rare': 3, 'uncommon': 2, 'common': 1
+        };
+        
+        fruitResultPairs.sort((a, b) => {
+            const rarityA = rarityPriority[a.fruit.rarity] || 0;
+            const rarityB = rarityPriority[b.fruit.rarity] || 0;
+            
+            if (rarityA !== rarityB) {
+                return rarityB - rarityA; // Higher rarity first
+            }
+            
+            return a.fruit.name.localeCompare(b.fruit.name); // Then alphabetical
+        });
+
+        // Count rarities from sorted fruits
         const rarityCounts = {};
         const pityUsedCount = allResults.filter(r => r.pityUsed).length;
         
-        allFruits.forEach(fruit => {
-            rarityCounts[fruit.rarity] = (rarityCounts[fruit.rarity] || 0) + 1;
+        fruitResultPairs.forEach(pair => {
+            const rarity = pair.fruit.rarity;
+            rarityCounts[rarity] = (rarityCounts[rarity] || 0) + 1;
         });
 
-        // Find best fruits
-        const rarityPriority = { 'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4, 'legendary': 5, 'mythical': 6, 'divine': 7 };
-        const bestFruits = allFruits
-            .filter(fruit => rarityPriority[fruit.rarity] >= 5) // Legendary+
-            .sort((a, b) => rarityPriority[b.rarity] - rarityPriority[a.rarity])
-            .slice(0, 10);
+        // Find best fruits (top 10 highest rarity)
+        const bestFruits = fruitResultPairs
+            .filter(pair => rarityPriority[pair.fruit.rarity] >= 5) // Legendary+
+            .slice(0, 10) // Already sorted by rarity, so just take first 10
+            .map(pair => pair.fruit);
 
         let summaryText = `🎉 **${totalPulls}x MEGA SUMMONING COMPLETE!** 🎉\n\n`;
         
@@ -203,7 +247,7 @@ class SummonAnimator {
         });
 
         if (bestFruits.length > 0) {
-            summaryText += `\n🌟 **Best Pulls:**\n`;
+            summaryText += `\n🌟 **Best Pulls (Highest Rarity First):**\n`;
             bestFruits.forEach((fruit, index) => {
                 const emoji = this.getRaritySquare(fruit.rarity);
                 summaryText += `${emoji} **${fruit.name}** (${fruit.rarity})\n`;
@@ -437,13 +481,38 @@ module.exports = {
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
         const pityUsedInSession = allResults.some(r => r.pityUsed);
         
-        // Create all batch embeds (don't delete them)
+        // Create all batch embeds with rarity-sorted fruits
         const batchEmbeds = [];
         for (let batch = 0; batch < 5; batch++) {
             const startIdx = batch * 10;
             const endIdx = startIdx + 10;
-            const batchFruits = allDisplayFruits.slice(startIdx, endIdx);
-            const batchResults = allResults.slice(startIdx, endIdx);
+            
+            // Create pairs and sort by rarity for this batch
+            const batchPairs = allDisplayFruits.slice(startIdx, endIdx).map((fruit, localIndex) => ({
+                fruit,
+                result: allResults[startIdx + localIndex],
+                originalIndex: startIdx + localIndex
+            }));
+            
+            // Sort by rarity (highest first)
+            const rarityPriority = {
+                'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4,
+                'rare': 3, 'uncommon': 2, 'common': 1
+            };
+            
+            batchPairs.sort((a, b) => {
+                const rarityA = rarityPriority[a.fruit.rarity] || 0;
+                const rarityB = rarityPriority[b.fruit.rarity] || 0;
+                
+                if (rarityA !== rarityB) {
+                    return rarityB - rarityA; // Higher rarity first
+                }
+                
+                return a.fruit.name.localeCompare(b.fruit.name); // Then alphabetical
+            });
+            
+            const batchFruits = batchPairs.map(pair => pair.fruit);
+            const batchResults = batchPairs.map(pair => pair.result);
             
             const summaryData = SummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 5);
             batchEmbeds.push(summaryData.embed);
@@ -517,13 +586,38 @@ module.exports = {
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
         const pityUsedInSession = allResults.some(r => r.pityUsed);
         
-        // Create all batch embeds (don't delete them)
+        // Create all batch embeds with rarity-sorted fruits  
         const batchEmbeds = [];
         for (let batch = 0; batch < 10; batch++) {
             const startIdx = batch * 10;
             const endIdx = startIdx + 10;
-            const batchFruits = allDisplayFruits.slice(startIdx, endIdx);
-            const batchResults = allResults.slice(startIdx, endIdx);
+            
+            // Create pairs and sort by rarity for this batch
+            const batchPairs = allDisplayFruits.slice(startIdx, endIdx).map((fruit, localIndex) => ({
+                fruit,
+                result: allResults[startIdx + localIndex],
+                originalIndex: startIdx + localIndex
+            }));
+            
+            // Sort by rarity (highest first)
+            const rarityPriority = {
+                'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4,
+                'rare': 3, 'uncommon': 2, 'common': 1
+            };
+            
+            batchPairs.sort((a, b) => {
+                const rarityA = rarityPriority[a.fruit.rarity] || 0;
+                const rarityB = rarityPriority[b.fruit.rarity] || 0;
+                
+                if (rarityA !== rarityB) {
+                    return rarityB - rarityA; // Higher rarity first
+                }
+                
+                return a.fruit.name.localeCompare(b.fruit.name); // Then alphabetical
+            });
+            
+            const batchFruits = batchPairs.map(pair => pair.fruit);
+            const batchResults = batchPairs.map(pair => pair.result);
             
             const summaryData = SummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 10);
             batchEmbeds.push(summaryData.embed);
