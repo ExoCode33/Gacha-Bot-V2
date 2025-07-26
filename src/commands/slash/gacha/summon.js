@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - FIXED Skip Animation Issue
+// src/commands/slash/gacha/summon.js - FIXED Skip Animation Implementation
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -116,12 +116,10 @@ class SummonAnimator {
     }
 
     static create10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
-        // Fruits are already sorted globally, so just display them in order
         let detailedResults = '';
         fruits.forEach((fruit, index) => {
             const result = results[index];
             const raritySquare = this.getRaritySquare(fruit.rarity);
-            // Calculate global position across all batches
             const globalNumber = ((batchNumber - 1) * 10 + index + 1).toString().padStart(2, '0');
             
             const duplicateCount = result.duplicateCount || 1;
@@ -136,15 +134,15 @@ class SummonAnimator {
             detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
         });
 
+        const rarityPriority = {
+            'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4,
+            'legendary': 5, 'mythical': 6, 'divine': 7
+        };
         
         let highestRarity = 'common';
         let highestPriority = 0;
         
         fruits.forEach(fruit => {
-            const rarityPriority = {
-                'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4,
-                'rare': 3, 'uncommon': 2, 'common': 1
-            };
             const priority = rarityPriority[fruit.rarity] || 0;
             if (priority > highestPriority) {
                 highestPriority = priority;
@@ -159,7 +157,7 @@ class SummonAnimator {
             title = `🍈 Devil Fruit Batch ${batchNumber}/${totalBatches} Complete!`;
         }
 
-        const pityDisplay = GachaService.formatPityDisplay(pityInfo, pityUsedInSession);
+        const pityDisplay = batchNumber === totalBatches ? GachaService.formatPityDisplay(pityInfo, pityUsedInSession) : '';
         const balanceText = batchNumber === totalBatches ? `💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n` : '';
 
         const embed = new EmbedBuilder()
@@ -168,7 +166,7 @@ class SummonAnimator {
             .setColor(highestColor)
             .setTimestamp();
 
-        let footerText = totalBatches > 1 ? `Batch ${batchNumber} of ${totalBatches} | Pity: ${pityInfo.currentPity}/1500` : `🏴‍☠️ Your legend grows on the Grand Line! | Pity: ${pityInfo.currentPity}/1500`;
+        let footerText = totalBatches > 1 ? `Batch ${batchNumber} of ${totalBatches}` : '🏴‍☠️ Your legend grows on the Grand Line!';
         if (pityUsedInSession && batchNumber === totalBatches) {
             footerText = '✨ PITY ACTIVATED THIS SESSION! | ' + footerText;
         }
@@ -178,25 +176,20 @@ class SummonAnimator {
     }
 
     static createMegaSummary(allFruits, allResults, balance, pityInfo, pityUsedInSession, totalPulls) {
-        // Fruits are already sorted globally, so just work with them directly
-        // Count rarities from sorted fruits
+        // Count rarities
         const rarityCounts = {};
         const pityUsedCount = allResults.filter(r => r.pityUsed).length;
         
         allFruits.forEach(fruit => {
-            const rarity = fruit.rarity;
-            rarityCounts[rarity] = (rarityCounts[rarity] || 0) + 1;
+            rarityCounts[fruit.rarity] = (rarityCounts[fruit.rarity] || 0) + 1;
         });
 
-        // Find best fruits (already sorted, so just take top legendary+ fruits)
-        const rarityPriority = {
-            'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4,
-            'rare': 3, 'uncommon': 2, 'common': 1
-        };
-        
+        // Find best fruits
+        const rarityPriority = { 'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4, 'legendary': 5, 'mythical': 6, 'divine': 7 };
         const bestFruits = allFruits
             .filter(fruit => rarityPriority[fruit.rarity] >= 5) // Legendary+
-            .slice(0, 10); // Take first 10 since already sorted
+            .sort((a, b) => rarityPriority[b.rarity] - rarityPriority[a.rarity])
+            .slice(0, 10);
 
         let summaryText = `🎉 **${totalPulls}x MEGA SUMMONING COMPLETE!** 🎉\n\n`;
         
@@ -210,7 +203,7 @@ class SummonAnimator {
         });
 
         if (bestFruits.length > 0) {
-            summaryText += `\n🌟 **Best Pulls (Highest Rarity First):**\n`;
+            summaryText += `\n🌟 **Best Pulls:**\n`;
             bestFruits.forEach((fruit, index) => {
                 const emoji = this.getRaritySquare(fruit.rarity);
                 summaryText += `${emoji} **${fruit.name}** (${fruit.rarity})\n`;
@@ -233,7 +226,7 @@ class SummonAnimator {
             .setColor(color)
             .setTimestamp();
 
-        let footerText = `🏴‍☠️ Your legend grows on the Grand Line! | Pity: ${pityInfo.currentPity}/1500`;
+        let footerText = '🏴‍☠️ Your legend grows on the Grand Line!';
         if (pityUsedInSession) {
             footerText = '✨ PITY ACTIVATED THIS SESSION! | ' + footerText;
         }
@@ -393,15 +386,14 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // Show different initial messages based on skip animation
-        if (!skipAnimation) {
-            // Show initial animated summoning message
-            await this.showProgressAnimation(interaction, 0, 12, 0, 50);
-        } else {
-            // Show simple progress message for skip animation
+        // FIXED: Only show initial message if skip_animation is TRUE
+        if (skipAnimation) {
             await interaction.editReply({
-                content: '🌊 Starting 50x Mega Summon... Processing pulls quickly!'
+                content: '🌊 Processing 50x Mega Summon... Please wait!'
             });
+        } else {
+            // Show animated initial message for full animation
+            await this.showProgressAnimation(interaction, 0, 12, 0, 50);
         }
         
         for (let i = 0; i < 50; i++) {
@@ -432,7 +424,7 @@ module.exports = {
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
-            // Show progress based on animation preference
+            // FIXED: Show progress based on animation preference
             if (!skipAnimation) {
                 // Show animated progress every few pulls
                 if ((i + 1) % 5 === 0) {
@@ -440,16 +432,17 @@ module.exports = {
                     await this.showProgressAnimation(interaction, frame, 12, i + 1, 50);
                 }
             } else {
-                // Simple text updates for skip animation
-                if ((i + 1) % 10 === 0) {
+                // FIXED: For skip animation, only update every 25 pulls to reduce spam
+                if ((i + 1) % 25 === 0) {
                     await interaction.editReply({
-                        content: `🌊 Progress: ${i + 1}/50 pulls completed... (Pity: ${currentPity}/1500)`
+                        content: `🌊 Processing: ${i + 1}/50 pulls completed...`
                     });
                 }
             }
             
-            // Small delay between pulls
-            await new Promise(resolve => setTimeout(resolve, skipAnimation ? 50 : 150));
+            // FIXED: Adjust delay based on animation preference
+            const delay = skipAnimation ? 25 : 150; // Much faster when skipping
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
         
         // Get final pity info
@@ -513,15 +506,14 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // Show different initial messages based on skip animation
-        if (!skipAnimation) {
-            // Show initial animated summoning message
-            await this.showProgressAnimation(interaction, 0, 12, 0, 100);
-        } else {
-            // Show simple progress message for skip animation
+        // FIXED: Only show initial message if skip_animation is TRUE
+        if (skipAnimation) {
             await interaction.editReply({
-                content: '🌊 Starting 100x Ultra Summon... Processing pulls quickly!'
+                content: '🌊 Processing 100x Ultra Summon... This will take a moment!'
             });
+        } else {
+            // Show animated initial message for full animation
+            await this.showProgressAnimation(interaction, 0, 12, 0, 100);
         }
         
         for (let i = 0; i < 100; i++) {
@@ -552,7 +544,7 @@ module.exports = {
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
-            // Show progress based on animation preference
+            // FIXED: Show progress based on animation preference
             if (!skipAnimation) {
                 // Show animated progress every few pulls
                 if ((i + 1) % 8 === 0) {
@@ -560,16 +552,17 @@ module.exports = {
                     await this.showProgressAnimation(interaction, frame, 12, i + 1, 100);
                 }
             } else {
-                // Simple text updates for skip animation
-                if ((i + 1) % 20 === 0) {
+                // FIXED: For skip animation, only update every 50 pulls to reduce spam
+                if ((i + 1) % 50 === 0) {
                     await interaction.editReply({
-                        content: `🌊 Progress: ${i + 1}/100 pulls completed... (Pity: ${currentPity}/1500)`
+                        content: `🌊 Processing: ${i + 1}/100 pulls completed...`
                     });
                 }
             }
             
-            // Small delay between pulls
-            await new Promise(resolve => setTimeout(resolve, skipAnimation ? 30 : 120));
+            // FIXED: Adjust delay based on animation preference
+            const delay = skipAnimation ? 15 : 120; // Much faster when skipping
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
         
         // Get final pity info
@@ -1004,27 +997,6 @@ module.exports = {
             }
         });
         
-        collector.on('end', () => {
-            // Disable buttons when collector expires
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('summon_10x_disabled')
-                        .setLabel('🍈 Summon 10x')
-                        .setStyle(ButtonStyle.Primary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('summon_50x_disabled')
-                        .setLabel('🍈 Summon 50x')
-                        .setStyle(ButtonStyle.Success)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('summon_100x_disabled')
-                        .setLabel('🍈 Summon 100x')
-                        .setStyle(ButtonStyle.Danger)
-                        .setDisabled(true)
-                );
-            
         collector.on('end', () => {
             // Disable buttons when collector expires
             const disabledRow = new ActionRowBuilder()
