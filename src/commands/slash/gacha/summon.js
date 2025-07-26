@@ -200,26 +200,36 @@ class SummonAnimator {
         const progressDots = '●'.repeat(frame + 1) + '○'.repeat(4 - frame);
         
         return new EmbedBuilder()
-            .setTitle('🎰 10x Devil Fruit Summoning')
+            .setTitle('🍈 10x Devil Fruit Summoning')
             .setDescription(`**Summon ${summonNumber}/10**\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n📊 **Status:** Analyzing... ${progressDots}\n🍃 **Fruit:** ???\n⭐ **Rarity:** ???\n\n${pattern}`)
             .setColor(color)
             .setFooter({ text: `Summon ${summonNumber} of 10 - Searching...` });
     }
 
-    // Create quick reveal for 10x
+    // Create quick reveal for 10x with full details
     static createQuickReveal(fruit, summonNumber) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
-        const pattern = Array(15).fill(raritySquare).join(' '); // Use rarity square
+        const pattern = Array(15).fill(raritySquare).join(' ');
+        
+        const description = `**Summon ${summonNumber}/10** - ✨ **ACQUIRED!**\n\n${pattern}\n\n` +
+            `📊 **Status:** ✨ New Discovery!\n` +
+            `🍃 **Name:** ${fruit.name}\n` +
+            `🔮 **Type:** ${fruit.type}\n` +
+            `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
+            `💪 **CP Multiplier:** x${fruit.multiplier}\n` +
+            `🎯 **Description:** ${fruit.description}\n` +
+            `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
+            `${pattern}`;
         
         return new EmbedBuilder()
-            .setTitle('🎰 10x Devil Fruit Summoning')
-            .setDescription(`**Summon ${summonNumber}/10** - ${raritySquare} **${fruit.rarity.toUpperCase()}**\n\n${pattern}\n\n🍃 **${fruit.name}**\n🔮 ${fruit.type}\n💪 x${fruit.multiplier} CP\n\n${pattern}`)
+            .setTitle('🍈 10x Devil Fruit Summoning')
+            .setDescription(description)
             .setColor(color)
             .setFooter({ text: `Summon ${summonNumber} of 10 - ✨ Acquired!` });
     }
 
-    // Create 10x summary
+    // Create 10x summary with individual fruit details
     static create10xSummary(fruits, results, balance) {
         const rarityCounts = {};
         const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythical', 'legendary', 'divine'];
@@ -227,15 +237,20 @@ class SummonAnimator {
         rarityOrder.forEach(rarity => { rarityCounts[rarity] = 0; });
         fruits.forEach(fruit => { rarityCounts[fruit.rarity]++; });
 
-        let rarityText = '';
-        rarityOrder.forEach(rarity => {
-            if (rarityCounts[rarity] > 0) {
-                const raritySquare = this.getRaritySquare(rarity);
-                rarityText += `${raritySquare} **${rarity.charAt(0).toUpperCase() + rarity.slice(1)}**: ${rarityCounts[rarity]}\n`;
-            }
+        // Create detailed list of all 10 fruits
+        let detailedResults = '';
+        fruits.forEach((fruit, index) => {
+            const raritySquare = this.getRaritySquare(fruit.rarity);
+            const number = (index + 1).toString().padStart(2, '0');
+            detailedResults += `**${number}.** ${raritySquare} **${fruit.name}** (${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)})\n`;
+            detailedResults += `      📊 **Status:** ✨ New Discovery!\n`;
+            detailedResults += `      🔮 **Type:** ${fruit.type}\n`;
+            detailedResults += `      💪 **CP Multiplier:** x${fruit.multiplier}\n`;
+            detailedResults += `      🎯 **Description:** ${fruit.description}\n`;
+            detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
         });
 
-        // Get highest rarity
+        // Get highest rarity for color
         let highestRarity = 'common';
         [...rarityOrder].reverse().forEach(rarity => {
             if (rarityCounts[rarity] > 0 && highestRarity === 'common') {
@@ -243,14 +258,13 @@ class SummonAnimator {
             }
         });
 
-        const highestSquare = this.getRaritySquare(highestRarity);
         const highestColor = RARITY_COLORS[highestRarity];
 
         return new EmbedBuilder()
-            .setTitle('🎰 10x Devil Fruit Summoning Complete!')
-            .setDescription(`🎉 **10x Summon Complete!** 🎉\n\n**Highest Rarity:** ${highestSquare} ${highestRarity.charAt(0).toUpperCase() + highestRarity.slice(1)}\n\n**Results:**\n${rarityText}\n💰 **Remaining Berries:** ${balance.toLocaleString()} 🍓\n\n✨ All fruits have been added to your collection!`)
+            .setTitle('🍈 10x Devil Fruit Summoning Complete!')
+            .setDescription(`🎉 **Congratulations! You've summoned 10 magnificent Devil Fruits!** 🎉\n\n${detailedResults}💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n✨ All fruits have been added to your collection!`)
             .setColor(highestColor)
-            .setFooter({ text: '🏴‍☠️ Continue your adventure on the Grand Line!' })
+            .setFooter({ text: '🏴‍☠️ Your legend grows on the Grand Line!' })
             .setTimestamp();
     }
 }
@@ -290,7 +304,7 @@ module.exports = {
                         new EmbedBuilder()
                             .setColor('#FF0000')
                             .setTitle('❌ Insufficient Berries')
-                            .setDescription(`You need **${cost.toLocaleString()} 🍓** but only have **${balance.toLocaleString()} 🍓**`)
+                            .setDescription(`You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries`)
                             .setFooter({ text: 'Use /income to earn more berries!' })
                     ],
                     ephemeral: true
@@ -580,7 +594,7 @@ module.exports = {
         const balance = await EconomyService.getBalance(buttonInteraction.user.id);
         if (balance < cost) {
             return buttonInteraction.reply({ 
-                content: `💸 You need **${cost.toLocaleString()} 🍓** but only have **${balance.toLocaleString()} 🍓**!\n💡 Use \`/income\` to collect berries.`, 
+                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n💡 Use \`/income\` to collect berries.`, 
                 ephemeral: true 
             });
         }
@@ -601,7 +615,7 @@ module.exports = {
         const balance = await EconomyService.getBalance(buttonInteraction.user.id);
         if (balance < cost) {
             return buttonInteraction.reply({ 
-                content: `💸 You need **${cost.toLocaleString()} 🍓** but only have **${balance.toLocaleString()} 🍓**!\n💡 Use \`/income\` to collect berries.`, 
+                content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n💡 Use \`/income\` to collect berries.`, 
                 ephemeral: true 
             });
         }
