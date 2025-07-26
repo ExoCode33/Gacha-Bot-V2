@@ -386,13 +386,12 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // FIXED: Only show initial message if skip_animation is TRUE
+        // Show initial loading animation for both modes
         if (skipAnimation) {
-            await interaction.editReply({
-                content: '🌊 Processing 50x Mega Summon... Please wait!'
-            });
+            // Simple loading animation for skip mode
+            await this.showSimpleLoadingAnimation(interaction, 0, 50);
         } else {
-            // Show animated initial message for full animation
+            // Full animated progress for normal mode
             await this.showProgressAnimation(interaction, 0, 12, 0, 50);
         }
         
@@ -424,24 +423,22 @@ module.exports = {
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
-            // FIXED: Show progress based on animation preference
+            // Show progress based on animation preference
             if (!skipAnimation) {
-                // Show animated progress every few pulls
+                // Full animated progress every few pulls
                 if ((i + 1) % 5 === 0) {
                     const frame = Math.floor((i + 1) / 5) % 12;
                     await this.showProgressAnimation(interaction, frame, 12, i + 1, 50);
                 }
             } else {
-                // FIXED: For skip animation, only update every 25 pulls to reduce spam
-                if ((i + 1) % 25 === 0) {
-                    await interaction.editReply({
-                        content: `🌊 Processing: ${i + 1}/50 pulls completed...`
-                    });
+                // Simple loading animation updates for skip mode
+                if ((i + 1) % 10 === 0) {
+                    await this.showSimpleLoadingAnimation(interaction, i + 1, 50);
                 }
             }
             
-            // FIXED: Adjust delay based on animation preference
-            const delay = skipAnimation ? 25 : 150; // Much faster when skipping
+            // Adjust delay based on animation preference
+            const delay = skipAnimation ? 25 : 150;
             await new Promise(resolve => setTimeout(resolve, delay));
         }
         
@@ -506,13 +503,12 @@ module.exports = {
         const allResults = [];
         const allDisplayFruits = [];
         
-        // FIXED: Only show initial message if skip_animation is TRUE
+        // Show initial loading animation for both modes
         if (skipAnimation) {
-            await interaction.editReply({
-                content: '🌊 Processing 100x Ultra Summon... This will take a moment!'
-            });
+            // Simple loading animation for skip mode
+            await this.showSimpleLoadingAnimation(interaction, 0, 100);
         } else {
-            // Show animated initial message for full animation
+            // Full animated progress for normal mode
             await this.showProgressAnimation(interaction, 0, 12, 0, 100);
         }
         
@@ -544,24 +540,22 @@ module.exports = {
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
-            // FIXED: Show progress based on animation preference
+            // Show progress based on animation preference
             if (!skipAnimation) {
-                // Show animated progress every few pulls
+                // Full animated progress every few pulls
                 if ((i + 1) % 8 === 0) {
                     const frame = Math.floor((i + 1) / 8) % 12;
                     await this.showProgressAnimation(interaction, frame, 12, i + 1, 100);
                 }
             } else {
-                // FIXED: For skip animation, only update every 50 pulls to reduce spam
-                if ((i + 1) % 50 === 0) {
-                    await interaction.editReply({
-                        content: `🌊 Processing: ${i + 1}/100 pulls completed...`
-                    });
+                // Simple loading animation updates for skip mode
+                if ((i + 1) % 20 === 0) {
+                    await this.showSimpleLoadingAnimation(interaction, i + 1, 100);
                 }
             }
             
-            // FIXED: Adjust delay based on animation preference
-            const delay = skipAnimation ? 15 : 120; // Much faster when skipping
+            // Adjust delay based on animation preference
+            const delay = skipAnimation ? 15 : 120;
             await new Promise(resolve => setTimeout(resolve, delay));
         }
         
@@ -614,6 +608,44 @@ module.exports = {
         
         // Show first batch with navigation
         await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
+    },
+
+    async showSimpleLoadingAnimation(interaction, currentPulls, totalPulls) {
+        const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
+        const currentPity = await GachaService.getPityCount(interaction.user.id);
+        
+        // Create a simple loading animation with dots
+        const frame = Math.floor(Date.now() / 500) % 4; // Change every 500ms
+        const loadingDots = '●'.repeat(frame) + '○'.repeat(3 - frame);
+        
+        // Create simple progress bar
+        const progressBarLength = 20;
+        const filledBars = Math.floor((currentPulls / totalPulls) * progressBarLength);
+        const emptyBars = progressBarLength - filledBars;
+        const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`🍈 ${totalPulls}x Devil Fruit Summoning`)
+            .setDescription(
+                `🌊 **Searching the Grand Line for Devil Fruits...**\n\n` +
+                `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
+                `${progressBar}\n\n` +
+                `🎯 **Current Pity:** ${currentPity}/1500\n` +
+                `⚡ **Status:** Processing ${loadingDots}\n\n` +
+                `✨ *Skip animation enabled - faster processing!*`
+            )
+            .setColor(0x4A90E2)
+            .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
+            .setTimestamp();
+        
+        try {
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            // Ignore rate limit errors during animation
+            if (error.code !== 10062 && error.code !== 50013) {
+                console.log('Simple loading update error:', error.message);
+            }
+        }
     },
 
     async showProgressAnimation(interaction, frame, maxFrames, currentPulls, totalPulls) {
