@@ -1,29 +1,28 @@
-// src/services/GachaService.js - Enhanced Gacha Service with BALANCED Pity System
+// src/services/GachaService.js - FIXED: Mythical/Divine Only Pity + One Piece Ultra Rare
 const DatabaseManager = require('../database/DatabaseManager');
-const { DEVIL_FRUITS, getFruitsByRarity } = require('../data/DevilFruits');
+const { DEVIL_FRUITS, getFruitsByRarity, selectWeightedDivineFruit } = require('../data/DevilFruits');
 const { RARITY_COLORS, BASE_PULL_RATES } = require('../data/Constants');
 const Logger = require('../utils/Logger');
 
-// FIXED PITY SYSTEM - Much more balanced rates
-const BALANCED_PITY_SYSTEM = {
-    HARD_PITY_LIMIT: 1500,     // Hard pity at 1500 pulls
+// FIXED PITY SYSTEM - ONLY Mythical/Divine
+const FIXED_PITY_SYSTEM = {
+    HARD_PITY_LIMIT: 2000,     // Increased from 1500
     
-    // Premium rates when pity procs - MUCH LOWER
+    // Premium rates when pity procs - ONLY mythical/divine
     PREMIUM_RATES: {
-        legendary: 85.0,        // 85% when pity procs
-        mythical: 14.5,         // 14.5% when pity procs  
-        divine: 0.5             // 0.5% when pity procs
+        mythical: 95.0,         // 95% when pity procs
+        divine: 5.0             // 5% when pity procs (much lower)
     },
     
     // Pity proc chance calculation - MUCH SLOWER SCALING
     BASE_PITY_CHANCE: 0.0,      // Base chance at 0 pulls
-    MAX_PITY_CHANCE: 100.0,     // 100% chance at 1500 pulls
+    MAX_PITY_CHANCE: 100.0,     // 100% chance at 2000 pulls
     
-    // Pity resets when you get legendary/mythical/divine
-    RESET_RARITIES: ['legendary', 'mythical', 'divine'],
+    // Pity resets ONLY when you get mythical/divine (REMOVED legendary)
+    RESET_RARITIES: ['mythical', 'divine'],
     
-    // BALANCED scaling - much slower ramp up
-    SCALING_POWER: 2.5          // Exponential scaling factor
+    // MUCH SLOWER scaling - starts extremely slow
+    SCALING_POWER: 3.0          // Increased from 2.5
 };
 
 class GachaService {
@@ -33,7 +32,7 @@ class GachaService {
     }
 
     /**
-     * Perform multiple pulls for a user with BALANCED pity mechanics
+     * Perform multiple pulls for a user with FIXED pity mechanics
      */
     async performPulls(userId, count) {
         const results = [];
@@ -65,8 +64,8 @@ class GachaService {
                     pityUsedThisSession = true;
                 }
                 
-                // Check if pity should reset
-                if (BALANCED_PITY_SYSTEM.RESET_RARITIES.includes(pullResult.fruit.rarity)) {
+                // Check if pity should reset (ONLY mythical/divine)
+                if (FIXED_PITY_SYSTEM.RESET_RARITIES.includes(pullResult.fruit.rarity)) {
                     pityCount = 0; // Reset pity
                     this.logger.info(`Pity reset for user ${userId} after pulling ${pullResult.fruit.rarity}`);
                 } else {
@@ -95,19 +94,19 @@ class GachaService {
     }
 
     /**
-     * Pull a single devil fruit with BALANCED pity system
+     * Pull a single devil fruit with FIXED pity system
      */
     async pullSingleFruit(userId, pityCount) {
         try {
-            // Calculate pity proc chance with BALANCED scaling
-            const pityProcChance = this.calculateBalancedPityProcChance(pityCount);
+            // Calculate pity proc chance with MUCH SLOWER scaling
+            const pityProcChance = this.calculateFixedPityProcChance(pityCount);
             const pityProcs = Math.random() * 100 < pityProcChance;
             
             let selectedRarity;
             let pityUsed = false;
             
             if (pityProcs) {
-                // Use premium rates when pity procs
+                // Use premium rates when pity procs (ONLY mythical/divine)
                 selectedRarity = this.selectPremiumRarity();
                 pityUsed = true;
                 this.logger.info(`Pity proc for user ${userId} at ${pityCount} pulls (${pityProcChance.toFixed(4)}% chance)`);
@@ -126,8 +125,18 @@ class GachaService {
                 return { fruit: selectedFruit, pityUsed: false };
             }
             
-            // Select random fruit from rarity
-            const selectedFruit = fruitsOfRarity[Math.floor(Math.random() * fruitsOfRarity.length)];
+            // Select fruit from rarity (use weighted selection for divine)
+            let selectedFruit;
+            if (selectedRarity === 'divine') {
+                selectedFruit = selectWeightedDivineFruit(fruitsOfRarity);
+                
+                // Log if One Piece was pulled (ultra rare)
+                if (selectedFruit.id === 'one_piece_treasure') {
+                    this.logger.warn(`🏆 ULTRA RARE: User ${userId} pulled ONE PIECE! (${pityCount} pity, pity used: ${pityUsed})`);
+                }
+            } else {
+                selectedFruit = fruitsOfRarity[Math.floor(Math.random() * fruitsOfRarity.length)];
+            }
             
             this.logger.debug(`User ${userId} pulled ${selectedFruit.name} (${selectedRarity}) - Pity: ${pityCount}, Used: ${pityUsed}`);
             
@@ -144,15 +153,15 @@ class GachaService {
     }
 
     /**
-     * Calculate BALANCED pity proc chance - much slower scaling
+     * Calculate FIXED pity proc chance - MUCH slower scaling
      */
-    calculateBalancedPityProcChance(pityCount) {
-        const maxPity = BALANCED_PITY_SYSTEM.HARD_PITY_LIMIT;
-        const basePityChance = BALANCED_PITY_SYSTEM.BASE_PITY_CHANCE;
-        const maxPityChance = BALANCED_PITY_SYSTEM.MAX_PITY_CHANCE;
-        const scalingPower = BALANCED_PITY_SYSTEM.SCALING_POWER;
+    calculateFixedPityProcChance(pityCount) {
+        const maxPity = FIXED_PITY_SYSTEM.HARD_PITY_LIMIT;
+        const basePityChance = FIXED_PITY_SYSTEM.BASE_PITY_CHANCE;
+        const maxPityChance = FIXED_PITY_SYSTEM.MAX_PITY_CHANCE;
+        const scalingPower = FIXED_PITY_SYSTEM.SCALING_POWER;
         
-        // Exponential scaling that starts very slow and ramps up dramatically near the end
+        // Exponential scaling that starts VERY slow and ramps up dramatically near the end
         const pityProgress = Math.min(pityCount / maxPity, 1.0);
         const exponentialProgress = Math.pow(pityProgress, scalingPower);
         const pityChance = basePityChance + (maxPityChance - basePityChance) * exponentialProgress;
@@ -161,10 +170,10 @@ class GachaService {
     }
 
     /**
-     * Select rarity using premium rates (when pity procs)
+     * Select rarity using premium rates (when pity procs) - ONLY mythical/divine
      */
     selectPremiumRarity() {
-        const rates = BALANCED_PITY_SYSTEM.PREMIUM_RATES;
+        const rates = FIXED_PITY_SYSTEM.PREMIUM_RATES;
         const random = Math.random() * 100;
         
         let cumulative = 0;
@@ -175,7 +184,7 @@ class GachaService {
             }
         }
         
-        return 'legendary'; // Fallback
+        return 'mythical'; // Fallback
     }
 
     /**
@@ -235,14 +244,14 @@ class GachaService {
     async getPityInfo(userId) {
         try {
             const pityCount = await this.getPityCount(userId);
-            const pityProcChance = this.calculateBalancedPityProcChance(pityCount);
-            const pullsToHardPity = Math.max(0, BALANCED_PITY_SYSTEM.HARD_PITY_LIMIT - pityCount);
+            const pityProcChance = this.calculateFixedPityProcChance(pityCount);
+            const pullsToHardPity = Math.max(0, FIXED_PITY_SYSTEM.HARD_PITY_LIMIT - pityCount);
             
             return {
                 currentPity: pityCount,
                 pityProcChance: pityProcChance,
                 pullsToHardPity: pullsToHardPity,
-                isAtHardPity: pityCount >= BALANCED_PITY_SYSTEM.HARD_PITY_LIMIT,
+                isAtHardPity: pityCount >= FIXED_PITY_SYSTEM.HARD_PITY_LIMIT,
                 nextMilestone: this.getNextPityMilestone(pityCount)
             };
         } catch (error) {
@@ -250,25 +259,26 @@ class GachaService {
             return {
                 currentPity: 0,
                 pityProcChance: 0,
-                pullsToHardPity: BALANCED_PITY_SYSTEM.HARD_PITY_LIMIT,
+                pullsToHardPity: FIXED_PITY_SYSTEM.HARD_PITY_LIMIT,
                 isAtHardPity: false,
-                nextMilestone: '500 pulls for 1% pity chance'
+                nextMilestone: '1000 pulls for progress'
             };
         }
     }
 
     /**
-     * Get next pity milestone description - HIDE exact chances from users
+     * Get next pity milestone description - Updated for 2000 limit
      */
     getNextPityMilestone(pityCount) {
         const milestones = [
-            { pulls: 500, description: 'Making progress' },
-            { pulls: 750, description: 'Building up' },
-            { pulls: 1000, description: 'Getting closer' },
-            { pulls: 1200, description: 'Almost there' },
-            { pulls: 1350, description: 'Very close' },
-            { pulls: 1450, description: 'Nearly guaranteed' },
-            { pulls: 1500, description: 'Guaranteed premium!' }
+            { pulls: 500, description: 'Starting the journey' },
+            { pulls: 1000, description: 'Building momentum' },
+            { pulls: 1300, description: 'Getting warmer' },
+            { pulls: 1500, description: 'Approaching power' },
+            { pulls: 1700, description: 'Very close now' },
+            { pulls: 1850, description: 'Almost guaranteed' },
+            { pulls: 1950, description: 'Nearly there' },
+            { pulls: 2000, description: 'Guaranteed mythical/divine!' }
         ];
         
         for (const milestone of milestones) {
@@ -282,13 +292,13 @@ class GachaService {
     }
 
     /**
-     * Format pity display text for embeds - Simple format
+     * Format pity display text for embeds - Updated
      */
     formatPityDisplay(pityInfo, pityUsedInSession = false) {
         const { currentPity, isAtHardPity } = pityInfo;
         
         // Simple pity display - just the count
-        let pityText = `🎯 **Pity:** ${currentPity}/1500`;
+        let pityText = `🎯 **Pity:** ${currentPity}/2000 (Mythical/Divine only)`;
         
         if (isAtHardPity) {
             pityText += ' 🔥 **GUARANTEED!**';
@@ -312,7 +322,8 @@ class GachaService {
                 legendaryPulls: results.filter(r => r.rarity === 'legendary').length,
                 mythicalPulls: results.filter(r => r.rarity === 'mythical').length,
                 divinePulls: results.filter(r => r.rarity === 'divine').length,
-                pityUsed: results.some(r => r.pityUsed) ? 1 : 0
+                pityUsed: results.some(r => r.pityUsed) ? 1 : 0,
+                onePiecePulls: results.filter(r => r.fruit?.fruit_id === 'one_piece_treasure' || r.fruit?.fruit_name === 'One Piece').length
             };
 
             // Try to insert/update pull statistics
@@ -324,12 +335,18 @@ class GachaService {
                     ($1, 'legendary_pulls', $4, NOW()),
                     ($1, 'mythical_pulls', $5, NOW()),
                     ($1, 'divine_pulls', $6, NOW()),
-                    ($1, 'pity_used', $7, NOW())
+                    ($1, 'pity_used', $7, NOW()),
+                    ($1, 'one_piece_pulls', $8, NOW())
                 ON CONFLICT (user_id, stat_type) 
                 DO UPDATE SET 
                     value = user_statistics.value + EXCLUDED.value,
                     updated_at = NOW()
-            `, [userId, stats.totalPulls, stats.newFruits, stats.legendaryPulls, stats.mythicalPulls, stats.divinePulls, stats.pityUsed]);
+            `, [userId, stats.totalPulls, stats.newFruits, stats.legendaryPulls, stats.mythicalPulls, stats.divinePulls, stats.pityUsed, stats.onePiecePulls]);
+            
+            // Special logging for One Piece pulls
+            if (stats.onePiecePulls > 0) {
+                this.logger.warn(`🏆 ONE PIECE PULLED by ${userId}! Total One Piece pulls by this user: ${stats.onePiecePulls}`);
+            }
             
         } catch (error) {
             // Statistics table might not exist yet, that's okay
@@ -361,6 +378,7 @@ class GachaService {
                 legendaryPulls: stats.legendary_pulls || 0,
                 mythicalPulls: stats.mythical_pulls || 0,
                 divinePulls: stats.divine_pulls || 0,
+                onePiecePulls: stats.one_piece_pulls || 0,
                 pityUsed: stats.pity_used || 0,
                 currentPity: pityInfo.currentPity,
                 pityProcChance: pityInfo.pityProcChance,
@@ -375,6 +393,7 @@ class GachaService {
                 legendaryPulls: 0,
                 mythicalPulls: 0,
                 divinePulls: 0,
+                onePiecePulls: 0,
                 pityUsed: 0,
                 currentPity: pityInfo.currentPity,
                 pityProcChance: pityInfo.pityProcChance,
@@ -395,13 +414,14 @@ class GachaService {
             legendary: 0,
             mythical: 0,
             divine: 0,
-            pityProcs: 0
+            pityProcs: 0,
+            onePiecePulls: 0
         };
 
         let pityCount = pityStart;
 
         for (let i = 0; i < count; i++) {
-            const pityProcChance = this.calculateBalancedPityProcChance(pityCount);
+            const pityProcChance = this.calculateFixedPityProcChance(pityCount);
             const pityProcs = Math.random() * 100 < pityProcChance;
             
             let rarity;
@@ -414,7 +434,17 @@ class GachaService {
             
             results[rarity]++;
 
-            if (BALANCED_PITY_SYSTEM.RESET_RARITIES.includes(rarity)) {
+            // Special tracking for divine fruits
+            if (rarity === 'divine') {
+                const fruitsOfRarity = getFruitsByRarity('divine');
+                const selectedFruit = selectWeightedDivineFruit(fruitsOfRarity);
+                if (selectedFruit.id === 'one_piece_treasure') {
+                    results.onePiecePulls++;
+                }
+            }
+
+            // Reset pity only for mythical/divine
+            if (FIXED_PITY_SYSTEM.RESET_RARITIES.includes(rarity)) {
                 pityCount = 0;
             } else {
                 pityCount++;
@@ -424,8 +454,8 @@ class GachaService {
         // Calculate percentages
         const percentages = {};
         Object.keys(results).forEach(key => {
-            if (key !== 'pityProcs') {
-                percentages[key] = ((results[key] / count) * 100).toFixed(2) + '%';
+            if (key !== 'pityProcs' && key !== 'onePiecePulls') {
+                percentages[key] = ((results[key] / count) * 100).toFixed(4) + '%';
             }
         });
 
@@ -434,7 +464,8 @@ class GachaService {
             percentages,
             totalPulls: count,
             finalPity: pityCount,
-            pityProcRate: ((results.pityProcs / count) * 100).toFixed(2) + '%'
+            pityProcRate: ((results.pityProcs / count) * 100).toFixed(4) + '%',
+            onePieceRate: ((results.onePiecePulls / count) * 100).toFixed(6) + '%'
         };
     }
 
@@ -447,22 +478,22 @@ class GachaService {
         
         // Calculate effective rates (normal rates + pity contribution)
         const normalRates = { ...BASE_PULL_RATES };
-        const premiumRates = BALANCED_PITY_SYSTEM.PREMIUM_RATES;
+        const premiumRates = FIXED_PITY_SYSTEM.PREMIUM_RATES;
         
         const effectiveRates = {};
         
-        // For legendary, mythical, divine - add pity contribution
-        for (const rarity of ['legendary', 'mythical', 'divine']) {
+        // For mythical, divine - add pity contribution
+        for (const rarity of ['mythical', 'divine']) {
             const normalRate = normalRates[rarity] || 0;
             const premiumRate = premiumRates[rarity] || 0;
             const pityContribution = (pityProcChance / 100) * premiumRate;
             const normalContribution = (1 - pityProcChance / 100) * normalRate;
             
-            effectiveRates[rarity] = (normalContribution + pityContribution).toFixed(3) + '%';
+            effectiveRates[rarity] = (normalContribution + pityContribution).toFixed(4) + '%';
         }
         
-        // Other rarities use normal rates
-        for (const rarity of ['common', 'uncommon', 'rare', 'epic']) {
+        // Other rarities use normal rates (no pity boost)
+        for (const rarity of ['common', 'uncommon', 'rare', 'epic', 'legendary']) {
             effectiveRates[rarity] = normalRates[rarity] + '%';
         }
 
@@ -472,7 +503,8 @@ class GachaService {
             ),
             effectiveRates,
             pityInfo,
-            pityActive: pityProcChance > 0
+            pityActive: pityProcChance > 0,
+            pityAffects: 'Only Mythical & Divine'
         };
     }
 
@@ -495,7 +527,7 @@ class GachaService {
      */
     async setPityCount(userId, pityCount) {
         try {
-            const clampedPity = Math.max(0, Math.min(pityCount, BALANCED_PITY_SYSTEM.HARD_PITY_LIMIT));
+            const clampedPity = Math.max(0, Math.min(pityCount, FIXED_PITY_SYSTEM.HARD_PITY_LIMIT));
             await this.savePityCount(userId, clampedPity);
             this.logger.info(`Set pity count for user ${userId} to ${clampedPity}`);
             return true;
@@ -505,10 +537,30 @@ class GachaService {
         }
     }
 
-    // [Additional methods remain the same...]
-    async getGlobalStats() { /* ... existing implementation ... */ }
-    async getUserRarityDistribution(userId) { /* ... existing implementation ... */ }
-    async getPityLeaderboard(limit = 10) { /* ... existing implementation ... */ }
+    /**
+     * Get global One Piece statistics
+     */
+    async getOnePieceStats() {
+        try {
+            const result = await DatabaseManager.query(`
+                SELECT 
+                    COUNT(*) as total_one_piece_pulls,
+                    COUNT(DISTINCT user_id) as unique_holders
+                FROM user_devil_fruits 
+                WHERE fruit_id = 'one_piece_treasure' OR fruit_name = 'One Piece'
+            `);
+            
+            const stats = result.rows[0];
+            
+            return {
+                totalOnePiecePulls: parseInt(stats.total_one_piece_pulls || 0),
+                uniqueHolders: parseInt(stats.unique_holders || 0)
+            };
+        } catch (error) {
+            this.logger.error('Failed to get One Piece stats:', error);
+            return { totalOnePiecePulls: 0, uniqueHolders: 0 };
+        }
+    }
 }
 
 module.exports = new GachaService();
