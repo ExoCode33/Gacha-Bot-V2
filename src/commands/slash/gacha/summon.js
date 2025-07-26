@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - CORRECTED Complete Multi-Pull System
+// src/commands/slash/gacha/summon.js - FIXED Skip Animation Issue
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -286,6 +286,9 @@ module.exports = {
                 });
             }
             
+            // ALWAYS defer the reply first for longer operations
+            await interaction.deferReply();
+            
             await EconomyService.deductBerries(userId, cost, 'gacha_summon');
             const newBalance = balance - cost;
             
@@ -299,10 +302,22 @@ module.exports = {
             
         } catch (error) {
             interaction.client.logger.error('Summon command error:', error);
-            await interaction.reply({
-                content: '❌ An error occurred during your summon.',
-                ephemeral: true
-            });
+            
+            // Check if we can still respond
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({
+                        content: '❌ An error occurred during your summon.',
+                        ephemeral: true
+                    });
+                } else {
+                    await interaction.editReply({
+                        content: '❌ An error occurred during your summon.'
+                    });
+                }
+            } catch (responseError) {
+                interaction.client.logger.error('Failed to send error response:', responseError);
+            }
         }
     },
 
@@ -362,6 +377,11 @@ module.exports = {
     },
 
     async run50xSummon(interaction, newBalance, skipAnimation = false) {
+        // Send initial status message
+        await interaction.editReply({
+            content: '🌊 Starting 50x Mega Summon... This may take a moment!'
+        });
+
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -396,10 +416,17 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Run animation if not skipped
-            if (!skipAnimation) {
+            // Run animation if not skipped (but much faster for 50x)
+            if (!skipAnimation && i < 5) { // Only animate first 5 for performance
                 await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
-                if (i < 49) await new Promise(resolve => setTimeout(resolve, 600));
+                if (i < 4) await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            // Update progress every 10 pulls
+            if ((i + 1) % 10 === 0) {
+                await interaction.editReply({
+                    content: `🌊 Progress: ${i + 1}/50 pulls completed...`
+                });
             }
             
             // Update pity for next pull
@@ -430,6 +457,11 @@ module.exports = {
     },
 
     async run100xSummon(interaction, newBalance, skipAnimation = false) {
+        // Send initial status message
+        await interaction.editReply({
+            content: '🌊 Starting 100x Ultra Summon... This will take a moment!'
+        });
+
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -464,10 +496,17 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Run animation if not skipped
-            if (!skipAnimation) {
+            // Run animation if not skipped (but only for first 3 for performance)
+            if (!skipAnimation && i < 3) {
                 await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
-                if (i < 99) await new Promise(resolve => setTimeout(resolve, 400));
+                if (i < 2) await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            // Update progress every 20 pulls
+            if ((i + 1) % 20 === 0) {
+                await interaction.editReply({
+                    content: `🌊 Progress: ${i + 1}/100 pulls completed...`
+                });
             }
             
             // Update pity for next pull
@@ -501,12 +540,7 @@ module.exports = {
         for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
             const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity);
             
-            if (summonNumber === 1 && frame === 0 && !interaction.replied && !interaction.deferred) {
-                await interaction.reply({ embeds: [embed] });
-            } else {
-                await interaction.editReply({ embeds: [embed] });
-            }
-            
+            await interaction.editReply({ embeds: [embed] });
             await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
         }
         
@@ -838,7 +872,7 @@ module.exports = {
             await EconomyService.deductBerries(userId, cost, 'gacha_summon');
             const newBalance = balance - cost;
             
-            // Acknowledge the button press
+            // Acknowledge the button press and defer
             await buttonInteraction.deferUpdate();
             
             // Start the appropriate summon
