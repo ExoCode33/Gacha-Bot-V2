@@ -1,4 +1,4 @@
-// src/data/DevilFruits.js - Complete Devil Fruits Database (150+ Fruits)
+// src/data/DevilFruits.js - Complete Devil Fruits Database with Standard PvP Effects
 const DEVIL_FRUITS = {
   // =====================================================
   // COMMON FRUITS (30 fruits) - 1.0x to 1.2x CP
@@ -17,7 +17,7 @@ const DEVIL_FRUITS = {
       name: "Gomu Gomu no Pistol",
       damage: 55,
       cooldown: 0,
-      effect: "rubber_immunity",
+      effect: "blunt_immunity",
       description: "Stretches arm for a powerful punch, immune to blunt damage"
     }
   },
@@ -36,7 +36,7 @@ const DEVIL_FRUITS = {
       name: "Bara Bara Festival",
       damage: 50,
       cooldown: 1,
-      effect: "immune_slash", 
+      effect: "cutting_immunity", 
       description: "Split body parts attack independently, immune to slashing"
     }
   },
@@ -93,7 +93,7 @@ const DEVIL_FRUITS = {
       name: "10,000 Kilo Press",
       damage: 58,
       cooldown: 1, 
-      effect: "weight_crush",
+      effect: "heavy_slow",
       description: "Massive weight crushes through defenses"
     }
   },
@@ -112,7 +112,7 @@ const DEVIL_FRUITS = {
       name: "Candle Champion",
       damage: 53,
       cooldown: 1,
-      effect: "wax_armor",
+      effect: "damage_reduction",
       description: "Create hardened wax constructs"
     }
   },
@@ -131,7 +131,7 @@ const DEVIL_FRUITS = {
       name: "Spring Launcher",
       damage: 52,
       cooldown: 0,
-      effect: "bounce_attack", 
+      effect: "multi_strike", 
       description: "Spring-powered bouncing attacks"
     }
   },
@@ -150,7 +150,7 @@ const DEVIL_FRUITS = {
       name: "Blade Storm",
       damage: 57,
       cooldown: 1,
-      effect: "multi_cut",
+      effect: "multi_strike",
       description: "Multiple blade attacks from body"
     }
   },
@@ -169,7 +169,7 @@ const DEVIL_FRUITS = {
       name: "Spike Barrier",
       damage: 54,
       cooldown: 1,
-      effect: "spike_counter",
+      effect: "damage_reflection",
       description: "Spikes damage anyone who attacks"
     }
   },
@@ -188,12 +188,11 @@ const DEVIL_FRUITS = {
       name: "Iron Cage", 
       damage: 48,
       cooldown: 2,
-      effect: "bind_1_turn",
+      effect: "movement_bind",
       description: "Create iron restraints around enemy"
     }
   },
 
-  // Continue with more common fruits...
   "baku_baku_no_mi": {
     id: "baku_baku_no_mi",
     name: "Baku Baku no Mi",
@@ -208,7 +207,7 @@ const DEVIL_FRUITS = {
       name: "Munch Munch Factory",
       damage: 56,
       cooldown: 1,
-      effect: "transform_eaten", 
+      effect: "power_drain", 
       description: "Transform into combination of eaten objects"
     }
   },
@@ -227,7 +226,7 @@ const DEVIL_FRUITS = {
       name: "Perfect Clone",
       damage: 51,
       cooldown: 1,
-      effect: "copy_abilities",
+      effect: "stealth_mode",
       description: "Copy enemy's appearance and basic abilities"
     }
   },
@@ -265,7 +264,7 @@ const DEVIL_FRUITS = {
       name: "Wheel Cannon",
       damage: 49,
       cooldown: 1,
-      effect: "spinning_force",
+      effect: "speed_boost",
       description: "High-speed spinning wheel attacks"
     }
   },
@@ -284,12 +283,12 @@ const DEVIL_FRUITS = {
       name: "Berry Scatter Shot",
       damage: 47,
       cooldown: 1,
-      effect: "split_dodge",
+      effect: "dodge_boost",
       description: "Split into berries to confuse and attack"
     }
   },
 
-  // Add Zoan fruits
+  // Zoan fruits
   "hito_hito_no_mi": {
     id: "hito_hito_no_mi",
     name: "Hito Hito no Mi",
@@ -304,7 +303,7 @@ const DEVIL_FRUITS = {
       name: "Human Intelligence",
       damage: 45,
       cooldown: 0,
-      effect: "strategy_boost",
+      effect: "tactical_advantage",
       description: "Enhanced intelligence improves tactics"
     }
   },
@@ -323,7 +322,7 @@ const DEVIL_FRUITS = {
       name: "Falcon Dive",
       damage: 46,
       cooldown: 0,
-      effect: "aerial_advantage",
+      effect: "speed_boost",
       description: "High-speed diving attack from above"
     }
   },
@@ -342,7 +341,7 @@ const DEVIL_FRUITS = {
       name: "Launcher Attack",
       damage: 54,
       cooldown: 0,
-      effect: "ranged_strike", 
+      effect: "area_explosion", 
       description: "Transform into bazooka for ranged attack"
     }
   },
@@ -361,7 +360,7 @@ const DEVIL_FRUITS = {
       name: "Underground Strike",
       damage: 56,
       cooldown: 1,
-      effect: "underground_dodge",
+      effect: "stealth_mode",
       description: "Attack from underground tunnels"
     }
   },
@@ -380,12 +379,11 @@ const DEVIL_FRUITS = {
       name: "Desert Fang",
       damage: 52,
       cooldown: 1,
-      effect: "sand_blind",
+      effect: "vision_impair",
       description: "Jackal fangs with sand manipulation"
     }
   },
 
-  // More Zoan fruits...
   "uma_uma_no_mi": {
     id: "uma_uma_no_mi",
     name: "Uma Uma no Mi",
@@ -419,7 +417,7 @@ const DEVIL_FRUITS = {
       name: "Leopard Pounce",
       damage: 49,
       cooldown: 1,
-      effect: "stealth_attack",
+      effect: "stealth_mode",
       description: "Stealthy leopard attack"
     }
   },
@@ -438,7 +436,7 @@ const DEVIL_FRUITS = {
       name: "Wolf Pack Strike",
       damage: 48,
       cooldown: 1,
-      effect: "pack_instinct",
+      effect: "multi_strike",
       description: "Wolf instincts enhance combat"
     }
   },
@@ -457,7 +455,7 @@ const DEVIL_FRUITS = {
       name: "Elephant Stomp",
       damage: 47,
       cooldown: 1,
-      effect: "ground_shake",
+      effect: "heavy_slow",
       description: "Massive elephant stomp creates tremors"
     }
   },
@@ -476,7 +474,7 @@ const DEVIL_FRUITS = {
       name: "Bison Charge",
       damage: 46,
       cooldown: 1,
-      effect: "charge_stun",
+      effect: "paralysis",
       description: "Massive charging attack"
     }
   },
@@ -498,7 +496,7 @@ const DEVIL_FRUITS = {
       name: "Slow Photon",
       damage: 75,
       cooldown: 2,
-      effect: "slow_2_turns",
+      effect: "heavy_slow",
       description: "Photons drastically slow enemy movement"
     }
   },
@@ -536,7 +534,7 @@ const DEVIL_FRUITS = {
       name: "Bubble Trap",
       damage: 73,
       cooldown: 2,
-      effect: "clean_debuff",
+      effect: "status_cleanse",
       description: "Soap bubbles wash away strength"
     }
   },
@@ -555,7 +553,7 @@ const DEVIL_FRUITS = {
       name: "Sticky Prison",
       damage: 72,
       cooldown: 2,
-      effect: "sticky_bind",
+      effect: "movement_bind",
       description: "Trap enemies in sticky mucus"
     }
   },
@@ -574,12 +572,11 @@ const DEVIL_FRUITS = {
       name: "Barrier Crash",
       damage: 71,
       cooldown: 2,
-      effect: "barrier_reflect",
+      effect: "damage_reflection",
       description: "Unbreakable barriers reflect attacks"
     }
   },
 
-  // Continue with more uncommon fruits including Ancient Zoans...
   "ryu_ryu_no_mi_spinosaurus": {
     id: "ryu_ryu_no_mi_spinosaurus",
     name: "Ryu Ryu no Mi, Model: Spinosaurus",
@@ -594,7 +591,7 @@ const DEVIL_FRUITS = {
       name: "Sail Slash",
       damage: 60,
       cooldown: 2,
-      effect: "water_boost",
+      effect: "multi_strike",
       description: "Back sail creates powerful attacks"
     }
   },
@@ -613,7 +610,7 @@ const DEVIL_FRUITS = {
       name: "Aerial Crash",
       damage: 61,
       cooldown: 2,
-      effect: "dive_bomb",
+      effect: "speed_boost",
       description: "High-speed pteranodon dive attack"
     }
   },
@@ -635,7 +632,7 @@ const DEVIL_FRUITS = {
       name: "Invisible Assault",
       damage: 110,
       cooldown: 3,
-      effect: "invisibility",
+      effect: "stealth_mode",
       description: "Attack while completely invisible"
     }
   },
@@ -654,7 +651,7 @@ const DEVIL_FRUITS = {
       name: "Negative Hollow",
       damage: 108,
       cooldown: 3,
-      effect: "negative_depression",
+      effect: "morale_break",
       description: "Ghosts drain fighting spirit completely"
     }
   },
@@ -673,7 +670,7 @@ const DEVIL_FRUITS = {
       name: "Soul Parade",
       damage: 107,
       cooldown: 3,
-      effect: "soul_chill",
+      effect: "life_drain",
       description: "Soul power freezes enemies to the bone"
     }
   },
@@ -692,7 +689,7 @@ const DEVIL_FRUITS = {
       name: "Shadow Revolution",
       damage: 106,
       cooldown: 3,
-      effect: "shadow_army",
+      effect: "power_drain",
       description: "Command army of shadow zombies"
     }
   },
@@ -711,7 +708,7 @@ const DEVIL_FRUITS = {
       name: "Emporio Face Growth",
       damage: 105,
       cooldown: 3,
-      effect: "stat_manipulation",
+      effect: "healing_boost",
       description: "Hormone injection alters enemy abilities"
     }
   },
@@ -730,12 +727,11 @@ const DEVIL_FRUITS = {
       name: "Venom Demon",
       damage: 101,
       cooldown: 3,
-      effect: "poison_deadly",
+      effect: "poison_3_turns",
       description: "Deadly multi-layered poison attack"
     }
   },
 
-  // Add Logia fruits to rare tier
   "moku_moku_no_mi": {
     id: "moku_moku_no_mi",
     name: "Moku Moku no Mi",
@@ -750,7 +746,7 @@ const DEVIL_FRUITS = {
       name: "White Blow",
       damage: 144,
       cooldown: 3,
-      effect: "smoke_blind", 
+      effect: "vision_impair", 
       description: "Dense smoke blinds and confuses"
     }
   },
@@ -769,7 +765,7 @@ const DEVIL_FRUITS = {
       name: "Desert Spada",
       damage: 143,
       cooldown: 3,
-      effect: "dehydration",
+      effect: "life_drain",
       description: "Sand blade drains all moisture"
     }
   },
@@ -829,7 +825,7 @@ const DEVIL_FRUITS = {
       name: "El Thor",
       damage: 140,
       cooldown: 3,
-      effect: "lightning_stun",
+      effect: "paralysis",
       description: "Lightning pillar paralyzes enemies"
     }
   },
@@ -848,7 +844,7 @@ const DEVIL_FRUITS = {
       name: "Gastille",
       damage: 147,
       cooldown: 3,
-      effect: "poison_gas",
+      effect: "poison_3_turns",
       description: "Poisonous gas cloud suffocates enemies"
     }
   },
@@ -867,7 +863,7 @@ const DEVIL_FRUITS = {
       name: "Blizzard Storm",
       damage: 146,
       cooldown: 3,
-      effect: "freeze_field",
+      effect: "freeze_3_turns",
       description: "Create blinding blizzard that freezes all"
     }
   },
@@ -886,7 +882,7 @@ const DEVIL_FRUITS = {
       name: "Swamp Prison",
       damage: 145,
       cooldown: 3,
-      effect: "swamp_sink",
+      effect: "movement_bind",
       description: "Trap enemies in bottomless swamp"
     }
   },
@@ -905,7 +901,7 @@ const DEVIL_FRUITS = {
       name: "Diamond Jozu",
       damage: 159,
       cooldown: 4,
-      effect: "diamond_armor",
+      effect: "damage_reduction",
       description: "Diamond body provides ultimate defense"
     }
   },
@@ -924,7 +920,7 @@ const DEVIL_FRUITS = {
       name: "Overheat",
       damage: 237,
       cooldown: 6,
-      effect: "string_control",
+      effect: "movement_bind",
       description: "Razor strings control everything"
     }
   },
@@ -943,7 +939,7 @@ const DEVIL_FRUITS = {
       name: "Gravity Blade",
       damage: 97,
       cooldown: 3,
-      effect: "gravity_crush",
+      effect: "heavy_slow",
       description: "Gravity pulls enemies helplessly down"
     }
   },
@@ -965,7 +961,7 @@ const DEVIL_FRUITS = {
       name: "Room: Shambles",
       damage: 236,
       cooldown: 5,
-      effect: "spatial_surgery",
+      effect: "teleport_strike",
       description: "Surgical manipulation of space itself"
     }
   },
@@ -984,7 +980,7 @@ const DEVIL_FRUITS = {
       name: "Ursus Shock",
       damage: 239,
       cooldown: 6,
-      effect: "paw_shockwave",
+      effect: "area_explosion",
       description: "Compressed air creates devastating explosion"
     }
   },
@@ -1003,7 +999,7 @@ const DEVIL_FRUITS = {
       name: "Zan Giri Mochi",
       damage: 235,
       cooldown: 5,
-      effect: "mochi_mastery",
+      effect: "dodge_boost",
       description: "Perfect mochi control and prediction"
     }
   },
@@ -1022,7 +1018,7 @@ const DEVIL_FRUITS = {
       name: "Yasakani no Magatama",
       damage: 234,
       cooldown: 5,
-      effect: "light_speed_barrage",
+      effect: "multi_strike",
       description: "Light-speed projectile barrage"
     }
   },
@@ -1041,7 +1037,7 @@ const DEVIL_FRUITS = {
       name: "Dai Funka",
       damage: 233,
       cooldown: 6,
-      effect: "volcanic_eruption",
+      effect: "burn_4_turns",
       description: "Massive magma eruption destroys all"
     }
   },
@@ -1060,7 +1056,7 @@ const DEVIL_FRUITS = {
       name: "Phoenix Brand",
       damage: 232,
       cooldown: 5,
-      effect: "regeneration_flames",
+      effect: "healing_boost",
       description: "Blue flames heal while burning enemies"
     }
   },
@@ -1079,7 +1075,7 @@ const DEVIL_FRUITS = {
       name: "Buddha Impact",
       damage: 231,
       cooldown: 5,
-      effect: "divine_shockwave",
+      effect: "area_explosion",
       description: "Divine shockwave purifies everything"
     }
   },
@@ -1098,7 +1094,7 @@ const DEVIL_FRUITS = {
       name: "Bolo Breath",
       damage: 197,
       cooldown: 5,
-      effect: "dragon_breath",
+      effect: "burn_4_turns",
       description: "Concentrated heat beam breath"
     }
   },
@@ -1117,7 +1113,7 @@ const DEVIL_FRUITS = {
       name: "Soul Extraction",
       damage: 200,
       cooldown: 5,
-      effect: "soul_steal",
+      effect: "life_drain",
       description: "Extract and manipulate enemy souls"
     }
   },
@@ -1136,7 +1132,7 @@ const DEVIL_FRUITS = {
       name: "Time Skip",
       damage: 198,
       cooldown: 6,
-      effect: "time_leap",
+      effect: "speed_boost",
       description: "Send attacks through time"
     }
   },
@@ -1158,7 +1154,7 @@ const DEVIL_FRUITS = {
       name: "Gear 5: Liberation",
       damage: 265,
       cooldown: 6,
-      effect: "cartoon_physics",
+      effect: "reality_bend",
       description: "Sun God's power bends all reality"
     }
   },
@@ -1177,7 +1173,7 @@ const DEVIL_FRUITS = {
       name: "Dark Quake",
       damage: 280,
       cooldown: 7,
-      effect: "reality_crack",
+      effect: "area_explosion",
       description: "Darkness and tremors crack reality itself"
     }
   },
@@ -1196,7 +1192,7 @@ const DEVIL_FRUITS = {
       name: "Soul Dominion",
       damage: 260,
       cooldown: 6,
-      effect: "mass_soul_control",
+      effect: "power_null",
       description: "Control souls of all nearby beings"
     }
   },
@@ -1215,7 +1211,7 @@ const DEVIL_FRUITS = {
       name: "Meteor Volcano Awakening",
       damage: 275,
       cooldown: 6,
-      effect: "environmental_change",
+      effect: "burn_4_turns",
       description: "Transform entire battlefield into volcanic wasteland"
     }
   },
@@ -1234,7 +1230,7 @@ const DEVIL_FRUITS = {
       name: "Light Speed Infinity",
       damage: 270,
       cooldown: 6,
-      effect: "time_dilation",
+      effect: "speed_boost",
       description: "Move so fast time seems to stop"
     }
   },
@@ -1253,7 +1249,7 @@ const DEVIL_FRUITS = {
       name: "Raijin's Wrath",
       damage: 285,
       cooldown: 7,
-      effect: "divine_lightning",
+      effect: "paralysis",
       description: "Call down wrath of the Thunder God"
     }
   },
@@ -1275,7 +1271,7 @@ const DEVIL_FRUITS = {
       name: "World Ender",
       damage: 280,
       cooldown: 7,
-      effect: "reality_crack",
+      effect: "area_explosion",
       description: "Crack the very fabric of reality"
     }
   },
@@ -1294,7 +1290,7 @@ const DEVIL_FRUITS = {
       name: "Gear 5: Perfect Liberation", 
       damage: 265,
       cooldown: 6,
-      effect: "cartoon_physics",
+      effect: "reality_bend",
       description: "Sun God's power bends all reality"
     }
   },
@@ -1313,7 +1309,7 @@ const DEVIL_FRUITS = {
       name: "Kurouzu",
       damage: 240,
       cooldown: 6,
-      effect: "darkness_void",
+      effect: "power_null",
       description: "Infinite darkness consumes everything"
     }
   },
@@ -1332,7 +1328,7 @@ const DEVIL_FRUITS = {
       name: "Truth of the World",
       damage: 300,
       cooldown: 8,
-      effect: "reality_rewrite",
+      effect: "reality_bend",
       description: "Rewrite the laws of reality itself"
     }
   },
@@ -1351,7 +1347,7 @@ const DEVIL_FRUITS = {
       name: "Liberation Wave",
       damage: 290,
       cooldown: 7,
-      effect: "mass_liberation",
+      effect: "status_cleanse",
       description: "Free all beings from their chains"
     }
   }
