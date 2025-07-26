@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - COMPLETE SMOOTH Animation Implementation
+// src/commands/slash/gacha/summon.js - FIXED Skip Animation Implementation
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -6,25 +6,16 @@ const DatabaseManager = require('../../../database/DatabaseManager');
 const { PULL_COST, RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 const { getFruitsByRarity, getRandomFruitByRarity } = require('../../../data/DevilFruits');
 
-// SMOOTH Animation Configuration - Much faster and smoother
-const SMOOTH_ANIMATION_CONFIG = {
-    // Scanning phase - faster frames
-    SCAN_FRAMES: 8,           // Reduced from 12
-    SCAN_DELAY: 300,          // Reduced from 500ms
-    
-    // Transition phase - new smooth transition
-    TRANSITION_FRAMES: 6,     // New transition phase
-    TRANSITION_DELAY: 200,    // Fast transition
-    
-    // Reveal phase - quicker reveal
-    REVEAL_FRAMES: 4,         // Reduced from 8
-    REVEAL_DELAY: 400,        // Reduced from 750ms
-    
-    // Color transition - smoother color changes
-    COLOR_TRANSITION_SPEED: 150,  // Faster color transitions
-    
-    // Pattern animation - smoother pattern flow
-    PATTERN_FLOW_SPEED: 100   // Faster pattern updates
+// Animation Configuration
+const ANIMATION_CONFIG = {
+    RAINBOW_FRAMES: 6,
+    RAINBOW_DELAY: 1000,
+    SPREAD_FRAMES: 12,
+    SPREAD_DELAY: 500,
+    REVEAL_FRAMES: 8,
+    REVEAL_DELAY: 750,
+    QUICK_FRAMES: 5,
+    QUICK_DELAY: 500
 };
 
 const HUNT_DESCRIPTIONS = [
@@ -36,298 +27,22 @@ const HUNT_DESCRIPTIONS = [
     "⚔️ The sea itself trembles with anticipation..."
 ];
 
-class SmoothSummonAnimator {
-    
-    /**
-     * Create smooth scanning animation with flowing rainbow
-     */
-    static createSmoothScanFrame(frame, fruit, summonNumber, totalSummons, currentPity) {
-        // Flowing rainbow pattern that moves smoothly
-        const flowingPattern = this.createFlowingRainbow(frame, 20);
-        
-        // Smooth color transitions for embed
-        const scanColor = this.getSmoothScanColor(frame);
-        
-        // Dynamic loading animation
-        const loadingAnimation = this.createLoadingAnimation(frame);
-        
-        const description = `🌊 **Scanning the Grand Line...**\n\n${flowingPattern}\n\n` +
-            `📊 **Status:** ${loadingAnimation}\n` +
-            `🍃 **Searching for:** ${this.createSearchingText(frame)}\n` +
-            `🔮 **Energy Level:** ${this.createEnergyMeter(frame)}\n` +
-            `⭐ **Rarity Detection:** ${this.createRarityScanner(frame)}\n` +
-            `💪 **Power Analysis:** ${this.createPowerAnalysis(frame)}\n` +
-            `🎯 **Fruit Signature:** ${this.createSignatureScanner(frame)}\n` +
-            `⚔️ **Ability Scan:** ${this.createAbilityScanner(frame)}\n\n` +
-            `🔥 **Total CP:** ${this.createCPScanner(frame)}\n` +
-            `💰 **Cost Analysis:** ${this.createCostAnalysis(frame)}\n\n` +
-            `${flowingPattern}`;
-        
-        return new EmbedBuilder()
-            .setTitle(`🍈 ${totalSummons}x Devil Fruit Summoning - Scanning...`)
-            .setDescription(description)
-            .setColor(scanColor)
-            .setFooter({ text: `Summon ${summonNumber} of ${totalSummons} - Analyzing... | Pity: ${currentPity}/1500` });
-    }
-
-    /**
-     * Create smooth transition from scanning to rarity detection
-     */
-    static createSmoothTransition(frame, fruit, summonNumber, totalSummons, currentPity) {
-        const raritySquare = this.getRaritySquare(fruit.rarity);
-        const targetColor = RARITY_COLORS[fruit.rarity];
-        
-        // Transition pattern - gradually introducing rarity color
-        const transitionPattern = this.createTransitionPattern(frame, raritySquare, 20);
-        
-        // Smooth color transition to rarity color
-        const transitionColor = this.interpolateColor(
-            this.getSmoothScanColor(7), // Last scan color
-            targetColor,
-            frame / SMOOTH_ANIMATION_CONFIG.TRANSITION_FRAMES
-        );
-        
-        const description = `✨ **ENERGY SIGNATURE DETECTED!**\n\n${transitionPattern}\n\n` +
-            `📊 **Status:** Analysis Complete!\n` +
-            `🍃 **Type Detected:** ${this.createTypeReveal(frame, fruit.type)}\n` +
-            `🔮 **Power Class:** ${this.createPowerReveal(frame, fruit.rarity)}\n` +
-            `⭐ **Rarity Level:** ${this.createRarityReveal(frame, fruit.rarity, raritySquare)}\n` +
-            `💪 **Multiplier:** ${this.createMultiplierReveal(frame, fruit.multiplier)}\n` +
-            `🎯 **Identification:** ${this.createNameReveal(frame, fruit.name)}\n` +
-            `⚔️ **Ability Type:** ${this.createAbilityReveal(frame, fruit.skillName)}\n\n` +
-            `🔥 **Final Analysis:** ${this.createFinalAnalysis(frame)}\n` +
-            `💰 **Value Assessment:** Processing...\n\n` +
-            `${transitionPattern}`;
-        
-        return new EmbedBuilder()
-            .setTitle(`🍈 ${totalSummons}x Devil Fruit Summoning - Analyzing...`)
-            .setDescription(description)
-            .setColor(transitionColor)
-            .setFooter({ text: `Summon ${summonNumber} of ${totalSummons} - Energy Detected! | Pity: ${currentPity}/1500` });
-    }
-
-    /**
-     * Create smooth final reveal
-     */
-    static createSmoothReveal(fruit, result, summonNumber, totalSummons, currentPity) {
-        const raritySquare = this.getRaritySquare(fruit.rarity);
-        const color = RARITY_COLORS[fruit.rarity];
-        
-        // Celebration pattern for final reveal
-        const celebrationPattern = this.createCelebrationPattern(raritySquare, 20);
-        
-        const duplicateCount = result.duplicateCount || 1;
-        const duplicateText = duplicateCount === 1 ? '✨ **NEW DISCOVERY!**' : `**Total Owned:** ${duplicateCount}`;
-        
-        const description = `🎉 **DEVIL FRUIT ACQUIRED!** 🎉\n\n${celebrationPattern}\n\n` +
-            `📊 **Status:** ${duplicateText}\n` +
-            `🍃 **Name:** **${fruit.name}**\n` +
-            `🔮 **Type:** **${fruit.type}**\n` +
-            `⭐ **Rarity:** ${raritySquare} **${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}**` +
-            (result.pityUsed ? ' 🎯 **PITY ACTIVATED!**' : '') + `\n` +
-            `💪 **CP Multiplier:** **x${fruit.multiplier}**\n` +
-            `🎯 **Description:** ${fruit.description}\n` +
-            `⚔️ **Ability:** **${fruit.skillName}** (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
-            `🔥 **Total CP:** **${result.fruit?.total_cp?.toLocaleString() || '250'} CP**\n` +
-            `💰 **Remaining Berries:** Calculating...\n\n` +
-            `${celebrationPattern}`;
-        
-        let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ SUCCESS! | Pity: ${currentPity}/1500`;
-        if (result.pityUsed) {
-            footerText = `🎯 PITY ACTIVATED! | ${footerText}`;
-        }
-        
-        return new EmbedBuilder()
-            .setTitle(`🍈 ${totalSummons}x Devil Fruit Summoning - SUCCESS!`)
-            .setDescription(description)
-            .setColor(color)
-            .setFooter({ text: footerText });
-    }
-
-    /**
-     * Create flowing rainbow pattern that moves smoothly
-     */
-    static createFlowingRainbow(frame, length) {
+class SummonAnimator {
+    static getRainbowPattern(frame, length = 20) {
         const colors = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬜'];
         const pattern = [];
         
-        // Create smooth flowing effect
         for (let i = 0; i < length; i++) {
-            const colorIndex = (i + frame * 2) % colors.length; // Faster flow
+            const colorIndex = (i + frame) % colors.length;
             pattern.push(colors[colorIndex]);
         }
         
         return pattern.join(' ');
     }
 
-    /**
-     * Create transition pattern that gradually introduces rarity color
-     */
-    static createTransitionPattern(frame, raritySquare, length) {
-        const colors = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬜'];
-        const pattern = [];
-        
-        // Calculate how many squares should be rarity color
-        const rarityCount = Math.floor((frame / SMOOTH_ANIMATION_CONFIG.TRANSITION_FRAMES) * length);
-        
-        for (let i = 0; i < length; i++) {
-            if (i < rarityCount) {
-                pattern.push(raritySquare);
-            } else {
-                const colorIndex = (i + frame * 2) % colors.length;
-                pattern.push(colors[colorIndex]);
-            }
-        }
-        
-        return pattern.join(' ');
-    }
-
-    /**
-     * Create celebration pattern for final reveal
-     */
-    static createCelebrationPattern(raritySquare, length) {
-        const pattern = [];
-        
-        // Celebration effect with rarity color
-        for (let i = 0; i < length; i++) {
-            pattern.push(raritySquare);
-        }
-        
-        return pattern.join(' ');
-    }
-
-    /**
-     * Get smooth scanning color that transitions through rainbow
-     */
-    static getSmoothScanColor(frame) {
-        const colors = [0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0080FF, 0x8000FF, 0xFF00FF, 0x00FFFF];
-        const index = frame % colors.length;
-        return colors[index];
-    }
-
-    /**
-     * Interpolate between two colors for smooth transitions
-     */
-    static interpolateColor(color1, color2, progress) {
-        progress = Math.max(0, Math.min(1, progress));
-        
-        const r1 = (color1 >> 16) & 0xFF;
-        const g1 = (color1 >> 8) & 0xFF;
-        const b1 = color1 & 0xFF;
-        
-        const r2 = (color2 >> 16) & 0xFF;
-        const g2 = (color2 >> 8) & 0xFF;
-        const b2 = color2 & 0xFF;
-        
-        const r = Math.round(r1 + (r2 - r1) * progress);
-        const g = Math.round(g1 + (g2 - g1) * progress);
-        const b = Math.round(b1 + (b2 - b1) * progress);
-        
-        return (r << 16) | (g << 8) | b;
-    }
-
-    /**
-     * Animation helper methods for dynamic text
-     */
-    static createLoadingAnimation(frame) {
-        const animations = [
-            '◐ Scanning...', '◓ Analyzing...', '◑ Processing...', '◒ Detecting...',
-            '◐ Identifying...', '◓ Calculating...', '◑ Evaluating...', '◒ Finalizing...'
-        ];
-        return animations[frame % animations.length];
-    }
-
-    static createSearchingText(frame) {
-        const searches = [
-            'Devil Fruit Energy', 'Power Signatures', 'Rare Frequencies', 'Legendary Auras',
-            'Mystical Essences', 'Divine Resonance', 'Ancient Powers', 'Hidden Abilities'
-        ];
-        return searches[frame % searches.length];
-    }
-
-    static createEnergyMeter(frame) {
-        const level = (frame % 8) + 1;
-        const bars = '█'.repeat(level) + '░'.repeat(8 - level);
-        return `[${bars}] ${(level * 12.5).toFixed(0)}%`;
-    }
-
-    static createRarityScanner(frame) {
-        const scanners = [
-            'Common Range ⚪', 'Uncommon Zone 🟢', 'Rare Frequency 🔵', 'Epic Resonance 🟣',
-            'Legendary Aura 🌟', 'Mythical Power 🟠', 'Divine Energy ✨', 'Unknown Signal ❓'
-        ];
-        return scanners[frame % scanners.length];
-    }
-
-    static createPowerAnalysis(frame) {
-        const analyses = [
-            'Low Power', 'Moderate Force', 'High Energy', 'Intense Power',
-            'Extreme Force', 'Overwhelming Aura', 'Legendary Might', 'Divine Strength'
-        ];
-        return analyses[frame % analyses.length];
-    }
-
-    static createSignatureScanner(frame) {
-        const signatures = [
-            'Paramecia Type', 'Zoan Class', 'Logia Nature', 'Ancient Power',
-            'Mythical Force', 'Divine Essence', 'Unknown Origin', 'Classified'
-        ];
-        return signatures[frame % signatures.length];
-    }
-
-    static createAbilityScanner(frame) {
-        const abilities = [
-            'Combat Skill', 'Support Power', 'Transformation', 'Elemental Control',
-            'Reality Bending', 'Time Manipulation', 'Space Control', 'Ultimate Technique'
-        ];
-        return abilities[frame % abilities.length];
-    }
-
-    static createCPScanner(frame) {
-        const cps = ['250 CP', '500 CP', '1,000 CP', '2,500 CP', '5,000 CP', '10,000 CP', '25,000 CP', '50,000+ CP'];
-        return cps[frame % cps.length];
-    }
-
-    static createCostAnalysis(frame) {
-        const costs = ['Calculating...', 'Processing...', 'Analyzing...', 'Computing...'];
-        return costs[frame % costs.length];
-    }
-
-    // Transition reveal methods
-    static createTypeReveal(frame, actualType) {
-        if (frame < 3) return 'Detecting...';
-        return actualType;
-    }
-
-    static createPowerReveal(frame, actualRarity) {
-        if (frame < 2) return 'Analyzing...';
-        return actualRarity.charAt(0).toUpperCase() + actualRarity.slice(1);
-    }
-
-    static createRarityReveal(frame, actualRarity, raritySquare) {
-        if (frame < 4) return 'Identifying...';
-        return `${raritySquare} ${actualRarity.charAt(0).toUpperCase() + actualRarity.slice(1)}`;
-    }
-
-    static createMultiplierReveal(frame, actualMultiplier) {
-        if (frame < 3) return 'Calculating...';
-        return `x${actualMultiplier}`;
-    }
-
-    static createNameReveal(frame, actualName) {
-        if (frame < 5) return 'Decoding...';
-        return actualName;
-    }
-
-    static createAbilityReveal(frame, actualSkill) {
-        if (frame < 4) return 'Scanning...';
-        return actualSkill;
-    }
-
-    static createFinalAnalysis(frame) {
-        const analyses = ['Processing...', 'Finalizing...', 'Complete!'];
-        const index = Math.min(frame, analyses.length - 1);
-        return analyses[index];
+    static getRainbowColor(frame) {
+        const colors = [0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0080FF, 0x8000FF, 0xFFFFFF];
+        return colors[frame % colors.length];
     }
 
     static getRaritySquare(rarity) {
@@ -341,6 +56,63 @@ class SmoothSummonAnimator {
             'divine': '🟥'
         };
         return raritySquares[rarity] || '⬜';
+    }
+
+    static createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity) {
+        const pattern = this.getRainbowPattern(frame, 20);
+        const color = this.getRainbowColor(frame);
+        const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
+        
+        const description = `🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
+            `📊 **Status:** ${loadingDots}\n` +
+            `🍃 **Name:** ${loadingDots}\n` +
+            `🔮 **Type:** ${loadingDots}\n` +
+            `⭐ **Rarity:** ${loadingDots}\n` +
+            `💪 **CP Multiplier:** ${loadingDots}\n` +
+            `🎯 **Description:** ${loadingDots}\n` +
+            `⚔️ **Ability:** ${loadingDots}\n\n` +
+            `🔥 **Total CP:** ${loadingDots}\n` +
+            `💰 **Remaining Berries:** ${loadingDots}\n\n` +
+            `${pattern}`;
+        
+        return new EmbedBuilder()
+            .setTitle(`🍈 ${totalSummons}x Devil Fruit Summoning`)
+            .setDescription(description)
+            .setColor(color)
+            .setFooter({ text: `Summon ${summonNumber} of ${totalSummons} - Searching... | Pity: ${currentPity}/1500` });
+    }
+
+    static createQuickReveal(fruit, result, summonNumber, totalSummons, currentPity) {
+        const raritySquare = this.getRaritySquare(fruit.rarity);
+        const color = RARITY_COLORS[fruit.rarity];
+        const pattern = Array(20).fill(raritySquare).join(' ');
+        
+        const duplicateCount = result.duplicateCount || 1;
+        const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
+        
+        const description = `✨ **ACQUIRED!**\n\n${pattern}\n\n` +
+            `📊 **Status:** ${duplicateText}\n` +
+            `🍃 **Name:** ${fruit.name}\n` +
+            `🔮 **Type:** ${fruit.type}\n` +
+            `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
+            `💪 **CP Multiplier:** x${fruit.multiplier}` +
+            (result.pityUsed ? ' 🎯 **PITY!**' : '') + `\n` +
+            `🎯 **Description:** ${fruit.description}\n` +
+            `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
+            `🔥 **Total CP:** ${result.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
+            `💰 **Remaining Berries:** Loading...\n\n` +
+            `${pattern}`;
+        
+        let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ Acquired! | Pity: ${currentPity}/1500`;
+        if (result.pityUsed) {
+            footerText = `✨ PITY USED! | ${footerText}`;
+        }
+        
+        return new EmbedBuilder()
+            .setTitle(`🍈 ${totalSummons}x Devil Fruit Summoning`)
+            .setDescription(description)
+            .setColor(color)
+            .setFooter({ text: footerText });
     }
 
     static create10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
@@ -461,51 +233,6 @@ class SmoothSummonAnimator {
         embed.setFooter({ text: footerText });
 
         return { embed, isDivine: bestRarity === 'divine' };
-    }
-}
-
-// Main animation function for smoother experience
-async function runSmoothAnimation(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
-    try {
-        // Phase 1: Smooth scanning animation (faster)
-        for (let frame = 0; frame < SMOOTH_ANIMATION_CONFIG.SCAN_FRAMES; frame++) {
-            const embed = SmoothSummonAnimator.createSmoothScanFrame(
-                frame, fruit, summonNumber, totalSummons, currentPity
-            );
-            
-            await interaction.editReply({ embeds: [embed] });
-            await new Promise(resolve => setTimeout(resolve, SMOOTH_ANIMATION_CONFIG.SCAN_DELAY));
-        }
-        
-        // Phase 2: Smooth transition to rarity (new phase)
-        for (let frame = 0; frame < SMOOTH_ANIMATION_CONFIG.TRANSITION_FRAMES; frame++) {
-            const embed = SmoothSummonAnimator.createSmoothTransition(
-                frame, fruit, summonNumber, totalSummons, currentPity
-            );
-            
-            await interaction.editReply({ embeds: [embed] });
-            await new Promise(resolve => setTimeout(resolve, SMOOTH_ANIMATION_CONFIG.TRANSITION_DELAY));
-        }
-        
-        // Phase 3: Final reveal (faster)
-        for (let frame = 0; frame < SMOOTH_ANIMATION_CONFIG.REVEAL_FRAMES; frame++) {
-            const embed = SmoothSummonAnimator.createSmoothReveal(
-                fruit, result, summonNumber, totalSummons, currentPity
-            );
-            
-            await interaction.editReply({ embeds: [embed] });
-            
-            if (frame < SMOOTH_ANIMATION_CONFIG.REVEAL_FRAMES - 1) {
-                await new Promise(resolve => setTimeout(resolve, SMOOTH_ANIMATION_CONFIG.REVEAL_DELAY));
-            }
-        }
-        
-    } catch (error) {
-        // Fallback to simple reveal if animation fails
-        const embed = SmoothSummonAnimator.createSmoothReveal(
-            fruit, result, summonNumber, totalSummons, currentPity
-        );
-        await interaction.editReply({ embeds: [embed] });
     }
 }
 
@@ -636,9 +363,9 @@ module.exports = {
                 await this.showSimpleLoadingAnimation(interaction, i + 1, 10);
                 await new Promise(resolve => setTimeout(resolve, 100)); // Short delay for constant updates
             } else {
-                // Use NEW SMOOTH animation system instead of clunky old one
-                await runSmoothAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
-                if (i < 9) await new Promise(resolve => setTimeout(resolve, 600)); // Reduced from 800ms
+                // Use full individual fruit animation with rarity-stopped rainbow
+                await this.runQuickAnimationWithRarityStop(interaction, displayFruit, result, i + 1, 10, currentPity);
+                if (i < 9) await new Promise(resolve => setTimeout(resolve, 800));
             }
             
             // Update pity for next pull
@@ -698,21 +425,13 @@ module.exports = {
                 await this.showSimpleLoadingAnimation(interaction, i + 1, 50);
                 await new Promise(resolve => setTimeout(resolve, 50)); // Constant updates
             } else {
-                // Smart animation system for 50x - only full animation for special pulls
-                const isSpecialPull = ['legendary', 'mythical', 'divine'].includes(displayFruit.rarity);
-                
-                if (isSpecialPull || i % 10 === 9) { // Show full animation for special pulls or every 10th pull
-                    await runSmoothAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
-                    await new Promise(resolve => setTimeout(resolve, 400));
-                } else {
-                    // Quick flash for common pulls
-                    await this.showQuickFlash(interaction, displayFruit, result, i + 1, 50, currentPity);
-                    await new Promise(resolve => setTimeout(resolve, 150));
-                }
+                // Use full individual fruit animation with rarity-stopped rainbow
+                await this.runQuickAnimationWithRarityStop(interaction, displayFruit, result, i + 1, 50, currentPity);
+                if (i < 49) await new Promise(resolve => setTimeout(resolve, 300));
             }
             
             // Adjust delay based on animation preference
-            const delay = skipAnimation ? 25 : (['legendary', 'mythical', 'divine'].includes(displayFruit.rarity) ? 200 : 100);
+            const delay = skipAnimation ? 25 : 150;
             await new Promise(resolve => setTimeout(resolve, delay));
         }
         
@@ -756,12 +475,12 @@ module.exports = {
             const batchFruits = sortedFruits.slice(startIdx, endIdx);
             const batchResults = sortedResults.slice(startIdx, endIdx);
             
-            const summaryData = SmoothSummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 5);
+            const summaryData = SummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 5);
             batchEmbeds.push(summaryData.embed);
         }
         
         // Create mega summary with sorted fruits
-        const megaSummaryData = SmoothSummonAnimator.createMegaSummary(sortedFruits, sortedResults, newBalance, pityInfo, pityUsedInSession, 50);
+        const megaSummaryData = SummonAnimator.createMegaSummary(sortedFruits, sortedResults, newBalance, pityInfo, pityUsedInSession, 50);
         
         // Show first batch with navigation
         await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
@@ -811,23 +530,13 @@ module.exports = {
                 await this.showSimpleLoadingAnimation(interaction, i + 1, 100);
                 await new Promise(resolve => setTimeout(resolve, 30)); // Constant updates
             } else {
-                // Smart animation for 100x - even more selective
-                const isSpecialPull = ['legendary', 'mythical', 'divine'].includes(displayFruit.rarity);
-                
-                if (isSpecialPull) { // Only show full animation for legendary+ pulls
-                    await runSmoothAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                } else if (i % 20 === 19) { // Show quick flash every 20th pull
-                    await this.showQuickFlash(interaction, displayFruit, result, i + 1, 100, currentPity);
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                } else {
-                    // Ultra quick update for most pulls
-                    await this.showUltraQuickUpdate(interaction, i + 1, 100, currentPity);
-                }
+                // Use full individual fruit animation with rarity-stopped rainbow
+                await this.runQuickAnimationWithRarityStop(interaction, displayFruit, result, i + 1, 100, currentPity);
+                if (i < 99) await new Promise(resolve => setTimeout(resolve, 200));
             }
             
-            // Minimal delay for 100x
-            const delay = skipAnimation ? 15 : ((['legendary', 'mythical', 'divine'].includes(displayFruit.rarity)) ? 150 : 50);
+            // Adjust delay based on animation preference
+            const delay = skipAnimation ? 15 : 120;
             await new Promise(resolve => setTimeout(resolve, delay));
         }
         
@@ -871,107 +580,59 @@ module.exports = {
             const batchFruits = sortedFruits.slice(startIdx, endIdx);
             const batchResults = sortedResults.slice(startIdx, endIdx);
             
-            const summaryData = SmoothSummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 10);
+            const summaryData = SummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 10);
             batchEmbeds.push(summaryData.embed);
         }
         
         // Create mega summary with sorted fruits
-        const megaSummaryData = SmoothSummonAnimator.createMegaSummary(sortedFruits, sortedResults, newBalance, pityInfo, pityUsedInSession, 100);
+        const megaSummaryData = SummonAnimator.createMegaSummary(sortedFruits, sortedResults, newBalance, pityInfo, pityUsedInSession, 100);
         
         // Show first batch with navigation
         await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
-    },
-
-    // New ultra quick update for 100x summons
-    async showUltraQuickUpdate(interaction, currentPulls, totalPulls, currentPity) {
-        const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
-        
-        // Minimal pattern
-        const frame = Math.floor(Date.now() / 150) % 4;
-        const quickPattern = ['⚡', '✨', '💫', '🌟'][frame];
-        
-        const embed = new EmbedBuilder()
-            .setTitle(`🍈 ${totalPulls}x Ultra Summoning - Rapid Scan`)
-            .setDescription(
-                `${quickPattern} **Ultra High-Speed Scanning...** ${quickPattern}\n\n` +
-                `📊 **Progress:** ${progressPercent}% (${currentPulls}/${totalPulls})\n` +
-                `🎯 **Pity:** ${currentPity}/1500\n` +
-                `⚡ **Mode:** Ultra Speed`
-            )
-            .setColor(0x00FFFF)
-            .setFooter({ text: `Ultra Scan ${currentPulls}/${totalPulls}` });
-        
-        try {
-            await interaction.editReply({ embeds: [embed] });
-        } catch (error) {
-            // Ignore rate limit errors
-        }
-    },
-
-    // Enhanced quick flash animation
-    async showQuickFlash(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
-        const raritySquare = SmoothSummonAnimator.getRaritySquare(fruit.rarity);
-        const color = RARITY_COLORS[fruit.rarity];
-        
-        // Quick pattern flash
-        const pattern = Array(20).fill(raritySquare).join(' ');
-        
-        const description = `⚡ **QUICK SCAN ${summonNumber}/${totalSummons}**\n\n${pattern}\n\n` +
-            `🍃 **Found:** ${fruit.name}\n` +
-            `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
-            `💪 **Multiplier:** x${fruit.multiplier}` +
-            (result.pityUsed ? ' 🎯 **PITY!**' : '') + `\n\n` +
-            `${pattern}`;
-        
-        const embed = new EmbedBuilder()
-            .setTitle(`🍈 ${totalSummons}x Mega Summoning - Rapid Scan`)
-            .setDescription(description)
-            .setColor(color)
-            .setFooter({ text: `Quick Scan ${summonNumber}/${totalSummons} | Pity: ${currentPity}/1500` });
-        
-        await interaction.editReply({ embeds: [embed] });
     },
 
     async showSimpleLoadingAnimation(interaction, currentPulls, totalPulls) {
         const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
         const currentPity = await GachaService.getPityCount(interaction.user.id);
         
-        // Faster changing rainbow pattern - reduced frame calculation for better performance
-        const frame = Math.floor(Date.now() / 200) % 7; // Changed from 300ms to 200ms
+        // Create constantly changing rainbow pattern
+        const frame = Math.floor(Date.now() / 300) % 7; // Faster changing every 300ms
         const colors = ['🟧', '🟨', '🟩', '🟦', '🟪', '⬜', '🟥'];
         const pattern = [];
         
-        // Optimized pattern generation
-        const baseColor = colors[frame];
         for (let i = 0; i < 20; i++) {
-            const colorIndex = (frame + Math.floor(i / 3)) % colors.length; // Less CPU intensive
+            const colorIndex = (i + frame) % colors.length;
             pattern.push(colors[colorIndex]);
         }
         
+        // Join with spaces for proper spacing
         const rainbowPattern = pattern.join(' ');
-        const embedColor = {
-            '🟧': 0xFF8000, '🟨': 0xFFFF00, '🟩': 0x00FF00,
-            '🟦': 0x0080FF, '🟪': 0x800080, '⬜': 0xFFFFFF, '🟥': 0xFF0000
-        }[baseColor] || 0x4A90E2;
         
-        // Progress bar
-        const progressBarLength = 20;
-        const filledBars = Math.floor((currentPulls / totalPulls) * progressBarLength);
-        const progressBar = '█'.repeat(filledBars) + '░'.repeat(progressBarLength - filledBars);
+        // Get the leftmost square color for embed color
+        const leftmostColorEmoji = colors[frame % colors.length];
+        const embedColors = {
+            '🟧': 0xFF8000, // Orange
+            '🟨': 0xFFFF00, // Yellow
+            '🟩': 0x00FF00, // Green
+            '🟦': 0x0080FF, // Blue
+            '🟪': 0x800080, // Purple
+            '⬜': 0xFFFFFF, // White
+            '🟥': 0xFF0000  // Red
+        };
+        const embedColor = embedColors[leftmostColorEmoji] || 0x4A90E2;
         
         const embed = new EmbedBuilder()
-            .setTitle(`🍈 ${totalPulls}x Mega Summoning - High Speed Scan`)
+            .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
             .setDescription(
-                `🌊 **Rapid Devil Fruit Detection in Progress...**\n\n` +
+                `🌊 **Scanning the Grand Line for Devil Fruits...**\n\n` +
                 `${rainbowPattern}\n\n` +
-                `📊 **Progress:** [${progressBar}] ${progressPercent}%\n` +
+                `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
                 `🎯 **Current Pity:** ${currentPity}/1500\n` +
-                `⚡ **Scan Rate:** ${(currentPulls * 1000 / (Date.now() % 10000 + 1000)).toFixed(1)} pulls/sec\n` +
-                `🔍 **Fruits Found:** ${currentPulls}/${totalPulls}\n\n` +
+                `⚡ **Status:** Searching for legendary powers...\n\n` +
                 `${rainbowPattern}`
             )
             .setColor(embedColor)
-            .setFooter({ text: `High-Speed Scanning... ${currentPulls}/${totalPulls} | Pity: ${currentPity}/1500` })
+            .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
             .setTimestamp();
         
         try {
@@ -982,6 +643,150 @@ module.exports = {
                 console.log('Simple loading update error:', error.message);
             }
         }
+    },
+
+    async runQuickAnimationWithRarityStop(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
+        // Store the current rainbow position when we start this fruit
+        const startTime = Date.now();
+        
+        // First, run the scanning animation with changing rainbow
+        for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
+            const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity);
+            
+            await interaction.editReply({ embeds: [embed] });
+            await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
+        }
+        
+        // Calculate where the rainbow should be when we reveal
+        const rainbowPosition = Math.floor(Date.now() / 300) % 7;
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Reveal: First stop rainbow on rarity color
+        const rarityStoppedEmbed = this.createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, 'stopped');
+        await interaction.editReply({ embeds: [rarityStoppedEmbed] });
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Then turn whole rainbow to rarity color for dramatic reveal
+        const fullRarityEmbed = this.createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, 'full');
+        await interaction.editReply({ embeds: [fullRarityEmbed] });
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Finally continue rainbow from where it stopped
+        const continuedEmbed = this.createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, 'continue');
+        await interaction.editReply({ embeds: [continuedEmbed] });
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+    },
+
+    createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, phase) {
+        const raritySquare = SummonAnimator.getRaritySquare(fruit.rarity);
+        const color = RARITY_COLORS[fruit.rarity];
+        const colors = ['🟧', '🟨', '🟩', '🟦', '🟪', '⬜', '🟥'];
+        
+        let pattern = [];
+        
+        if (phase === 'stopped') {
+            // Rainbow stops on the rarity color (leftmost square matches rarity)
+            for (let i = 0; i < 20; i++) {
+                if (i === 0) {
+                    // First square is the rarity color
+                    pattern.push(raritySquare);
+                } else {
+                    // Rest continues the rainbow from where it was
+                    const colorIndex = (rainbowPosition + i) % colors.length;
+                    pattern.push(colors[colorIndex]);
+                }
+            }
+        } else if (phase === 'full') {
+            // Whole rainbow turns to rarity color for dramatic effect
+            pattern = Array(20).fill(raritySquare);
+        } else if (phase === 'continue') {
+            // Rainbow continues from where it stopped, but shifted
+            const newPosition = (rainbowPosition + 1) % 7;
+            for (let i = 0; i < 20; i++) {
+                const colorIndex = (newPosition + i) % colors.length;
+                pattern.push(colors[colorIndex]);
+            }
+        }
+        
+        const rainbowPattern = pattern.join(' ');
+        
+        const duplicateCount = result.duplicateCount || 1;
+        const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
+        
+        const description = `✨ **ACQUIRED!**\n\n${rainbowPattern}\n\n` +
+            `📊 **Status:** ${duplicateText}\n` +
+            `🍃 **Name:** ${fruit.name}\n` +
+            `🔮 **Type:** ${fruit.type}\n` +
+            `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
+            `💪 **CP Multiplier:** x${fruit.multiplier}` +
+            (result.pityUsed ? ' 🎯 **PITY!**' : '') + `\n` +
+            `🎯 **Description:** ${fruit.description}\n` +
+            `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
+            `🔥 **Total CP:** ${result.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
+            `💰 **Remaining Berries:** Loading...\n\n` +
+            `${rainbowPattern}`;
+        
+        let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ Acquired! | Pity: ${currentPity}/1500`;
+        if (result.pityUsed) {
+            footerText = `✨ PITY USED! | ${footerText}`;
+        }
+        
+        return new EmbedBuilder()
+            .setTitle(`🍈 ${totalSummons}x Devil Fruit Summoning`)
+            .setDescription(description)
+            .setColor(color)
+            .setFooter({ text: footerText });
+    },
+
+    async showProgressAnimation(interaction, frame, maxFrames, currentPulls, totalPulls) {
+        const pattern = SummonAnimator.getRainbowPattern(frame, 20);
+        const color = SummonAnimator.getRainbowColor(frame);
+        const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
+        
+        const currentPity = await GachaService.getPityCount(interaction.user.id);
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
+            .setDescription(
+                `🌊 **Scanning the Grand Line for Devil Fruits...**\n\n` +
+                `${pattern}\n\n` +
+                `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
+                `🎯 **Current Pity:** ${currentPity}/1500\n` +
+                `⚡ **Status:** Searching for legendary powers...\n\n` +
+                `${pattern}`
+            )
+            .setColor(color)
+            .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
+            .setTimestamp();
+        
+        try {
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            // Ignore rate limit errors during animation
+            if (error.code !== 10062 && error.code !== 50013) {
+                console.log('Animation update error:', error.message);
+            }
+        }
+    },
+
+    async runQuickAnimation(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
+        for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
+            const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity);
+            
+            await interaction.editReply({ embeds: [embed] });
+            await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        const revealEmbed = SummonAnimator.createQuickReveal(fruit, result, summonNumber, totalSummons, currentPity);
+        await interaction.editReply({ embeds: [revealEmbed] });
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
     },
 
     async showBatchNavigation(interaction, batchEmbeds, summaryEmbed, currentPage) {
@@ -1180,10 +985,21 @@ module.exports = {
     },
 
     async show10xSummary(interaction, fruits, results, newBalance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
-        const summaryData = SmoothSummonAnimator.create10xSummary(fruits, results, newBalance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
+        const summaryData = SummonAnimator.create10xSummary(fruits, results, newBalance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
         
         // Check if we got a divine fruit for special animation
         if (summaryData.isDivine && totalBatches === 1) {
+            await this.showDivineAnimation(interaction, summaryData.embed);
+        } else {
+            await interaction.editReply({ embeds: [summaryData.embed] });
+        }
+    },
+
+    async showMegaSummary(interaction, allFruits, allResults, newBalance, pityInfo, pityUsedInSession, totalPulls) {
+        const summaryData = SummonAnimator.createMegaSummary(allFruits, allResults, newBalance, pityInfo, pityUsedInSession, totalPulls);
+        
+        // Check if we got a divine fruit for special animation
+        if (summaryData.isDivine) {
             await this.showDivineAnimation(interaction, summaryData.embed);
         } else {
             await interaction.editReply({ embeds: [summaryData.embed] });
