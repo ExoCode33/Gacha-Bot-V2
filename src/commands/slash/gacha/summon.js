@@ -1,4 +1,303 @@
-// src/commands/slash/gacha/summon.js - FIXED Complete Multi-Pull System with FULL Animations
+async showBatchNavigation(interaction, batchEmbeds, summaryEmbed, currentPage) {
+        const totalPages = batchEmbeds.length;
+        const hasSummary = summaryEmbed !== null;
+        
+        const navigationRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('batch_first')
+                    .setLabel('⏮️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === 0),
+                new ButtonBuilder()
+                    .setCustomId('batch_prev')
+                    .setLabel('⬅️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === 0),
+                new ButtonBuilder()
+                    .setCustomId('batch_summary')
+                    .setLabel('📊 Summary')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('batch_next')
+                    .setLabel('➡️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === totalPages - 1),
+                new ButtonBuilder()
+                    .setCustomId('batch_last')
+                    .setLabel('⏭️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === totalPages - 1)
+            );
+        
+        // Show current batch
+        const currentEmbed = batchEmbeds[currentPage];
+        await interaction.editReply({ 
+            embeds: [currentEmbed], 
+            components: [navigationRow] 
+        });
+        
+        // Setup collector for navigation
+        const message = await interaction.fetchReply();
+        const collector = message.createMessageComponentCollector({ time: 600000 }); // 10 minutes
+        
+        collector.on('collect', async (buttonInteraction) => {
+            if (buttonInteraction.user.id !== interaction.user.id) {
+                return buttonInteraction.reply({
+                    content: '❌ You can only navigate your own summon results!',
+                    ephemeral: true
+                });
+            }
+            
+            let newPage = currentPage;
+            let showSummary = false;
+            
+            switch (buttonInteraction.customId) {
+                case 'batch_first':
+                    newPage = 0;
+                    break;
+                case 'batch_prev':
+                    newPage = Math.max(0, currentPage - 1);
+                    break;
+                case 'batch_summary':
+                    showSummary = true;
+                    break;
+                case 'batch_next':
+                    newPage = Math.min(totalPages - 1, currentPage + 1);
+                    break;
+                case 'batch_last':
+                    newPage = totalPages - 1;
+                    break;
+                case 'back_to_batches':
+                    // Return to batch navigation
+                    const returnNavigationRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('batch_first')
+                                .setLabel('⏮️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === 0),
+                            new ButtonBuilder()
+                                .setCustomId('batch_prev')
+                                .setLabel('⬅️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === 0),
+                            new ButtonBuilder()
+                                .setCustomId('batch_summary')
+                                .setLabel('📊 Summary')
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId('batch_next')
+                                .setLabel('➡️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === totalPages - 1),
+                            new ButtonBuilder()
+                                .setCustomId('batch_last')
+                                .setLabel('⏭️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === totalPages - 1)
+                        );
+                    
+                    await buttonInteraction.update({ 
+                        embeds: [batchEmbeds[currentPage]], 
+                        components: [returnNavigationRow] 
+                    });
+                    return;
+            }
+            
+            if (showSummary && hasSummary) {
+                // Show summary with back button
+                const backRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('back_to_batches')
+                            .setLabel('⬅️ Back to Batches')
+                            .setStyle(ButtonStyle.Secondary)
+                    );
+                
+                await buttonInteraction.update({ 
+                    embeds: [summaryEmbed], 
+                    components: [backRow] 
+                });
+            } else if (newPage !== currentPage) {
+                // Update navigation row
+                const updatedNavigationRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('batch_first')
+                            .setLabel('⏮️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === 0),
+                        new ButtonBuilder()
+                            .setCustomId('batch_prev')
+                            .setLabel('⬅️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === 0),
+                        new ButtonBuilder()
+                            .setCustomId('batch_summary')
+                            .setLabel('📊 Summary')
+                            .setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder()
+                            .setCustomId('batch_next')
+                            .setLabel('➡️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === totalPages - 1),
+                        new ButtonBuilder()
+                            .setCustomId('batch_last')
+                            .setLabel('⏭️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === totalPages - 1)
+                    );
+                
+                await buttonInteraction.update({ 
+                    embeds: [batchEmbeds[newPage]], 
+                    components: [updatedNavigationRow] 
+                });
+                
+                currentPage = newPage;
+            }
+        });
+        
+        collector.on('end', () => {
+            // Disable all buttons when collector expires
+            const disabledRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('batch_first_disabled')
+                        .setLabel('⏮️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_prev_disabled')
+                        .setLabel('⬅️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_summary_disabled')
+                        .setLabel('📊 Summary')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_next_disabled')
+                        .setLabel('➡️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_last_disabled')
+                        .setLabel('⏭️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true)
+                );
+            
+            interaction.editReply({ components: [disabledRow] }).catch(() => {});
+        });
+    },
+
+    async setupButtons(interaction) {
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`summon_10x_${interaction.user.id}`)
+                    .setLabel('🍈 Summon 10x')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`summon_50x_${interaction.user.id}`)
+                    .setLabel('🍈 Summon 50x')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId(`summon_100x_${interaction.user.id}`)
+                    .setLabel('🍈 Summon 100x')
+                    .setStyle(ButtonStyle.Danger)
+            );
+
+        const currentReply = await interaction.fetchReply();
+        const currentEmbed = currentReply.embeds[0];
+        
+        await interaction.editReply({
+            embeds: [currentEmbed],
+            components: [row]
+        });
+
+        // Setup collector for new summons
+        const message = await interaction.fetchReply();
+        const collector = message.createMessageComponentCollector({ time: 300000 }); // 5 minutes
+        
+        collector.on('collect', async (buttonInteraction) => {
+            const [action, count, userId] = buttonInteraction.customId.split('_');
+            
+            if (buttonInteraction.user.id !== userId) {
+                return buttonInteraction.reply({
+                    content: '❌ You can only use your own summon buttons!',
+                    ephemeral: true
+                });
+            }
+            
+            // Check if user has enough berries
+            const EconomyService = require('../../../services/EconomyService');
+            const { PULL_COST } = require('../../../data/Constants');
+            const cost = PULL_COST * parseInt(count.replace('x', ''));
+            const balance = await EconomyService.getBalance(userId);
+            
+            if (balance < cost) {
+                const GachaService = require('../../../services/GachaService');
+                const pityInfo = await GachaService.getPityInfo(userId);
+                const pityDisplay = GachaService.formatPityDisplay(pityInfo);
+                
+                return buttonInteraction.reply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle('❌ Insufficient Berries')
+                            .setDescription(`You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries\n\n${pityDisplay}`)
+                            .setFooter({ text: 'Use /income to earn more berries!' })
+                    ],
+                    ephemeral: true
+                });
+            }
+            
+            // Deduct berries and start new summon
+            await EconomyService.deductBerries(userId, cost, 'gacha_summon');
+            const newBalance = balance - cost;
+            
+            // Acknowledge the button press
+            await buttonInteraction.deferUpdate();
+            
+            // Start the appropriate summon
+            const summonCount = parseInt(count.replace('x', ''));
+            if (summonCount === 10) {
+                await this.run10xSummon(buttonInteraction, newBalance);
+            } else if (summonCount === 50) {
+                await this.run50xSummon(buttonInteraction, newBalance);
+            } else if (summonCount === 100) {
+                await this.run100xSummon(buttonInteraction, newBalance);
+            }
+        });
+        
+        collector.on('end', () => {
+            // Disable buttons when collector expires
+            const disabledRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('summon_10x_disabled')
+                        .setLabel('🍈 Summon 10x')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('summon_50x_disabled')
+                        .setLabel('🍈 Summon 50x')
+                        .setStyle(ButtonStyle.Success)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('summon_100x_disabled')
+                        .setLabel('🍈 Summon 100x')
+                        .setStyle(ButtonStyle.Danger)
+                        .setDisabled(true)
+                );
+            
+            interaction.editReply({ components: [disabledRow] }).catch(() => {});
+        });
+    }
+};// src/commands/slash/gacha/summon.js - FIXED Complete Multi-Pull System with FULL Animations
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -63,7 +362,7 @@ class SummonAnimator {
         const color = this.getRainbowColor(frame);
         const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
         
-        const description = `**Summon ${summonNumber}/${totalSummons}** - 🎯 Pity: ${currentPity}/1500\n\n🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
+        const description = `🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
             `📊 **Status:** ${loadingDots}\n` +
             `🍃 **Name:** ${loadingDots}\n` +
             `🔮 **Type:** ${loadingDots}\n` +
@@ -90,7 +389,7 @@ class SummonAnimator {
         const duplicateCount = result.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
         
-        const description = `**Summon ${summonNumber}/${totalSummons}** - 🎯 Pity: ${currentPity}/1500 - ✨ **ACQUIRED!**\n\n${pattern}\n\n` +
+        const description = `✨ **ACQUIRED!**\n\n${pattern}\n\n` +
             `📊 **Status:** ${duplicateText}\n` +
             `🍃 **Name:** ${fruit.name}\n` +
             `🔮 **Type:** ${fruit.type}\n` +
@@ -301,6 +600,15 @@ module.exports = {
     },
 
     async run10xSummon(interaction, newBalance) {
+        // Add skip animation button
+        const skipRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('skip_animation')
+                    .setLabel('⏭️ Skip Animation')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -310,6 +618,7 @@ module.exports = {
         // Perform pulls one by one to track pity in real-time
         const allResults = [];
         const allDisplayFruits = [];
+        let skipAnimation = false;
         
         for (let i = 0; i < 10; i++) {
             // Perform single pull
@@ -336,13 +645,37 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Run animation with current pity
-            await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
+            // Check for skip button press
+            if (!skipAnimation) {
+                try {
+                    // Show animation with skip button
+                    if (i === 0) {
+                        const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 10, currentPity);
+                        await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
+                        
+                        // Wait for potential skip button press
+                        const filter = (buttonInteraction) => buttonInteraction.customId === 'skip_animation' && buttonInteraction.user.id === interaction.user.id;
+                        try {
+                            const buttonInteraction = await interaction.channel.awaitMessageComponent({ filter, time: 1000 });
+                            skipAnimation = true;
+                            await buttonInteraction.deferUpdate();
+                        } catch (error) {
+                            // No skip pressed, continue animation
+                        }
+                    }
+                    
+                    if (!skipAnimation) {
+                        await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 10, currentPity);
+                    }
+                } catch (error) {
+                    // Continue without animation if there's an error
+                }
+            }
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
-            if (i < 9) await new Promise(resolve => setTimeout(resolve, 800));
+            if (i < 9 && !skipAnimation) await new Promise(resolve => setTimeout(resolve, 800));
         }
         
         // Get final pity info
@@ -355,6 +688,15 @@ module.exports = {
     },
 
     async run50xSummon(interaction, newBalance) {
+        // Add skip animation button
+        const skipRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('skip_animation')
+                    .setLabel('⏭️ Skip Animation')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -363,6 +705,7 @@ module.exports = {
         // Perform ALL 50 pulls one by one with full animations
         const allResults = [];
         const allDisplayFruits = [];
+        let skipAnimation = false;
         
         for (let i = 0; i < 50; i++) {
             // Perform single pull
@@ -389,40 +732,73 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Run animation with current pity
-            await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
+            // Check for skip button press
+            if (!skipAnimation) {
+                try {
+                    // Show animation with skip button
+                    if (i === 0) {
+                        const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 50, currentPity);
+                        await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
+                        
+                        // Wait for potential skip button press
+                        const filter = (buttonInteraction) => buttonInteraction.customId === 'skip_animation' && buttonInteraction.user.id === interaction.user.id;
+                        try {
+                            const buttonInteraction = await interaction.channel.awaitMessageComponent({ filter, time: 1000 });
+                            skipAnimation = true;
+                            await buttonInteraction.deferUpdate();
+                        } catch (error) {
+                            // No skip pressed, continue animation
+                        }
+                    }
+                    
+                    if (!skipAnimation) {
+                        await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 50, currentPity);
+                    }
+                } catch (error) {
+                    // Continue without animation if there's an error
+                }
+            }
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
             // Shorter delay for 50x
-            if (i < 49) await new Promise(resolve => setTimeout(resolve, 600));
+            if (i < 49 && !skipAnimation) await new Promise(resolve => setTimeout(resolve, 600));
         }
         
         // Get final pity info
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
         const pityUsedInSession = allResults.some(r => r.pityUsed);
         
-        // Show 5 batch summaries (10 fruits each) after all animations
+        // Create all batch embeds (don't delete them)
+        const batchEmbeds = [];
         for (let batch = 0; batch < 5; batch++) {
             const startIdx = batch * 10;
             const endIdx = startIdx + 10;
             const batchFruits = allDisplayFruits.slice(startIdx, endIdx);
             const batchResults = allResults.slice(startIdx, endIdx);
             
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await this.show10xSummary(interaction, batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 5);
-            
-            if (batch < 4) await new Promise(resolve => setTimeout(resolve, 1500));
+            const summaryData = SummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 5);
+            batchEmbeds.push(summaryData.embed);
         }
         
-        // Show mega summary
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 50);
-        await this.setupButtons(interaction);
+        // Create mega summary
+        const megaSummaryData = SummonAnimator.createMegaSummary(allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 50);
+        
+        // Show first batch with navigation
+        await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
     },
 
     async run100xSummon(interaction, newBalance) {
+        // Add skip animation button
+        const skipRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('skip_animation')
+                    .setLabel('⏭️ Skip Animation')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
         // Get initial pity for tracking
         let currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -431,6 +807,7 @@ module.exports = {
         // Perform ALL 100 pulls one by one with full animations
         const allResults = [];
         const allDisplayFruits = [];
+        let skipAnimation = false;
         
         for (let i = 0; i < 100; i++) {
             // Perform single pull
@@ -457,31 +834,69 @@ module.exports = {
             
             allDisplayFruits.push(displayFruit);
             
-            // Run animation with current pity
-            await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
+            // Check for skip button press
+            if (!skipAnimation) {
+                try {
+                    // Show animation with skip button
+                    if (i === 0) {
+                        const initialEmbed = SummonAnimator.createQuickFrame(0, displayFruit, i + 1, 100, currentPity);
+                        await interaction.reply({ embeds: [initialEmbed], components: [skipRow] });
+                        
+                        // Wait for potential skip button press
+                        const filter = (buttonInteraction) => buttonInteraction.customId === 'skip_animation' && buttonInteraction.user.id === interaction.user.id;
+                        try {
+                            const buttonInteraction = await interaction.channel.awaitMessageComponent({ filter, time: 1000 });
+                            skipAnimation = true;
+                            await buttonInteraction.deferUpdate();
+                        } catch (error) {
+                            // No skip pressed, continue animation
+                        }
+                    }
+                    
+                    if (!skipAnimation) {
+                        await this.runQuickAnimation(interaction, displayFruit, result, i + 1, 100, currentPity);
+                    }
+                } catch (error) {
+                    // Continue without animation if there's an error
+                }
+            }
             
             // Update pity for next pull
             currentPity = await GachaService.getPityCount(interaction.user.id);
             
             // Shorter delay for 100x
-            if (i < 99) await new Promise(resolve => setTimeout(resolve, 400));
+            if (i < 99 && !skipAnimation) await new Promise(resolve => setTimeout(resolve, 400));
         }
         
         // Get final pity info
         const pityInfo = await GachaService.getPityInfo(interaction.user.id);
         const pityUsedInSession = allResults.some(r => r.pityUsed);
         
-        // Show 10 batch summaries (10 fruits each) after all animations
+        // Create all batch embeds (don't delete them)
+        const batchEmbeds = [];
         for (let batch = 0; batch < 10; batch++) {
             const startIdx = batch * 10;
             const endIdx = startIdx + 10;
             const batchFruits = allDisplayFruits.slice(startIdx, endIdx);
             const batchResults = allResults.slice(startIdx, endIdx);
             
-            await new Promise(resolve => setTimeout(resolve, 800));
-            await this.show10xSummary(interaction, batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 10);
-            
-            if (batch < 9) await new Promise(resolve => setTimeout(resolve, 1200));
+            const summaryData = SummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 10);
+            batchEmbeds.push(summaryData.embed);
+        }
+        
+        // Create mega summary
+        const megaSummaryData = SummonAnimator.createMegaSummary(allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 100);
+        
+        // Show first batch with navigation
+        await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
+    }, < 9) await new Promise(resolve => setTimeout(resolve, 1200));
+        }
+        
+        // Show mega summary
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 100);
+        await this.setupButtons(interaction);
+    }, < 9) await new Promise(resolve => setTimeout(resolve, 1200));
         }
         
         // Show mega summary
