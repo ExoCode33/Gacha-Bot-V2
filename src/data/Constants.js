@@ -1,4 +1,4 @@
-// src/data/Constants.js - Updated with NEW Pity System
+// src/data/Constants.js - FIXED: Much Lower Divine Rates + Balanced Pity
 module.exports = {
     // Economy Constants
     PULL_COST: 1000,
@@ -41,54 +41,56 @@ module.exports = {
         divine: 'Divine'       // Divine Tier
     },
     
-    // UPDATED Pull Rates (NEW DIVINE & MYTHICAL RATES)
+    // FIXED: Much Lower Divine Rates + Reduced Legendary/Mythical
     BASE_PULL_RATES: {
-        common: 47,
-        uncommon: 30,
-        rare: 15,
-        epic: 5,
-        legendary: 2,
-        mythical: 0.4,         // UPDATED from 0.8%
-        divine: 0.05           // UPDATED from 0.2%
+        common: 50,             // Increased to compensate
+        uncommon: 30,           // Same
+        rare: 15,               // Same
+        epic: 4,                // Slightly reduced
+        legendary: 0.8,         // REDUCED from 2%
+        mythical: 0.19,         // REDUCED from 0.4%
+        divine: 0.01            // HEAVILY REDUCED from 0.05%
     },
 
-    // NEW PITY SYSTEM - Premium Rates Proc System
+    // FIXED PITY SYSTEM - Remove Legendary, Higher Thresholds
     PITY_SYSTEM: {
-        HARD_PITY_LIMIT: 1500,     // Hard pity at 1500 pulls
+        HARD_PITY_LIMIT: 2000,     // Increased from 1500
         
-        // Premium rates when pity procs
+        // Premium rates when pity procs - ONLY Mythical/Divine
         PREMIUM_RATES: {
-            legendary: 60.0,        // 60% when pity procs
-            mythical: 39.8,         // 39.8% when pity procs  
-            divine: 0.2             // 0.2% when pity procs
+            mythical: 95.0,         // 95% when pity procs  
+            divine: 5.0             // 5% when pity procs (much lower)
         },
         
-        // Pity proc chance calculation
+        // Pity proc chance calculation - MUCH SLOWER
         BASE_PITY_CHANCE: 0.0,      // Base chance at 0 pulls
-        MAX_PITY_CHANCE: 100.0,     // 100% chance at 1500 pulls
+        MAX_PITY_CHANCE: 100.0,     // 100% chance at 2000 pulls
         
-        // Pity resets when you get legendary/mythical/divine
-        RESET_RARITIES: ['legendary', 'mythical', 'divine']
+        // Pity resets ONLY on mythical/divine (removed legendary)
+        RESET_RARITIES: ['mythical', 'divine'],
+        
+        // Much slower scaling
+        SCALING_POWER: 3.0          // Increased from 2.5
     },
 
-    // UPDATED Rarity Drop Rates for Display
+    // UPDATED Display Rates
     RARITY_DROP_RATES: {
-        common: '47%',
+        common: '50%',
         uncommon: '30%', 
         rare: '15%',
-        epic: '5%',
-        legendary: '2%',
-        mythical: '0.4%',      // UPDATED from 0.8%
-        divine: '0.05%'        // UPDATED from 0.2%
+        epic: '4%',
+        legendary: '0.8%',         // UPDATED
+        mythical: '0.19%',         // UPDATED
+        divine: '0.01%'            // UPDATED
     },
     
     // Enhanced PvP Battle System Constants
     BATTLE_CONSTANTS: {
-        MAX_TURNS: 20,         // Increased for more strategic battles
-        TURN_TIME: 45,         // Increased time for skill selection
-        BASE_HP: 200,          // Base HP for all users
-        HP_PER_LEVEL: 15,      // HP gain per level
-        CP_TO_HP_RATIO: 0.5,   // CP contributes to HP
+        MAX_TURNS: 20,         
+        TURN_TIME: 45,         
+        BASE_HP: 200,          
+        HP_PER_LEVEL: 15,      
+        CP_TO_HP_RATIO: 0.5,   
         
         // Type advantages for PvP
         TYPE_ADVANTAGES: {
@@ -101,11 +103,11 @@ module.exports = {
         },
         
         // Enhanced battle mechanics
-        CRIT_CHANCE: 0.15,       // Increased crit chance
-        CRIT_MULTIPLIER: 1.8,    // Higher crit damage
-        DODGE_CHANCE: 0.08,      // Base dodge chance
-        BLOCK_CHANCE: 0.12,      // Base block chance
-        COUNTER_CHANCE: 0.05,    // Chance to counter-attack
+        CRIT_CHANCE: 0.15,       
+        CRIT_MULTIPLIER: 1.8,    
+        DODGE_CHANCE: 0.08,      
+        BLOCK_CHANCE: 0.12,      
+        COUNTER_CHANCE: 0.05,    
         
         // Status effect durations
         MAX_STATUS_DURATION: 5,
@@ -120,7 +122,7 @@ module.exports = {
         epic: { min: 1.7, max: 2.1 },
         legendary: { min: 2.1, max: 2.6 },
         mythical: { min: 2.6, max: 3.2 },
-        divine: { min: 3.2, max: 4.0 }    // Divine Tier
+        divine: { min: 3.2, max: 4.0 }    
     },
 
     // PvP Skill Categories
@@ -184,15 +186,22 @@ module.exports = {
             id: 'mythical_master',
             name: 'Mythical Legend',
             description: 'Pull a mythical devil fruit',
-            reward: 15000,
+            reward: 25000,          // Increased reward
             icon: '🟠'
         },
         DIVINE_ASCENSION: {
             id: 'divine_ascension',
             name: 'Divine Ascension',
             description: 'Pull a divine devil fruit',
-            reward: 50000,
+            reward: 100000,         // Increased reward
             icon: '✨'
+        },
+        ONE_PIECE_FINDER: {
+            id: 'one_piece_finder',
+            name: 'Pirate King',
+            description: 'Find the legendary One Piece treasure',
+            reward: 1000000,        // MASSIVE reward
+            icon: '👑'
         },
         COLLECTOR_10: { 
             id: 'collector_10', 
@@ -297,9 +306,9 @@ module.exports = {
 
     // Enhanced Pagination
     PAGINATION: {
-        ITEMS_PER_PAGE: 12,  // Optimized for Discord
+        ITEMS_PER_PAGE: 12,  
         MAX_PAGES: 30,
-        TIMEOUT: 300000      // 5 minutes
+        TIMEOUT: 300000      
     },
 
     // Time Constants
@@ -313,23 +322,23 @@ module.exports = {
 
     // Enhanced Bot Status Messages
     BOT_ACTIVITIES: [
-        { name: 'the Grand Line for Devil Fruits! 🍈', type: 3 }, // Watching
-        { name: '/pull to find Devil Fruits!', type: 2 }, // Listening
-        { name: 'One Piece adventures!', type: 0 }, // Playing
-        { name: 'pirates battling in PvP! ⚔️', type: 3 }, // Watching
-        { name: 'the ocean waves 🌊', type: 2 }, // Listening
-        { name: 'with devil fruit powers! 💪', type: 0 }, // Playing
-        { name: 'legendary battles unfold! 🌟', type: 3 } // Watching
+        { name: 'the Grand Line for Devil Fruits! 🍈', type: 3 }, 
+        { name: '/summon to find Devil Fruits!', type: 2 }, 
+        { name: 'One Piece adventures!', type: 0 }, 
+        { name: 'pirates battling in PvP! ⚔️', type: 3 }, 
+        { name: 'the ocean waves 🌊', type: 2 }, 
+        { name: 'with devil fruit powers! 💪', type: 0 }, 
+        { name: 'legendary battles unfold! 🌟', type: 3 } 
     ],
 
     // Enhanced Level System
     LEVEL_SYSTEM: {
         BASE_EXP: 100,
-        EXP_MULTIPLIER: 1.4,      // Slightly reduced for balance
-        CP_PER_LEVEL: 12,         // Increased CP gain per level
-        MAX_LEVEL: 150,           // Increased max level
-        PRESTIGE_LEVEL: 100,      // Level needed for prestige
-        PRESTIGE_BONUS: 1.5       // Multiplier after prestige
+        EXP_MULTIPLIER: 1.4,      
+        CP_PER_LEVEL: 12,         
+        MAX_LEVEL: 150,           
+        PRESTIGE_LEVEL: 100,      
+        PRESTIGE_BONUS: 1.5       
     },
 
     // Navigation Emojis for pagination
@@ -345,10 +354,10 @@ module.exports = {
 
     // PvP Queue System
     PVP_QUEUE: {
-        MAX_WAIT_TIME: 120000,    // 2 minutes max wait
-        RANK_DIFFERENCE: 3,       // Max rank difference for matching
-        CP_DIFFERENCE: 500,       // Max CP difference for fair matches
-        TIMEOUT_PENALTY: 300000   // 5 min penalty for timing out
+        MAX_WAIT_TIME: 120000,    
+        RANK_DIFFERENCE: 3,       
+        CP_DIFFERENCE: 500,       
+        TIMEOUT_PENALTY: 300000   
     },
 
     // Berry Emoji
@@ -374,22 +383,22 @@ module.exports = {
 
     // Maximum values for various systems
     MAX_VALUES: {
-        BERRIES: 999999999,       // Max berry amount
-        CP: 999999,               // Max CP
-        LEVEL: 150,               // Max level
-        COLLECTION_SIZE: 1000,    // Max fruits in collection
-        DAILY_PULLS: 100,         // Max pulls per day
-        PVP_BATTLES_DAILY: 50     // Max PvP battles per day
+        BERRIES: 999999999,       
+        CP: 999999,               
+        LEVEL: 150,               
+        COLLECTION_SIZE: 1000,    
+        DAILY_PULLS: 100,         
+        PVP_BATTLES_DAILY: 50     
     },
 
     // Cooldown periods (in seconds)
     COOLDOWNS: {
-        PULL: 3,                  // Basic pull cooldown
-        INCOME: 60,               // Manual income cooldown
-        PVP_BATTLE: 300,          // PvP battle cooldown after loss
-        TRADE: 300,               // Trade cooldown
-        PRESTIGE: 86400,          // Prestige cooldown (24 hours)
-        DAILY_RESET: 86400        // Daily reset cooldown
+        PULL: 3,                  
+        INCOME: 60,               
+        PVP_BATTLE: 300,          
+        TRADE: 300,               
+        PRESTIGE: 86400,          
+        DAILY_RESET: 86400        
     },
 
     // Special Events Configuration
