@@ -255,11 +255,16 @@ class SummonAnimator {
             detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
         });
 
-        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythical', 'legendary', 'divine'];
+        // FIXED: Get highest rarity color properly
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythical', 'divine'];
         let highestRarity = 'common';
-        [...rarityOrder].reverse().forEach(rarity => {
-            if (fruits.some(f => f.rarity === rarity) && highestRarity === 'common') {
-                highestRarity = rarity;
+        
+        // Find the actual highest rarity in the results
+        rarityOrder.reverse().forEach(rarity => {
+            if (fruits.some(f => f.rarity === rarity)) {
+                if (rarityOrder.indexOf(rarity) > rarityOrder.indexOf(highestRarity)) {
+                    highestRarity = rarity;
+                }
             }
         });
 
@@ -437,10 +442,52 @@ module.exports = {
 
     async runColorSpread(interaction, fruit) {
         const rewardColor = RARITY_COLORS[fruit.rarity];
-        const rewardEmoji = RARITY_EMOJIS[fruit.rarity];
+        const raritySquare = SummonAnimator.getRaritySquare(fruit.rarity);
         
+        // Smooth outward spread animation
         for (let frame = 0; frame < ANIMATION_CONFIG.SPREAD_FRAMES; frame++) {
-            const embed = SummonAnimator.createColorSpreadFrame(frame, fruit, rewardColor, rewardEmoji);
+            const barLength = 20;
+            const center = 10; // Center at position 10 (0-19)
+            const maxRadius = 10; // Maximum spread radius
+            const currentRadius = (frame / (ANIMATION_CONFIG.SPREAD_FRAMES - 1)) * maxRadius;
+            
+            const bar = Array(barLength).fill('⬛');
+            const rainbowSquares = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬜'];
+            
+            // Create smooth outward spread from center
+            for (let i = 0; i < barLength; i++) {
+                const distanceFromCenter = Math.abs(i - center);
+                
+                if (distanceFromCenter <= currentRadius) {
+                    bar[i] = raritySquare;
+                } else {
+                    // Fill remaining positions with rainbow pattern
+                    const colorIndex = (i + frame) % rainbowSquares.length;
+                    bar[i] = rainbowSquares[colorIndex];
+                }
+            }
+
+            const pattern = bar.join(' ');
+            const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
+            
+            const description = `🔮 Mysterious power manifesting...\n\n${pattern}\n\n` +
+                `📊 **Status:** ${loadingDots}\n` +
+                `🍃 **Name:** ${loadingDots}\n` +
+                `🔮 **Type:** ${loadingDots}\n` +
+                `⭐ **Rarity:** ${loadingDots}\n` +
+                `💪 **CP Multiplier:** ${loadingDots}\n` +
+                `🎯 **Description:** ${loadingDots}\n` +
+                `⚔️ **Ability:** ${loadingDots}\n\n` +
+                `🔥 **Total CP:** ${loadingDots}\n` +
+                `💰 **Remaining Berries:** ${loadingDots}\n\n` +
+                `${pattern}`;
+            
+            const embed = new EmbedBuilder()
+                .setTitle('🏴‍☠️ Devil Fruit Summoning')
+                .setDescription(description)
+                .setColor(rewardColor)
+                .setFooter({ text: `⚡ Power crystallizing... ${loadingDots}` });
+            
             await interaction.editReply({ embeds: [embed] });
             
             if (frame < ANIMATION_CONFIG.SPREAD_FRAMES - 1) {
