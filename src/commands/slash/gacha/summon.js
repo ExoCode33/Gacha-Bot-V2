@@ -1,303 +1,4 @@
-async showBatchNavigation(interaction, batchEmbeds, summaryEmbed, currentPage) {
-        const totalPages = batchEmbeds.length;
-        const hasSummary = summaryEmbed !== null;
-        
-        const navigationRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('batch_first')
-                    .setLabel('⏮️')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(currentPage === 0),
-                new ButtonBuilder()
-                    .setCustomId('batch_prev')
-                    .setLabel('⬅️')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(currentPage === 0),
-                new ButtonBuilder()
-                    .setCustomId('batch_summary')
-                    .setLabel('📊 Summary')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('batch_next')
-                    .setLabel('➡️')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(currentPage === totalPages - 1),
-                new ButtonBuilder()
-                    .setCustomId('batch_last')
-                    .setLabel('⏭️')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(currentPage === totalPages - 1)
-            );
-        
-        // Show current batch
-        const currentEmbed = batchEmbeds[currentPage];
-        await interaction.editReply({ 
-            embeds: [currentEmbed], 
-            components: [navigationRow] 
-        });
-        
-        // Setup collector for navigation
-        const message = await interaction.fetchReply();
-        const collector = message.createMessageComponentCollector({ time: 600000 }); // 10 minutes
-        
-        collector.on('collect', async (buttonInteraction) => {
-            if (buttonInteraction.user.id !== interaction.user.id) {
-                return buttonInteraction.reply({
-                    content: '❌ You can only navigate your own summon results!',
-                    ephemeral: true
-                });
-            }
-            
-            let newPage = currentPage;
-            let showSummary = false;
-            
-            switch (buttonInteraction.customId) {
-                case 'batch_first':
-                    newPage = 0;
-                    break;
-                case 'batch_prev':
-                    newPage = Math.max(0, currentPage - 1);
-                    break;
-                case 'batch_summary':
-                    showSummary = true;
-                    break;
-                case 'batch_next':
-                    newPage = Math.min(totalPages - 1, currentPage + 1);
-                    break;
-                case 'batch_last':
-                    newPage = totalPages - 1;
-                    break;
-                case 'back_to_batches':
-                    // Return to batch navigation
-                    const returnNavigationRow = new ActionRowBuilder()
-                        .addComponents(
-                            new ButtonBuilder()
-                                .setCustomId('batch_first')
-                                .setLabel('⏮️')
-                                .setStyle(ButtonStyle.Secondary)
-                                .setDisabled(currentPage === 0),
-                            new ButtonBuilder()
-                                .setCustomId('batch_prev')
-                                .setLabel('⬅️')
-                                .setStyle(ButtonStyle.Secondary)
-                                .setDisabled(currentPage === 0),
-                            new ButtonBuilder()
-                                .setCustomId('batch_summary')
-                                .setLabel('📊 Summary')
-                                .setStyle(ButtonStyle.Primary),
-                            new ButtonBuilder()
-                                .setCustomId('batch_next')
-                                .setLabel('➡️')
-                                .setStyle(ButtonStyle.Secondary)
-                                .setDisabled(currentPage === totalPages - 1),
-                            new ButtonBuilder()
-                                .setCustomId('batch_last')
-                                .setLabel('⏭️')
-                                .setStyle(ButtonStyle.Secondary)
-                                .setDisabled(currentPage === totalPages - 1)
-                        );
-                    
-                    await buttonInteraction.update({ 
-                        embeds: [batchEmbeds[currentPage]], 
-                        components: [returnNavigationRow] 
-                    });
-                    return;
-            }
-            
-            if (showSummary && hasSummary) {
-                // Show summary with back button
-                const backRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('back_to_batches')
-                            .setLabel('⬅️ Back to Batches')
-                            .setStyle(ButtonStyle.Secondary)
-                    );
-                
-                await buttonInteraction.update({ 
-                    embeds: [summaryEmbed], 
-                    components: [backRow] 
-                });
-            } else if (newPage !== currentPage) {
-                // Update navigation row
-                const updatedNavigationRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('batch_first')
-                            .setLabel('⏮️')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(newPage === 0),
-                        new ButtonBuilder()
-                            .setCustomId('batch_prev')
-                            .setLabel('⬅️')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(newPage === 0),
-                        new ButtonBuilder()
-                            .setCustomId('batch_summary')
-                            .setLabel('📊 Summary')
-                            .setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder()
-                            .setCustomId('batch_next')
-                            .setLabel('➡️')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(newPage === totalPages - 1),
-                        new ButtonBuilder()
-                            .setCustomId('batch_last')
-                            .setLabel('⏭️')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(newPage === totalPages - 1)
-                    );
-                
-                await buttonInteraction.update({ 
-                    embeds: [batchEmbeds[newPage]], 
-                    components: [updatedNavigationRow] 
-                });
-                
-                currentPage = newPage;
-            }
-        });
-        
-        collector.on('end', () => {
-            // Disable all buttons when collector expires
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('batch_first_disabled')
-                        .setLabel('⏮️')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('batch_prev_disabled')
-                        .setLabel('⬅️')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('batch_summary_disabled')
-                        .setLabel('📊 Summary')
-                        .setStyle(ButtonStyle.Primary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('batch_next_disabled')
-                        .setLabel('➡️')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('batch_last_disabled')
-                        .setLabel('⏭️')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true)
-                );
-            
-            interaction.editReply({ components: [disabledRow] }).catch(() => {});
-        });
-    },
-
-    async setupButtons(interaction) {
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`summon_10x_${interaction.user.id}`)
-                    .setLabel('🍈 Summon 10x')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId(`summon_50x_${interaction.user.id}`)
-                    .setLabel('🍈 Summon 50x')
-                    .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                    .setCustomId(`summon_100x_${interaction.user.id}`)
-                    .setLabel('🍈 Summon 100x')
-                    .setStyle(ButtonStyle.Danger)
-            );
-
-        const currentReply = await interaction.fetchReply();
-        const currentEmbed = currentReply.embeds[0];
-        
-        await interaction.editReply({
-            embeds: [currentEmbed],
-            components: [row]
-        });
-
-        // Setup collector for new summons
-        const message = await interaction.fetchReply();
-        const collector = message.createMessageComponentCollector({ time: 300000 }); // 5 minutes
-        
-        collector.on('collect', async (buttonInteraction) => {
-            const [action, count, userId] = buttonInteraction.customId.split('_');
-            
-            if (buttonInteraction.user.id !== userId) {
-                return buttonInteraction.reply({
-                    content: '❌ You can only use your own summon buttons!',
-                    ephemeral: true
-                });
-            }
-            
-            // Check if user has enough berries
-            const EconomyService = require('../../../services/EconomyService');
-            const { PULL_COST } = require('../../../data/Constants');
-            const cost = PULL_COST * parseInt(count.replace('x', ''));
-            const balance = await EconomyService.getBalance(userId);
-            
-            if (balance < cost) {
-                const GachaService = require('../../../services/GachaService');
-                const pityInfo = await GachaService.getPityInfo(userId);
-                const pityDisplay = GachaService.formatPityDisplay(pityInfo);
-                
-                return buttonInteraction.reply({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor('#FF0000')
-                            .setTitle('❌ Insufficient Berries')
-                            .setDescription(`You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries\n\n${pityDisplay}`)
-                            .setFooter({ text: 'Use /income to earn more berries!' })
-                    ],
-                    ephemeral: true
-                });
-            }
-            
-            // Deduct berries and start new summon
-            await EconomyService.deductBerries(userId, cost, 'gacha_summon');
-            const newBalance = balance - cost;
-            
-            // Acknowledge the button press
-            await buttonInteraction.deferUpdate();
-            
-            // Start the appropriate summon
-            const summonCount = parseInt(count.replace('x', ''));
-            if (summonCount === 10) {
-                await this.run10xSummon(buttonInteraction, newBalance);
-            } else if (summonCount === 50) {
-                await this.run50xSummon(buttonInteraction, newBalance);
-            } else if (summonCount === 100) {
-                await this.run100xSummon(buttonInteraction, newBalance);
-            }
-        });
-        
-        collector.on('end', () => {
-            // Disable buttons when collector expires
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('summon_10x_disabled')
-                        .setLabel('🍈 Summon 10x')
-                        .setStyle(ButtonStyle.Primary)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('summon_50x_disabled')
-                        .setLabel('🍈 Summon 50x')
-                        .setStyle(ButtonStyle.Success)
-                        .setDisabled(true),
-                    new ButtonBuilder()
-                        .setCustomId('summon_100x_disabled')
-                        .setLabel('🍈 Summon 100x')
-                        .setStyle(ButtonStyle.Danger)
-                        .setDisabled(true)
-                );
-            
-            interaction.editReply({ components: [disabledRow] }).catch(() => {});
-        });
-    }
-};// src/commands/slash/gacha/summon.js - FIXED Complete Multi-Pull System with FULL Animations
+// src/commands/slash/gacha/summon.js - CORRECTED Complete Multi-Pull System
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -889,20 +590,6 @@ module.exports = {
         
         // Show first batch with navigation
         await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
-    }, < 9) await new Promise(resolve => setTimeout(resolve, 1200));
-        }
-        
-        // Show mega summary
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 100);
-        await this.setupButtons(interaction);
-    }, < 9) await new Promise(resolve => setTimeout(resolve, 1200));
-        }
-        
-        // Show mega summary
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        await this.showMegaSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession, 100);
-        await this.setupButtons(interaction);
     },
 
     async runQuickAnimation(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
@@ -927,6 +614,201 @@ module.exports = {
     },
 
     async showBatchNavigation(interaction, batchEmbeds, summaryEmbed, currentPage) {
+        const totalPages = batchEmbeds.length;
+        const hasSummary = summaryEmbed !== null;
+        
+        const navigationRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('batch_first')
+                    .setLabel('⏮️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === 0),
+                new ButtonBuilder()
+                    .setCustomId('batch_prev')
+                    .setLabel('⬅️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === 0),
+                new ButtonBuilder()
+                    .setCustomId('batch_summary')
+                    .setLabel('📊 Summary')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('batch_next')
+                    .setLabel('➡️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === totalPages - 1),
+                new ButtonBuilder()
+                    .setCustomId('batch_last')
+                    .setLabel('⏭️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === totalPages - 1)
+            );
+        
+        // Show current batch
+        const currentEmbed = batchEmbeds[currentPage];
+        await interaction.editReply({ 
+            embeds: [currentEmbed], 
+            components: [navigationRow] 
+        });
+        
+        // Setup collector for navigation
+        const message = await interaction.fetchReply();
+        const collector = message.createMessageComponentCollector({ time: 600000 }); // 10 minutes
+        
+        collector.on('collect', async (buttonInteraction) => {
+            if (buttonInteraction.user.id !== interaction.user.id) {
+                return buttonInteraction.reply({
+                    content: '❌ You can only navigate your own summon results!',
+                    ephemeral: true
+                });
+            }
+            
+            let newPage = currentPage;
+            let showSummary = false;
+            
+            switch (buttonInteraction.customId) {
+                case 'batch_first':
+                    newPage = 0;
+                    break;
+                case 'batch_prev':
+                    newPage = Math.max(0, currentPage - 1);
+                    break;
+                case 'batch_summary':
+                    showSummary = true;
+                    break;
+                case 'batch_next':
+                    newPage = Math.min(totalPages - 1, currentPage + 1);
+                    break;
+                case 'batch_last':
+                    newPage = totalPages - 1;
+                    break;
+                case 'back_to_batches':
+                    // Return to batch navigation
+                    const returnNavigationRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('batch_first')
+                                .setLabel('⏮️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === 0),
+                            new ButtonBuilder()
+                                .setCustomId('batch_prev')
+                                .setLabel('⬅️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === 0),
+                            new ButtonBuilder()
+                                .setCustomId('batch_summary')
+                                .setLabel('📊 Summary')
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId('batch_next')
+                                .setLabel('➡️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === totalPages - 1),
+                            new ButtonBuilder()
+                                .setCustomId('batch_last')
+                                .setLabel('⏭️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(currentPage === totalPages - 1)
+                        );
+                    
+                    await buttonInteraction.update({ 
+                        embeds: [batchEmbeds[currentPage]], 
+                        components: [returnNavigationRow] 
+                    });
+                    return;
+            }
+            
+            if (showSummary && hasSummary) {
+                // Show summary with back button
+                const backRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('back_to_batches')
+                            .setLabel('⬅️ Back to Batches')
+                            .setStyle(ButtonStyle.Secondary)
+                    );
+                
+                await buttonInteraction.update({ 
+                    embeds: [summaryEmbed], 
+                    components: [backRow] 
+                });
+            } else if (newPage !== currentPage) {
+                // Update navigation row
+                const updatedNavigationRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('batch_first')
+                            .setLabel('⏮️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === 0),
+                        new ButtonBuilder()
+                            .setCustomId('batch_prev')
+                            .setLabel('⬅️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === 0),
+                        new ButtonBuilder()
+                            .setCustomId('batch_summary')
+                            .setLabel('📊 Summary')
+                            .setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder()
+                            .setCustomId('batch_next')
+                            .setLabel('➡️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === totalPages - 1),
+                        new ButtonBuilder()
+                            .setCustomId('batch_last')
+                            .setLabel('⏭️')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(newPage === totalPages - 1)
+                    );
+                
+                await buttonInteraction.update({ 
+                    embeds: [batchEmbeds[newPage]], 
+                    components: [updatedNavigationRow] 
+                });
+                
+                currentPage = newPage;
+            }
+        });
+        
+        collector.on('end', () => {
+            // Disable all buttons when collector expires
+            const disabledRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('batch_first_disabled')
+                        .setLabel('⏮️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_prev_disabled')
+                        .setLabel('⬅️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_summary_disabled')
+                        .setLabel('📊 Summary')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_next_disabled')
+                        .setLabel('➡️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('batch_last_disabled')
+                        .setLabel('⏭️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true)
+                );
+            
+            interaction.editReply({ components: [disabledRow] }).catch(() => {});
+        });
+    },
+
+    async show10xSummary(interaction, fruits, results, newBalance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
         const summaryData = SummonAnimator.create10xSummary(fruits, results, newBalance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
         
         // Check if we got a divine fruit for special animation
@@ -948,7 +830,7 @@ module.exports = {
         }
     },
 
-    async showMegaSummary(interaction, allFruits, allResults, newBalance, pityInfo, pityUsedInSession, totalPulls) {
+    async showDivineAnimation(interaction, baseEmbed) {
         // Divine color animation - fast color changing for 20 seconds
         const divineColors = [
             0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0080FF, 0x8000FF, 
@@ -985,19 +867,19 @@ module.exports = {
         await interaction.editReply({ embeds: [finalEmbed] });
     },
 
-    async showDivineAnimation(interaction, baseEmbed) {
+    async setupButtons(interaction) {
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('summon_10x')
+                    .setCustomId(`summon_10x_${interaction.user.id}`)
                     .setLabel('🍈 Summon 10x')
                     .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
-                    .setCustomId('summon_50x')
+                    .setCustomId(`summon_50x_${interaction.user.id}`)
                     .setLabel('🍈 Summon 50x')
                     .setStyle(ButtonStyle.Success),
                 new ButtonBuilder()
-                    .setCustomId('summon_100x')
+                    .setCustomId(`summon_100x_${interaction.user.id}`)
                     .setLabel('🍈 Summon 100x')
                     .setStyle(ButtonStyle.Danger)
             );
@@ -1008,6 +890,85 @@ module.exports = {
         await interaction.editReply({
             embeds: [currentEmbed],
             components: [row]
+        });
+
+        // Setup collector for new summons
+        const message = await interaction.fetchReply();
+        const collector = message.createMessageComponentCollector({ time: 300000 }); // 5 minutes
+        
+        collector.on('collect', async (buttonInteraction) => {
+            const [action, count, userId] = buttonInteraction.customId.split('_');
+            
+            if (buttonInteraction.user.id !== userId) {
+                return buttonInteraction.reply({
+                    content: '❌ You can only use your own summon buttons!',
+                    ephemeral: true
+                });
+            }
+            
+            // Check if user has enough berries
+            const EconomyService = require('../../../services/EconomyService');
+            const { PULL_COST } = require('../../../data/Constants');
+            const cost = PULL_COST * parseInt(count.replace('x', ''));
+            const balance = await EconomyService.getBalance(userId);
+            
+            if (balance < cost) {
+                const GachaService = require('../../../services/GachaService');
+                const pityInfo = await GachaService.getPityInfo(userId);
+                const pityDisplay = GachaService.formatPityDisplay(pityInfo);
+                
+                return buttonInteraction.reply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle('❌ Insufficient Berries')
+                            .setDescription(`You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries\n\n${pityDisplay}`)
+                            .setFooter({ text: 'Use /income to earn more berries!' })
+                    ],
+                    ephemeral: true
+                });
+            }
+            
+            // Deduct berries and start new summon
+            await EconomyService.deductBerries(userId, cost, 'gacha_summon');
+            const newBalance = balance - cost;
+            
+            // Acknowledge the button press
+            await buttonInteraction.deferUpdate();
+            
+            // Start the appropriate summon
+            const summonCount = parseInt(count.replace('x', ''));
+            if (summonCount === 10) {
+                await this.run10xSummon(buttonInteraction, newBalance);
+            } else if (summonCount === 50) {
+                await this.run50xSummon(buttonInteraction, newBalance);
+            } else if (summonCount === 100) {
+                await this.run100xSummon(buttonInteraction, newBalance);
+            }
+        });
+        
+        collector.on('end', () => {
+            // Disable buttons when collector expires
+            const disabledRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('summon_10x_disabled')
+                        .setLabel('🍈 Summon 10x')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('summon_50x_disabled')
+                        .setLabel('🍈 Summon 50x')
+                        .setStyle(ButtonStyle.Success)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('summon_100x_disabled')
+                        .setLabel('🍈 Summon 100x')
+                        .setStyle(ButtonStyle.Danger)
+                        .setDisabled(true)
+                );
+            
+            interaction.editReply({ components: [disabledRow] }).catch(() => {});
         });
     }
 };
