@@ -1,4 +1,4 @@
-// src/data/Constants.js - Updated Game Constants for Enhanced Devil Fruit System
+// src/data/Constants.js - Updated Game Constants with NEW Rarity Rates
 module.exports = {
     // Economy Constants
     PULL_COST: 1000,
@@ -16,7 +16,7 @@ module.exports = {
         epic: '#800080',       // Purple
         legendary: '#FFD700',  // Gold
         mythical: '#FF8000',   // Orange
-        divine: '#FFFFFF'      // White (New Divine Tier)
+        divine: '#FFFFFF'      // White (Divine Tier)
     },
     
     // Enhanced Rarity Emojis
@@ -27,7 +27,7 @@ module.exports = {
         epic: '🟣',
         legendary: '🌟',
         mythical: '🟠',
-        divine: '✨'           // New Divine Tier
+        divine: '✨'           // Divine Tier
     },
 
     // Rarity Names (formatted)
@@ -38,7 +38,7 @@ module.exports = {
         epic: 'Epic',
         legendary: 'Legendary',
         mythical: 'Mythical',
-        divine: 'Divine'       // New Divine Tier
+        divine: 'Divine'       // Divine Tier
     },
     
     // Enhanced PvP Battle System Constants
@@ -71,15 +71,15 @@ module.exports = {
         STATUS_STACK_LIMIT: 3
     },
     
-    // Enhanced Pull Rates (updated for divine tier)
+    // UPDATED Pull Rates (NEW DIVINE & MYTHICAL RATES)
     BASE_PULL_RATES: {
         common: 47,
         uncommon: 30,
         rare: 15,
         epic: 5,
         legendary: 2,
-        mythical: 0.8,
-        divine: 0.2            // New Divine Tier
+        mythical: 0.4,         // UPDATED from 0.8%
+        divine: 0.05           // UPDATED from 0.2%
     },
 
     // Enhanced Pity System
@@ -100,7 +100,7 @@ module.exports = {
         epic: { min: 1.7, max: 2.1 },
         legendary: { min: 2.1, max: 2.6 },
         mythical: { min: 2.6, max: 3.2 },
-        divine: { min: 3.2, max: 4.0 }    // New Divine Tier
+        divine: { min: 3.2, max: 4.0 }    // Divine Tier
     },
 
     // PvP Skill Categories
@@ -352,15 +352,15 @@ module.exports = {
         DRAW: '🤝'
     },
 
-    // Rarity Drop Rates for Display
+    // UPDATED Rarity Drop Rates for Display
     RARITY_DROP_RATES: {
         common: '47%',
         uncommon: '30%', 
         rare: '15%',
         epic: '5%',
         legendary: '2%',
-        mythical: '0.8%',
-        divine: '0.2%'
+        mythical: '0.4%',      // UPDATED from 0.8%
+        divine: '0.05%'        // UPDATED from 0.2%
     },
 
     // Maximum values for various systems
