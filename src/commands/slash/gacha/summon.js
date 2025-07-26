@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - FIXED Enhanced Summon Command with Proper Animation
+// src/commands/slash/gacha/summon.js - COMPLETE Working File
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -28,7 +28,6 @@ const HUNT_DESCRIPTIONS = [
 ];
 
 class SummonAnimator {
-    // Rainbow pattern for animations
     static getRainbowPattern(frame, length = 20) {
         const colors = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫'];
         const pattern = [];
@@ -46,7 +45,19 @@ class SummonAnimator {
         return colors[frame % colors.length];
     }
 
-    // FIXED: Create rainbow hunt frame - everything should be ???
+    static getRaritySquare(rarity) {
+        const raritySquares = {
+            'common': '⬜',
+            'uncommon': '🟩',
+            'rare': '🟦',
+            'epic': '🟪',
+            'mythical': '🟧',
+            'legendary': '🟨',
+            'divine': '✨'
+        };
+        return raritySquares[rarity] || '⬜';
+    }
+
     static createRainbowFrame(frame, fruit) {
         const pattern = this.getRainbowPattern(frame);
         const color = this.getRainbowColor(frame);
@@ -72,35 +83,29 @@ class SummonAnimator {
             .setFooter({ text: `🌊 Searching the mysterious seas...` });
     }
 
-    // FIXED: Create color spread frame - everything should STILL be ???
     static createColorSpreadFrame(frame, fruit, rewardColor, rewardEmoji) {
         const barLength = 20;
         const center = 9.5;
         const spreadRadius = Math.floor(frame * 1.0);
         
-        const bar = Array(barLength).fill('⬛'); // Start with black squares
-        const rainbowSquares = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫']; // Keep squares consistent
-        
-        // Get the appropriate square color for this rarity
+        const bar = Array(barLength).fill('⬛');
+        const rainbowSquares = ['🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫'];
         const raritySquare = this.getRaritySquare(fruit.rarity);
         
         for (let i = 0; i < barLength; i++) {
             const distanceFromCenter = Math.abs(i - center);
             
             if (distanceFromCenter <= spreadRadius) {
-                bar[i] = raritySquare; // Use rarity square instead of emoji
+                bar[i] = raritySquare;
             } else {
-                // Use rainbow squares for remaining positions
                 const colorIndex = Math.floor(distanceFromCenter + frame * 0.5) % rainbowSquares.length;
                 bar[i] = rainbowSquares[colorIndex];
             }
         }
 
         const pattern = bar.join(' ');
-        // Keep progress squares consistent
         const progressSquares = '🟩'.repeat(Math.floor(frame / 2)) + '⬛'.repeat(6 - Math.floor(frame / 2));
         
-        // FIXED: Keep ALL information as ??? during color spread phase
         const mysteriousInfo = `✨ **Devil Fruit Manifestation** ✨\n\n${pattern}\n\n` +
             `📊 **Status:** ???\n` +
             `🍃 **Name:** ???\n` +
@@ -120,24 +125,9 @@ class SummonAnimator {
             .setFooter({ text: `⚡ Power crystallizing... ${progressSquares}` });
     }
 
-    // Get the appropriate square emoji for each rarity
-    static getRaritySquare(rarity) {
-        const raritySquares = {
-            'common': '⬜',        // White square for common
-            'uncommon': '🟩',      // Green square for uncommon  
-            'rare': '🟦',          // Blue square for rare
-            'epic': '🟪',          // Purple square for epic
-            'mythical': '🟧',      // Orange square for mythical
-            'legendary': '🟨',     // Yellow square for legendary
-            'divine': '✨'         // Sparkles for divine
-        };
-        return raritySquares[rarity] || '⬜';
-    }
-
-    // FIXED: Create text reveal frame - information reveals gradually
     static createTextRevealFrame(frame, fruit, result, newBalance, rewardColor, rewardEmoji) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
-        const pattern = Array(20).fill(raritySquare).join(' '); // Use rarity square
+        const pattern = Array(20).fill(raritySquare).join(' ');
         const duplicateCount = result.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `📚 Total Owned: ${duplicateCount}`;
         const totalCp = result.fruit?.total_cp || 250;
@@ -145,7 +135,6 @@ class SummonAnimator {
         const glowEffect = frame >= 7 ? '✨ ' : '';
         let description = `${glowEffect}**Devil Fruit Acquired!** ${glowEffect}\n\n${pattern}\n\n`;
         
-        // FIXED: Gradual reveal based on frame number (0-7)
         description += `📊 **Status:** ${frame >= 0 ? duplicateText : '???'}\n`;
         description += `🍃 **Name:** ${frame >= 1 ? fruit.name : '???'}\n`;
         description += `🔮 **Type:** ${frame >= 2 ? fruit.type : '???'}\n`;
@@ -154,7 +143,7 @@ class SummonAnimator {
         description += `🎯 **Description:** ${frame >= 5 ? fruit.description : '???'}\n`;
         description += `⚔️ **Ability:** ${frame >= 6 ? `${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)` : '???'}\n\n`;
         description += `🔥 **Total CP:** ${frame >= 7 ? `${totalCp.toLocaleString()} CP` : '???'}\n`;
-        description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n`; // Always show remaining berries
+        description += `💰 **Remaining Berries:** ${newBalance.toLocaleString()}\n\n`;
         description += `${pattern}`;
 
         return new EmbedBuilder()
@@ -164,11 +153,10 @@ class SummonAnimator {
             .setFooter({ text: `🎉 Added to your collection! Revealing...` });
     }
 
-    // Create final reveal
     static createFinalReveal(fruit, result, newBalance) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
-        const pattern = Array(20).fill(raritySquare).join(' '); // Use rarity square
+        const pattern = Array(20).fill(raritySquare).join(' ');
         const duplicateCount = result.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `📚 Total Owned: ${duplicateCount}`;
         const totalCp = result.fruit?.total_cp || 250;
@@ -193,7 +181,6 @@ class SummonAnimator {
             .setTimestamp();
     }
 
-    // Create quick frame for 10x
     static createQuickFrame(frame, fruit, summonNumber) {
         const pattern = this.getRainbowPattern(frame, 15);
         const color = this.getRainbowColor(frame);
@@ -206,7 +193,6 @@ class SummonAnimator {
             .setFooter({ text: `Summon ${summonNumber} of 10 - Searching...` });
     }
 
-    // Create quick reveal for 10x with full details
     static createQuickReveal(fruit, summonNumber) {
         const raritySquare = this.getRaritySquare(fruit.rarity);
         const color = RARITY_COLORS[fruit.rarity];
@@ -229,15 +215,7 @@ class SummonAnimator {
             .setFooter({ text: `Summon ${summonNumber} of 10 - ✨ Acquired!` });
     }
 
-    // Create 10x summary with individual fruit details
     static create10xSummary(fruits, results, balance) {
-        const rarityCounts = {};
-        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythical', 'legendary', 'divine'];
-        
-        rarityOrder.forEach(rarity => { rarityCounts[rarity] = 0; });
-        fruits.forEach(fruit => { rarityCounts[fruit.rarity]++; });
-
-        // Create detailed list of all 10 fruits
         let detailedResults = '';
         fruits.forEach((fruit, index) => {
             const raritySquare = this.getRaritySquare(fruit.rarity);
@@ -250,10 +228,10 @@ class SummonAnimator {
             detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
         });
 
-        // Get highest rarity for color
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythical', 'legendary', 'divine'];
         let highestRarity = 'common';
         [...rarityOrder].reverse().forEach(rarity => {
-            if (rarityCounts[rarity] > 0 && highestRarity === 'common') {
+            if (fruits.some(f => f.rarity === rarity) && highestRarity === 'common') {
                 highestRarity = rarity;
             }
         });
@@ -291,13 +269,9 @@ module.exports = {
         const summonCount = interaction.options.getInteger('count') || 1;
         
         try {
-            // Calculate cost
-            const cost = summonCount === 10 
-                ? PULL_COST * 10 * 0.9  // 10% discount for 10-summon
-                : PULL_COST * summonCount;
-            
-            // Check balance
+            const cost = summonCount === 10 ? PULL_COST * 10 * 0.9 : PULL_COST * summonCount;
             const balance = await EconomyService.getBalance(userId);
+            
             if (balance < cost) {
                 return interaction.reply({
                     embeds: [
@@ -311,11 +285,9 @@ module.exports = {
                 });
             }
             
-            // Deduct berries
             await EconomyService.deductBerries(userId, cost, 'gacha_summon');
             const newBalance = balance - cost;
             
-            // Perform summons with animation
             if (summonCount === 1) {
                 await this.runSingleSummon(interaction, newBalance);
             } else {
@@ -324,36 +296,23 @@ module.exports = {
             
         } catch (error) {
             interaction.client.logger.error('Summon command error:', error);
-            
-            // Try to refund berries on error
-            try {
-                await EconomyService.addBerries(userId, cost, 'error_refund');
-            } catch (refundError) {
-                interaction.client.logger.error('Failed to refund berries:', refundError);
-            }
-            
-            if (!interaction.replied) {
-                await interaction.reply({
-                    content: '❌ An error occurred during your summon. Your berries have been refunded.',
-                    ephemeral: true
-                });
-            }
+            await interaction.reply({
+                content: '❌ An error occurred during your summon.',
+                ephemeral: true
+            });
         }
     },
 
     async runSingleSummon(interaction, newBalance) {
-        // Get fruit from gacha service
         const results = await GachaService.performPulls(interaction.user.id, 1);
         const result = results[0];
         const fruit = result.fruit;
         
-        // Get actual fruit data for skill information
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
             f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
         );
         
-        // Convert database result to display format (USING OLD STRUCTURE)
         const displayFruit = {
             name: fruit.fruit_name,
             type: fruit.fruit_type,
@@ -365,21 +324,14 @@ module.exports = {
             skillCooldown: actualFruit?.skill?.cooldown || 2
         };
         
-        console.log(`🎯 Single summon: ${displayFruit.name} (${displayFruit.rarity})`);
-        
-        // Run full animation
         await this.runFullAnimation(interaction, displayFruit, result, newBalance);
         await this.setupButtons(interaction);
     },
 
     async run10xSummon(interaction, newBalance) {
-        // Get fruits from gacha service
         const results = await GachaService.performPulls(interaction.user.id, 10);
-        
-        // Get actual fruit data for skill information  
         const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
         
-        // Convert to display format (USING OLD STRUCTURE)
         const displayFruits = results.map(result => {
             const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
                 f.name === result.fruit.fruit_name || f.id === result.fruit.fruit_id
@@ -397,60 +349,32 @@ module.exports = {
             };
         });
         
-        console.log(`🎯 10x summon starting`);
-        
-        // Run 10x animation
         await this.run10xAnimation(interaction, displayFruits, results, newBalance);
         await this.setupButtons(interaction);
     },
 
     async runFullAnimation(interaction, fruit, result, newBalance) {
-        // Phase 1: Rainbow hunt (5.4s) - Everything shows as ???
         await this.runRainbowPhase(interaction, fruit);
-        
-        // Small pause
         await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Phase 2: Color spread (4.8s) - Everything STILL shows as ???
         await this.runColorSpread(interaction, fruit);
-        
-        // Small pause
         await new Promise(resolve => setTimeout(resolve, 400));
-        
-        // Phase 3: Text reveal (5.6s) - Information reveals gradually
         await this.runTextReveal(interaction, fruit, result, newBalance);
-        
-        // Final pause
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Phase 4: Final reveal - All information shown
         await this.showFinalReveal(interaction, fruit, result, newBalance);
     },
 
     async run10xAnimation(interaction, fruits, results, newBalance) {
-        // Animate each fruit individually
         for (let i = 0; i < 10; i++) {
             const fruit = fruits[i];
             const summonNumber = i + 1;
-            
-            console.log(`🎯 Summon ${summonNumber}/10: ${fruit.name} (${fruit.rarity})`);
-            
-            // Quick animation for each
             await this.runQuickAnimation(interaction, fruit, summonNumber);
-            
-            // Delay between summons
             if (i < 9) await new Promise(resolve => setTimeout(resolve, 1000));
         }
-
-        // Show completion summary
         await this.show10xSummary(interaction, fruits, results, newBalance);
     },
 
     async runRainbowPhase(interaction, fruit) {
-        const frames = ANIMATION_CONFIG.RAINBOW_FRAMES;
-        const delay = ANIMATION_CONFIG.RAINBOW_DELAY;
-        
-        for (let frame = 0; frame < frames; frame++) {
+        for (let frame = 0; frame < ANIMATION_CONFIG.RAINBOW_FRAMES; frame++) {
             const embed = SummonAnimator.createRainbowFrame(frame, fruit);
             
             if (frame === 0 && !interaction.replied && !interaction.deferred) {
@@ -459,50 +383,42 @@ module.exports = {
                 await interaction.editReply({ embeds: [embed] });
             }
             
-            if (frame < frames - 1) {
-                await new Promise(resolve => setTimeout(resolve, delay));
+            if (frame < ANIMATION_CONFIG.RAINBOW_FRAMES - 1) {
+                await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.RAINBOW_DELAY));
             }
         }
     },
 
     async runColorSpread(interaction, fruit) {
-        const frames = ANIMATION_CONFIG.SPREAD_FRAMES;
-        const delay = ANIMATION_CONFIG.SPREAD_DELAY;
         const rewardColor = RARITY_COLORS[fruit.rarity];
         const rewardEmoji = RARITY_EMOJIS[fruit.rarity];
         
-        for (let frame = 0; frame < frames; frame++) {
+        for (let frame = 0; frame < ANIMATION_CONFIG.SPREAD_FRAMES; frame++) {
             const embed = SummonAnimator.createColorSpreadFrame(frame, fruit, rewardColor, rewardEmoji);
             await interaction.editReply({ embeds: [embed] });
             
-            if (frame < frames - 1) {
-                await new Promise(resolve => setTimeout(resolve, delay));
+            if (frame < ANIMATION_CONFIG.SPREAD_FRAMES - 1) {
+                await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.SPREAD_DELAY));
             }
         }
     },
 
     async runTextReveal(interaction, fruit, result, newBalance) {
-        const frames = ANIMATION_CONFIG.REVEAL_FRAMES;
-        const delay = ANIMATION_CONFIG.REVEAL_DELAY;
         const rewardColor = RARITY_COLORS[fruit.rarity];
         const rewardEmoji = RARITY_EMOJIS[fruit.rarity];
         
-        for (let frame = 0; frame < frames; frame++) {
+        for (let frame = 0; frame < ANIMATION_CONFIG.REVEAL_FRAMES; frame++) {
             const embed = SummonAnimator.createTextRevealFrame(frame, fruit, result, newBalance, rewardColor, rewardEmoji);
             await interaction.editReply({ embeds: [embed] });
             
-            if (frame < frames - 1) {
-                await new Promise(resolve => setTimeout(resolve, delay));
+            if (frame < ANIMATION_CONFIG.REVEAL_FRAMES - 1) {
+                await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.REVEAL_DELAY));
             }
         }
     },
 
     async runQuickAnimation(interaction, fruit, summonNumber) {
-        const frames = ANIMATION_CONFIG.QUICK_FRAMES;
-        const delay = ANIMATION_CONFIG.QUICK_DELAY;
-        
-        // Quick rainbow
-        for (let frame = 0; frame < frames; frame++) {
+        for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
             const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber);
             
             if (summonNumber === 1 && frame === 0 && !interaction.replied && !interaction.deferred) {
@@ -511,17 +427,14 @@ module.exports = {
                 await interaction.editReply({ embeds: [embed] });
             }
             
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
         }
         
-        // Pause before reveal
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // Quick reveal
         const revealEmbed = SummonAnimator.createQuickReveal(fruit, summonNumber);
         await interaction.editReply({ embeds: [revealEmbed] });
         
-        // Show reveal for a bit
         await new Promise(resolve => setTimeout(resolve, 300));
     },
 
@@ -544,7 +457,7 @@ module.exports = {
                     .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
                     .setCustomId('summon_10x')
-                    .setLabel('🎰 Summon 10x')
+                    .setLabel('🍈 Summon 10x')
                     .setStyle(ButtonStyle.Success)
             );
 
@@ -556,7 +469,6 @@ module.exports = {
             components: [row]
         });
 
-        // Setup collector
         const collector = currentReply.createMessageComponentCollector({ time: 300000 });
         collector.on('collect', async (buttonInteraction) => {
             await this.handleButtonInteraction(buttonInteraction, interaction.user.id);
@@ -565,7 +477,6 @@ module.exports = {
     },
 
     async handleButtonInteraction(buttonInteraction, originalUserId) {
-        // Check if correct user
         if (buttonInteraction.user.id !== originalUserId) {
             return buttonInteraction.reply({
                 content: '❌ You can only interact with your own summon results!',
@@ -589,9 +500,8 @@ module.exports = {
 
     async handleSummonAgain(buttonInteraction) {
         const cost = PULL_COST;
-        
-        // Check balance
         const balance = await EconomyService.getBalance(buttonInteraction.user.id);
+        
         if (balance < cost) {
             return buttonInteraction.reply({ 
                 content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n💡 Use \`/income\` to collect berries.`, 
@@ -599,7 +509,6 @@ module.exports = {
             });
         }
 
-        // Deduct berries
         await EconomyService.deductBerries(buttonInteraction.user.id, cost, 'summon_again');
         const newBalance = balance - cost;
 
@@ -610,9 +519,8 @@ module.exports = {
 
     async handleSummon10x(buttonInteraction) {
         const cost = PULL_COST * 10 * 0.9;
-        
-        // Check balance
         const balance = await EconomyService.getBalance(buttonInteraction.user.id);
+        
         if (balance < cost) {
             return buttonInteraction.reply({ 
                 content: `💸 You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries!\n💡 Use \`/income\` to collect berries.`, 
@@ -620,7 +528,6 @@ module.exports = {
             });
         }
 
-        // Deduct berries
         await EconomyService.deductBerries(buttonInteraction.user.id, cost, 'summon_10x');
         const newBalance = balance - cost;
 
@@ -635,4 +542,19 @@ module.exports = {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('summon_again_disabled')
-                        .setLabel('
+                        .setLabel('🍈 Summon Again')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId('summon_10x_disabled')
+                        .setLabel('🍈 Summon 10x')
+                        .setStyle(ButtonStyle.Success)
+                        .setDisabled(true)
+                );
+
+            await interaction.editReply({ components: [disabledRow] });
+        } catch (error) {
+            console.log('Could not disable buttons - interaction may have been deleted');
+        }
+    }
+};
