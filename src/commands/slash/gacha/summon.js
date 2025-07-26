@@ -614,14 +614,9 @@ module.exports = {
     },
 
     async showProgressAnimation(interaction, frame, maxFrames, currentPulls, totalPulls) {
-        const pattern = SummonAnimator.getRainbowPattern(frame, 25); // Longer rainbow for more flow
+        const pattern = SummonAnimator.getRainbowPattern(frame, 20);
         const color = SummonAnimator.getRainbowColor(frame);
         const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
-        
-        // Create flowing rainbow sections
-        const flowPattern1 = SummonAnimator.getRainbowPattern(frame, 20);
-        const flowPattern2 = SummonAnimator.getRainbowPattern(frame + 3, 20);
-        const flowPattern3 = SummonAnimator.getRainbowPattern(frame + 6, 20);
         
         const currentPity = await GachaService.getPityCount(interaction.user.id);
         
@@ -629,15 +624,11 @@ module.exports = {
             .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
             .setDescription(
                 `🌊 **Scanning the Grand Line for Devil Fruits...**\n\n` +
-                `${flowPattern1}\n` +
-                `${flowPattern2}\n` +
-                `${flowPattern3}\n\n` +
+                `${pattern}\n\n` +
                 `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
                 `🎯 **Current Pity:** ${currentPity}/1500\n` +
                 `⚡ **Status:** Searching for legendary powers...\n\n` +
-                `${flowPattern1}\n` +
-                `${flowPattern2}\n` +
-                `${flowPattern3}`
+                `${pattern}`
             )
             .setColor(color)
             .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
