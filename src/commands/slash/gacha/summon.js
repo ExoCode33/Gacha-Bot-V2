@@ -926,7 +926,7 @@ module.exports = {
         await new Promise(resolve => setTimeout(resolve, 300));
     },
 
-    async show10xSummary(interaction, fruits, results, newBalance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
+    async showBatchNavigation(interaction, batchEmbeds, summaryEmbed, currentPage) {
         const summaryData = SummonAnimator.create10xSummary(fruits, results, newBalance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
         
         // Check if we got a divine fruit for special animation
@@ -948,7 +948,7 @@ module.exports = {
         }
     },
 
-    async showDivineAnimation(interaction, baseEmbed) {
+    async showMegaSummary(interaction, allFruits, allResults, newBalance, pityInfo, pityUsedInSession, totalPulls) {
         // Divine color animation - fast color changing for 20 seconds
         const divineColors = [
             0xFF0000, 0xFF8000, 0xFFFF00, 0x00FF00, 0x0080FF, 0x8000FF, 
@@ -985,7 +985,7 @@ module.exports = {
         await interaction.editReply({ embeds: [finalEmbed] });
     },
 
-    async setupButtons(interaction) {
+    async showDivineAnimation(interaction, baseEmbed) {
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
