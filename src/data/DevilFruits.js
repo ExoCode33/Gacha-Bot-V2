@@ -1386,48 +1386,11 @@ const RARITY_EMOJIS = {
   divine: '✨'
 };
 
-// Utility functions
+// Utility functions (Updated for NEW Pity System)
 function getRarityWeights(pityCount = 0) {
-  const baseWeights = { ...RARITY_WEIGHTS };
-  
-  // Pity system implementation
-  if (pityCount >= 90) {
-    // Guaranteed legendary+ at 90 pulls
-    return {
-      common: 0,
-      uncommon: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 60,
-      mythical: 30,
-      divine: 10
-    };
-  } else if (pityCount >= 75) {
-    // Increased rare+ chances after 75 pulls
-    return {
-      common: 20,
-      uncommon: 20,
-      rare: 30,
-      epic: 20,
-      legendary: 7,
-      mythical: 2.5,
-      divine: 0.5
-    };
-  } else if (pityCount >= 50) {
-    // Soft pity after 50 pulls
-    const pityMultiplier = 1 + ((pityCount - 50) * 0.02);
-    return {
-      common: Math.max(20, baseWeights.common - (pityCount - 50) * 0.5),
-      uncommon: Math.max(15, baseWeights.uncommon - (pityCount - 50) * 0.3),
-      rare: baseWeights.rare * 1.2,
-      epic: baseWeights.epic * 1.5,
-      legendary: baseWeights.legendary * pityMultiplier,
-      mythical: baseWeights.mythical * pityMultiplier,
-      divine: baseWeights.divine * pityMultiplier
-    };
-  }
-  
-  return baseWeights;
+  // The new pity system is handled in GachaService
+  // This function now just returns base weights
+  return { ...RARITY_WEIGHTS };
 }
 
 function getFruitsByRarity(rarity) {
