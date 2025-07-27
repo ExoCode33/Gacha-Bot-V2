@@ -56,12 +56,9 @@ module.exports = {
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            // Check if user exists in database
-            const userExists = await EconomyService.userExists(userId);
-            if (!userExists) {
-                await EconomyService.createUser(userId);
-                logger.info(`Created new user: ${username} (${userId})`);
-            }
+            // Ensure user exists in database
+            await DatabaseManager.ensureUser(userId, username, interaction.guild?.id);
+            logger.info(`Ensured user exists: ${username} (${userId})`);
 
             // Check if user has enough berries
             const userBalance = await EconomyService.getBalance(userId);
@@ -160,7 +157,7 @@ module.exports = {
             }
 
             // Deduct berries after successful pull
-            const deductionSuccess = await EconomyService.subtractBalance(userId, totalCost);
+            const deductionSuccess = await EconomyService.deductBerries(userId, totalCost, 'gacha_summon');
             if (!deductionSuccess) {
                 logger.error(`Failed to deduct berries for ${username}`);
                 // Still continue with the reveal since pulls were successful
@@ -565,16 +562,17 @@ SERVICE INTERFACE REQUIREMENTS:
 Your services need these methods:
 
 1. EconomyService:
-   - userExists(userId) -> boolean
-   - createUser(userId) -> void
    - getBalance(userId) -> number
-   - subtractBalance(userId, amount) -> boolean
+   - deductBerries(userId, amount, reason) -> boolean
 
 2. GachaService:
    - getLastSummonTime(userId) -> number (timestamp)
    - updateLastSummonTime(userId) -> void
    - performPulls(userId, amount) -> Array<{fruit: {id, rarity, count}, isNew: boolean}>
    - getUserStats(userId) -> {berries, totalFruits, uniqueFruits}
+
+3. DatabaseManager:
+   - ensureUser(userId, username, guildId) -> void
 
 PULL RESULT FORMAT:
 [
