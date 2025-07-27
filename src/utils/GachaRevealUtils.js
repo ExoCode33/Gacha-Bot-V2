@@ -292,7 +292,7 @@ function getSkillDisplay(fruitId, rarity) {
 }
 
 /**
- * ENHANCED: Format skill info with effects for display
+ * ENHANCED: Format skill info with effects for display (with Discord limits)
  */
 function formatSkillForDisplay(skillData, compact = false) {
     if (!skillData) {
@@ -320,37 +320,44 @@ function formatSkillForDisplay(skillData, compact = false) {
             // Status effect
             if (skillData.effect) {
                 const effectName = skillData.effect.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                effects.push(`Effect: ${effectName}`);
+                effects.push(`${effectName}`);
             }
 
-            // Special abilities
+            // Special abilities (limit to 2 most important)
             if (skillData.special && typeof skillData.special === 'object') {
-                Object.entries(skillData.special).forEach(([key, value]) => {
+                const specialEntries = Object.entries(skillData.special)
+                    .filter(([key, value]) => value === true || (value !== false && value !== null && value !== undefined))
+                    .slice(0, 2); // Limit to 2 special abilities
+
+                specialEntries.forEach(([key, value]) => {
+                    const specialName = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+                    const capitalizedName = specialName.charAt(0).toUpperCase() + specialName.slice(1);
+                    
                     if (value === true) {
-                        const specialName = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
-                        effects.push(`Special: ${specialName.charAt(0).toUpperCase() + specialName.slice(1)}`);
-                    } else if (value !== false && value !== null && value !== undefined) {
-                        const specialName = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
-                        effects.push(`${specialName.charAt(0).toUpperCase() + specialName.slice(1)}: ${value}`);
+                        effects.push(capitalizedName);
+                    } else {
+                        effects.push(`${capitalizedName}: ${value}`);
                     }
                 });
             }
 
-            // Add type and range if available
+            // Add type if available and not default
             if (skillData.type && skillData.type !== 'attack') {
-                effects.push(`Type: ${skillData.type.charAt(0).toUpperCase() + skillData.type.slice(1)}`);
-            }
-            if (skillData.range && skillData.range !== 'single') {
-                effects.push(`Range: ${skillData.range.charAt(0).toUpperCase() + skillData.range.slice(1)}`);
+                effects.push(`${skillData.type.charAt(0).toUpperCase() + skillData.type.slice(1)}`);
             }
 
-            // Append effects
+            // Append effects with bullet separator (limit total length)
             if (effects.length > 0) {
-                skillInfo += ` • ${effects.join(' • ')}`;
+                const effectsText = effects.join(' • ');
+                // Ensure total length doesn't exceed Discord's field value limit (1024 chars)
+                if ((skillInfo + ' • ' + effectsText).length <= 900) {
+                    skillInfo += ` • ${effectsText}`;
+                }
             }
         }
 
-        return skillInfo;
+        // Ensure the skill info doesn't exceed reasonable length
+        return skillInfo.length > 1000 ? skillInfo.substring(0, 997) + '...' : skillInfo;
 
     } catch (error) {
         console.warn('Error formatting skill for display:', error.message);
@@ -429,18 +436,12 @@ function createSinglePullReveal(result) {
                 },
                 {
                     name: '⚔️ Combat Ability',
-                    value: [
-                        `**Full Ability:** ${skillInfo}`,
-                        `**Basic Stats:** ${skillData?.damage || 50} DMG, ${skillData?.cooldown || 2}s CD`,
-                        `**Energy Cost:** ${skillData?.cost || 0}`,
-                        `**Type:** ${skillData?.type || 'attack'}`,
-                        `**Range:** ${skillData?.range || 'single'}`
-                    ].join('\n'),
+                    value: skillInfo.length > 900 ? skillInfo.substring(0, 897) + '...' : skillInfo,
                     inline: true
                 },
                 {
                     name: '📝 Description',
-                    value: safeDescription,
+                    value: safeDescription.length > 1000 ? safeDescription.substring(0, 997) + '...' : safeDescription,
                     inline: false
                 }
             )
