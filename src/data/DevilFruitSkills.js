@@ -1,1364 +1,288 @@
-// src/data/DevilFruitSkills.js - COMPLETE Skills Database for ALL 143 Fruits
-const DEVIL_FRUIT_SKILLS = {
-  // ===== DIVINE TIER (5 FRUITS) =====
-  "gura_gura_no_mi": {
-    name: "World Ender",
-    damage: 280,
-    cooldown: 7,
-    effect: "area_explosion",
-    description: "Crack the very fabric of reality with devastating quakes",
-    type: "ultimate"
-  },
-  "hito_hito_no_mi_nika": {
-    name: "Gear 5: Perfect Liberation", 
-    damage: 265,
-    cooldown: 6,
-    effect: "reality_bend",
-    description: "Sun God's power bends all reality to your will",
-    type: "ultimate"
-  },
-  "yami_yami_no_mi": {
-    name: "Kurouzu",
-    damage: 240,
-    cooldown: 6,
-    effect: "power_null",
-    description: "Infinite darkness consumes and nullifies all powers",
-    type: "ultimate"
-  },
-  "joy_boy_will": {
-    name: "Liberation Wave",
-    damage: 290,
-    cooldown: 7,
-    effect: "status_cleanse",
-    description: "Free all beings from their chains and limitations",
-    type: "ultimate"
-  },
-  "one_piece_treasure": {
-    name: "Truth of the World",
-    damage: 300,
-    cooldown: 8,
-    effect: "reality_bend",
-    description: "Rewrite the laws of reality itself with ultimate truth",
-    type: "ultimate"
-  },
+// src/data/DevilFruitSkills.js - PLACEHOLDER SKILLS for New Devil Fruit System
+const Logger = require('../utils/Logger');
 
-  // ===== MYTHICAL TIER (2 FRUITS) =====
-  "tori_tori_no_mi_phoenix": {
-    name: "Immortal Flames",
-    damage: 210,
-    cooldown: 5,
-    effect: "phoenix_rebirth",
-    description: "Blue flames heal wounds while burning enemies to ash",
-    type: "special"
-  },
-  "ancient_weapon_pluton": {
-    name: "World Destroyer Cannon",
-    damage: 230,
-    cooldown: 6,
-    effect: "devastating_blast",
-    description: "Ancient weapon's planet-shattering cannon destroys everything",
-    type: "special"
-  },
-
-  // ===== LEGENDARY TIER (4 FRUITS) =====
-  "mera_mera_no_mi": {
-    name: "Fire Fist",
-    damage: 180,
-    cooldown: 4,
-    effect: "burn_3_turns",
-    description: "Massive fire punch engulfs enemy in eternal flames",
-    type: "attack"
-  },
-  "hie_hie_no_mi": {
-    name: "Ice Age",
-    damage: 170,
-    cooldown: 5,
-    effect: "freeze_2_turns",
-    description: "Absolute zero freezes time and space itself",
-    type: "attack"
-  },
-  "pika_pika_no_mi": {
-    name: "Light Speed Kick",
-    damage: 190,
-    cooldown: 4,
-    effect: "cannot_dodge",
-    description: "Strike at light speed - impossible to avoid or counter",
-    type: "attack"
-  },
-  "ope_ope_no_mi": {
-    name: "Room: Shambles",
-    damage: 160,
-    cooldown: 5,
-    effect: "position_swap",
-    description: "Create surgical room to manipulate space and matter",
-    type: "utility"
-  },
-
-  // ===== EPIC TIER (15 FRUITS) =====
-  "suna_suna_no_mi": {
-    name: "Desert Spada",
-    damage: 140,
-    cooldown: 3,
-    effect: "dehydrate_3_turns",
-    description: "Sand blade drains all moisture from the enemy",
-    type: "attack"
-  },
-  "moku_moku_no_mi": {
-    name: "White Smoke Prison",
-    damage: 120,
-    cooldown: 3,
-    effect: "trap_2_turns",
-    description: "Impenetrable smoke cage traps enemy completely",
-    type: "utility"
-  },
-  "gasu_gasu_no_mi": {
-    name: "Toxic Cloud",
-    damage: 130,
-    cooldown: 4,
-    effect: "poison_2_turns",
-    description: "Deadly gas cloud poisons air and lungs",
-    type: "attack"
-  },
-  "doku_doku_no_mi": {
-    name: "Venom Demon",
-    damage: 150,
-    cooldown: 4,
-    effect: "deadly_poison_3_turns",
-    description: "Apocalyptic poison that corrupts body and soul",
-    type: "attack"
-  },
-  "doa_doa_no_mi": {
-    name: "Air Door",
-    damage: 110,
-    cooldown: 2,
-    effect: "teleport_strike",
-    description: "Open door in air to strike from impossible angles",
-    type: "utility"
-  },
-  "kage_kage_no_mi": {
-    name: "Shadow's Asgard",
-    damage: 145,
-    cooldown: 4,
-    effect: "steal_strength",
-    description: "Absorb enemy's shadow to steal their power",
-    type: "special"
-  },
-  "horo_horo_no_mi": {
-    name: "Negative Hollow",
-    damage: 100,
-    cooldown: 3,
-    effect: "depression_debuff",
-    description: "Ghostly hollows drain enemy's will to fight",
-    type: "debuff"
-  },
-  "shari_shari_no_mi": {
-    name: "Wheel Crash",
-    damage: 125,
-    cooldown: 3,
-    effect: "knockback",
-    description: "Transform into massive wheel for crushing impact",
-    type: "attack"
-  },
-  "inu_inu_no_mi_wolf": {
-    name: "Pack Hunt",
-    damage: 140,
-    cooldown: 3,
-    effect: "pack_bonus",
-    description: "Call upon the strength of the entire wolf pack",
-    type: "buff"
-  },
-  "neko_neko_no_mi_leopard": {
-    name: "Predator Strike",
-    damage: 145,
-    cooldown: 3,
-    effect: "critical_boost",
-    description: "Perfect predator instincts guarantee critical strike",
-    type: "attack"
-  },
-  "uma_uma_no_mi_pegasus": {
-    name: "Divine Stampede",
-    damage: 130,
-    cooldown: 3,
-    effect: "speed_boost",
-    description: "Winged horse charges with celestial speed",
-    type: "buff"
-  },
-  "zou_zou_no_mi_mammoth": {
-    name: "Trunk Slam",
-    damage: 150,
-    cooldown: 4,
-    effect: "stun_1_turn",
-    description: "Colossal trunk slams with earth-shaking force",
-    type: "attack"
-  },
-  "hebi_hebi_no_mi_anaconda": {
-    name: "Constrictor Crush",
-    damage: 125,
-    cooldown: 3,
-    effect: "squeeze_3_turns",
-    description: "Massive coils slowly crush enemy to death",
-    type: "attack"
-  },
-  "taka_taka_no_mi_falcon": {
-    name: "Diving Talon",
-    damage: 135,
-    cooldown: 3,
-    effect: "precision_strike",
-    description: "Perfect aerial dive with razor-sharp talons",
-    type: "attack"
-  },
-  "ryu_ryu_no_mi_allosaurus": {
-    name: "Ancient Rage",
-    damage: 155,
-    cooldown: 4,
-    effect: "rage_boost",
-    description: "Prehistoric fury increases power with each hit",
-    type: "buff"
-  },
-
-  // ===== RARE TIER (27 FRUITS) =====
-  "bane_bane_no_mi": {
-    name: "Spring Bounce",
-    damage: 95,
-    cooldown: 2,
-    effect: "deflect_next_attack",
-    description: "Elastic body bounces back the next incoming attack",
-    type: "defense"
-  },
-  "sube_sube_no_mi": {
-    name: "Slip Away",
-    damage: 85,
-    cooldown: 2,
-    effect: "dodge_boost",
-    description: "Perfect smoothness makes attacks slide away completely",
-    type: "defense"
-  },
-  "bomu_bomu_no_mi": {
-    name: "Body Bomb",
-    damage: 110,
-    cooldown: 3,
-    effect: "explosion_radius",
-    description: "Transform body parts into devastating explosives",
-    type: "attack"
-  },
-  "kilo_kilo_no_mi": {
-    name: "10,000 Kilo Press",
-    damage: 100,
-    cooldown: 3,
-    effect: "crush_effect",
-    description: "Become incredibly heavy to crush opponents flat",
-    type: "attack"
-  },
-  "hana_hana_no_mi": {
-    name: "Cien Fleur",
-    damage: 90,
-    cooldown: 2,
-    effect: "multi_strike",
-    description: "Sprout hundred arms for simultaneous strikes",
-    type: "attack"
-  },
-  "doru_doru_no_mi": {
-    name: "Wax Wall",
-    damage: 80,
-    cooldown: 2,
-    effect: "shield_next_turn",
-    description: "Create protective wax barrier for defense",
-    type: "defense"
-  },
-  "baku_baku_no_mi": {
-    name: "Devour Strike",
-    damage: 105,
-    cooldown: 3,
-    effect: "heal_on_hit",
-    description: "Bite attack that heals by consuming enemy",
-    type: "attack"
-  },
-  "mane_mane_no_mi": {
-    name: "Copy Technique",
-    damage: 95,
-    cooldown: 2,
-    effect: "mimic_last_attack",
-    description: "Perfectly copy and redirect enemy's last move",
-    type: "utility"
-  },
-  "supa_supa_no_mi": {
-    name: "Blade Flurry",
-    damage: 100,
-    cooldown: 2,
-    effect: "bleed_effect",
-    description: "Body becomes steel blades for slicing fury",
-    type: "attack"
-  },
-  "toge_toge_no_mi": {
-    name: "Spike Shield",
-    damage: 85,
-    cooldown: 2,
-    effect: "reflect_damage",
-    description: "Spiky body reflects damage back to attacker",
-    type: "defense"
-  },
-  "ori_ori_no_mi": {
-    name: "Iron Bind",
-    damage: 90,
-    cooldown: 3,
-    effect: "reduce_enemy_damage",
-    description: "Metal restraints limit enemy's attack power",
-    type: "debuff"
-  },
-  "noro_noro_no_mi": {
-    name: "Slow Beam",
-    damage: 75,
-    cooldown: 2,
-    effect: "speed_debuff",
-    description: "Photon beam slows enemy to crawling pace",
-    type: "debuff"
-  },
-  "kama_kama_no_mi": {
-    name: "Wind Blade",
-    damage: 95,
-    cooldown: 2,
-    effect: "ranged_attack",
-    description: "Sharp wind blades slice from any distance",
-    type: "attack"
-  },
-  "yomi_yomi_no_mi": {
-    name: "Soul Parade",
-    damage: 100,
-    cooldown: 3,
-    effect: "fear_effect",
-    description: "Haunting melody fills enemy with supernatural dread",
-    type: "debuff"
-  },
-  "kachi_kachi_no_mi": {
-    name: "Heat Wave",
-    damage: 90,
-    cooldown: 2,
-    effect: "burn_1_turn",
-    description: "Intense body heat creates scorching waves",
-    type: "attack"
-  },
-  "awa_awa_no_mi": {
-    name: "Soap Prison",
-    damage: 85,
-    cooldown: 2,
-    effect: "slippery_debuff",
-    description: "Slippery bubbles make enemy fumble attacks",
-    type: "debuff"
-  },
-  "goe_goe_no_mi": {
-    name: "Sonic Scream",
-    damage: 95,
-    cooldown: 2,
-    effect: "sound_stun",
-    description: "Powerful voice creates devastating sound waves",
-    type: "attack"
-  },
-  "hiso_hiso_no_mi": {
-    name: "Animal Command",
-    damage: 80,
-    cooldown: 3,
-    effect: "animal_ally",
-    description: "Communicate with animals to aid in battle",
-    type: "utility"
-  },
-  "kama_kama_no_mi_mantis": {
-    name: "Mantis Slice",
-    damage: 105,
-    cooldown: 3,
-    effect: "precise_cut",
-    description: "Lightning-fast mantis strikes with perfect precision",
-    type: "attack"
-  },
-  "noko_noko_no_mi": {
-    name: "Poison Spore",
-    damage: 85,
-    cooldown: 2,
-    effect: "poison_1_turn",
-    description: "Release toxic spores that poison on contact",
-    type: "attack"
-  },
-  "ami_ami_no_mi": {
-    name: "Web Trap",
-    damage: 75,
-    cooldown: 2,
-    effect: "immobilize_1_turn",
-    description: "Create inescapable nets to trap enemies",
-    type: "utility"
-  },
-  "kopi_kopi_no_mi": {
-    name: "Power Copy",
-    damage: 90,
-    cooldown: 3,
-    effect: "copy_ability",
-    description: "Temporarily copy enemy's special abilities",
-    type: "utility"
-  },
-  "moa_moa_no_mi": {
-    name: "Size Amplify",
-    damage: 100,
-    cooldown: 3,
-    effect: "size_boost",
-    description: "Increase size and power of attacks dramatically",
-    type: "buff"
-  },
-  "kyubu_kyubu_no_mi": {
-    name: "Cube Compression",
-    damage: 95,
-    cooldown: 2,
-    effect: "compress_damage",
-    description: "Compress attacks into concentrated cubic force",
-    type: "attack"
-  },
-  "jake_jake_no_mi": {
-    name: "Body Control",
-    damage: 80,
-    cooldown: 2,
-    effect: "control_boost",
-    description: "Become living jacket to control movements",
-    type: "utility"
-  },
-  "ato_ato_no_mi": {
-    name: "Living Art",
-    damage: 85,
-    cooldown: 3,
-    effect: "summon_ally",
-    description: "Bring artistic creations to life as allies",
-    type: "utility"
-  },
-  "hobi_hobi_no_mi": {
-    name: "Toy Transform",
-    damage: 90,
-    cooldown: 3,
-    effect: "transformation_curse",
-    description: "Transform enemy into helpless toy briefly",
-    type: "debuff"
-  },
-
-  // ===== UNCOMMON TIER (37 FRUITS) =====
-  "gomu_gomu_no_mi": {
-    name: "Gomu Gomu no Pistol",
-    damage: 55,
-    cooldown: 0,
-    effect: "blunt_immunity",
-    description: "Stretches arm for powerful punch, immune to blunt damage",
-    type: "attack"
-  },
-  "bara_bara_no_mi": {
-    name: "Chop Chop Cannon",
-    damage: 75,
-    cooldown: 1,
-    effect: "split_damage",
-    description: "Launch body parts as projectile weapons",
-    type: "attack"
-  },
-  "sube_sube_no_mi_basic": {
-    name: "Smooth Slide",
-    damage: 70,
-    cooldown: 1,
-    effect: "dodge_next",
-    description: "Slippery skin deflects next incoming attack",
-    type: "defense"
-  },
-  "moku_moku_no_mi_basic": {
-    name: "Smoke Screen",
-    damage: 65,
-    cooldown: 1,
-    effect: "blind_1_turn",
-    description: "Create concealing smoke cloud around enemy",
-    type: "utility"
-  },
-  "mera_mera_no_mi_basic": {
-    name: "Fire Punch",
-    damage: 80,
-    cooldown: 2,
-    effect: "burn_1_turn",
-    description: "Flaming fist leaves burning wounds behind",
-    type: "attack"
-  },
-  "ton_ton_no_mi": {
-    name: "Heavy Strike",
-    damage: 85,
-    cooldown: 2,
-    effect: "knockdown",
-    description: "Incredibly heavy punch knocks enemy down",
-    type: "attack"
-  },
-  "hana_hana_no_mi_basic": {
-    name: "Extra Arms",
-    damage: 70,
-    cooldown: 1,
-    effect: "combo_strike",
-    description: "Sprout extra arms for combination attacks",
-    type: "attack"
-  },
-  "doru_doru_no_mi_basic": {
-    name: "Wax Bullet",
-    damage: 75,
-    cooldown: 1,
-    effect: "slow_effect",
-    description: "Hardened wax projectiles slow enemy movement",
-    type: "attack"
-  },
-  "baku_baku_no_mi_basic": {
-    name: "Hungry Bite",
-    damage: 80,
-    cooldown: 2,
-    effect: "small_heal",
-    description: "Bite attack that heals minor wounds",
-    type: "attack"
-  },
-  "mane_mane_no_mi_basic": {
-    name: "Face Copy",
-    damage: 70,
-    cooldown: 1,
-    effect: "confuse_enemy",
-    description: "Copy appearance to confuse and mislead",
-    type: "utility"
-  },
-  "supa_supa_no_mi_basic": {
-    name: "Dice Slash",
-    damage: 85,
-    cooldown: 2,
-    effect: "precise_cut",
-    description: "Body becomes sharp blade for clean cuts",
-    type: "attack"
-  },
-  "toge_toge_no_mi_basic": {
-    name: "Spike Jab",
-    damage: 75,
-    cooldown: 1,
-    effect: "puncture",
-    description: "Sharp spikes pierce through defenses",
-    type: "attack"
-  },
-  "ori_ori_no_mi_basic": {
-    name: "Metal Grip",
-    damage: 70,
-    cooldown: 1,
-    effect: "hold_enemy",
-    description: "Metal restraints briefly hold enemy in place",
-    type: "utility"
-  },
-  "noro_noro_no_mi_basic": {
-    name: "Slow Touch",
-    damage: 65,
-    cooldown: 1,
-    effect: "slow_1_turn",
-    description: "Touch that slows enemy for one turn",
-    type: "debuff"
-  },
-  "awa_awa_no_mi_basic": {
-    name: "Soap Bubble",
-    damage: 70,
-    cooldown: 1,
-    effect: "slippery_debuff",
-    description: "Slippery bubbles reduce enemy accuracy",
-    type: "debuff"
-  },
-  "doa_doa_no_mi_basic": {
-    name: "Quick Exit",
-    damage: 75,
-    cooldown: 1,
-    effect: "escape_counter",
-    description: "Open door to avoid and counter attacks",
-    type: "utility"
-  },
-  "kama_kama_no_mi_basic": {
-    name: "Wind Cut",
-    damage: 80,
-    cooldown: 1,
-    effect: "wind_slice",
-    description: "Sharp wind cuts through air to strike",
-    type: "attack"
-  },
-  "yomi_yomi_no_mi_basic": {
-    name: "Soul Chill",
-    damage: 70,
-    cooldown: 2,
-    effect: "fear_minor",
-    description: "Ghostly presence unnerves the enemy",
-    type: "debuff"
-  },
-  "gasu_gasu_no_mi_basic": {
-    name: "Gas Cloud",
-    damage: 75,
-    cooldown: 2,
-    effect: "visibility_reduce",
-    description: "Create concealing gas cloud around area",
-    type: "utility"
-  },
-  "yuki_yuki_no_mi": {
-    name: "Snow Storm",
-    damage: 80,
-    cooldown: 2,
-    effect: "chill_effect",
-    description: "Freezing snow reduces enemy movement speed",
-    type: "attack"
-  },
-  "sara_sara_no_mi": {
-    name: "Flame Body",
-    damage: 75,
-    cooldown: 1,
-    effect: "heat_aura",
-    description: "Body radiates heat that damages on contact",
-    type: "attack"
-  },
-  "nagi_nagi_no_mi": {
-    name: "Silent Step",
-    damage: 70,
-    cooldown: 1,
-    effect: "sound_null",
-    description: "Move in complete silence for surprise strikes",
-    type: "utility"
-  },
-  "chiyu_chiyu_no_mi": {
-    name: "Healing Touch",
-    damage: 60,
-    cooldown: 3,
-    effect: "self_heal",
-    description: "Healing powers restore own health while attacking",
-    type: "utility"
-  },
-  "soku_soku_no_mi": {
-    name: "Burst Speed",
-    damage: 75,
-    cooldown: 2,
-    effect: "speed_burst",
-    description: "Sudden speed increase for multiple quick strikes",
-    type: "buff"
-  },
-  "mero_mero_no_mi": {
-    name: "Love Beam",
-    damage: 70,
-    cooldown: 2,
-    effect: "charm_1_turn",
-    description: "Heart-shaped beam charms enemy briefly",
-    type: "debuff"
-  },
-  "doku_doku_no_mi_basic": {
-    name: "Poison Touch",
-    damage: 80,
-    cooldown: 2,
-    effect: "poison_weak",
-    description: "Weak poison that slowly drains enemy health",
-    type: "attack"
-  },
-  "horu_horu_no_mi": {
-    name: "Power Hormone",
-    damage: 75,
-    cooldown: 2,
-    effect: "stat_boost",
-    description: "Inject hormones that temporarily boost abilities",
-    type: "buff"
-  },
-  "choki_choki_no_mi": {
-    name: "Paper Cut",
-    damage: 70,
-    cooldown: 1,
-    effect: "precise_snip",
-    description: "Sharp scissors cut with surgical precision",
-    type: "attack"
-  },
-  "gura_gura_no_mi_basic": {
-    name: "Mini Quake",
-    damage: 85,
-    cooldown: 2,
-    effect: "ground_shake",
-    description: "Small earthquake disrupts enemy footing",
-    type: "attack"
-  },
-  "yami_yami_no_mi_basic": {
-    name: "Dark Pull",
-    damage: 80,
-    cooldown: 2,
-    effect: "gravity_pull",
-    description: "Darkness gravity pulls enemy closer for attacks",
-    type: "utility"
-  },
-  "pika_pika_no_mi_basic": {
-    name: "Flash Bang",
-    damage: 75,
-    cooldown: 1,
-    effect: "blind_brief",
-    description: "Bright flash temporarily blinds the enemy",
-    type: "utility"
-  },
-  "hie_hie_no_mi_basic": {
-    name: "Ice Shard",
-    damage: 80,
-    cooldown: 2,
-    effect: "chill_1_turn",
-    description: "Sharp ice projectiles that slow enemy",
-    type: "attack"
-  },
-  "magu_magu_no_mi_basic": {
-    name: "Lava Punch",
-    damage: 85,
-    cooldown: 2,
-    effect: "magma_burn",
-    description: "Molten fist leaves severe burning wounds",
-    type: "attack"
-  },
-  "goro_goro_no_mi_basic": {
-    name: "Shock Touch",
-    damage: 80,
-    cooldown: 1,
-    effect: "electric_stun",
-    description: "Electric touch briefly stuns the enemy",
-    type: "attack"
-  },
-  "ope_ope_no_mi_basic": {
-    name: "Scalpel Cut",
-    damage: 75,
-    cooldown: 2,
-    effect: "surgical_cut",
-    description: "Precise surgical cut that bypasses defenses",
-    type: "attack"
-  },
-  "hobi_hobi_no_mi_basic": {
-    name: "Toy Touch",
-    damage: 70,
-    cooldown: 2,
-    effect: "playful_debuff",
-    description: "Touch that makes enemy less serious in combat",
-    type: "debuff"
-  },
-  "bari_bari_no_mi": {
-    name: "Barrier Bash",
-    damage: 75,
-    cooldown: 2,
-    effect: "shield_counter",
-    description: "Create barrier that damages while defending",
-    type: "defense"
-  },
-  "nui_nui_no_mi": {
-    name: "Stitch Strike",
-    damage: 70,
-    cooldown: 1,
-    effect: "bind_effect",
-    description: "Sew enemy parts together to restrict movement",
-    type: "utility"
-  },
-  "giro_giro_no_mi": {
-    name: "All-Seeing Eye",
-    damage: 65,
-    cooldown: 2,
-    effect: "reveal_weakness",
-    description: "See through defenses to find weak spots",
-    type: "utility"
-  },
-  "ishi_ishi_no_mi": {
-    name: "Stone Merge",
-    damage: 80,
-    cooldown: 2,
-    effect: "earth_control",
-    description: "Merge with stone to gain defensive power",
-    type: "defense"
-  },
-  "hoya_hoya_no_mi": {
-    name: "Genie Summon",
-    damage: 85,
-    cooldown: 3,
-    effect: "ally_assist",
-    description: "Summon powerful genies to aid in battle",
-    type: "utility"
-  },
-  "netsu_netsu_no_mi": {
-    name: "Heat Transfer",
-    damage: 75,
-    cooldown: 2,
-    effect: "thermal_shift",
-    description: "Absorb and redirect heat energy",
-    type: "utility"
-  },
-  "kuku_kuku_no_mi": {
-    name: "Perfect Recipe",
-    damage: 60,
-    cooldown: 2,
-    effect: "stat_enhancement",
-    description: "Cook special dishes that enhance abilities",
-    type: "buff"
-  },
-  "bisu_bisu_no_mi": {
-    name: "Biscuit Armor",
-    damage: 80,
-    cooldown: 3,
-    effect: "armor_creation",
-    description: "Create hardened biscuit armor for protection",
-    type: "defense"
-  },
-
-  // ===== COMMON TIER (60 FRUITS) =====
-  "suke_suke_no_mi": {
-    name: "Vanish Strike",
-    damage: 60,
-    cooldown: 1,
-    effect: "next_attack_surprise",
-    description: "Turn invisible for surprise attack advantage",
-    type: "utility"
-  },
-  "kage_kage_no_mi_basic": {
-    name: "Shadow Punch",
-    damage: 55,
-    cooldown: 0,
-    effect: "dark_damage",
-    description: "Attack using shadows for extra darkness damage",
-    type: "attack"
-  },
-  "horo_horo_no_mi_basic": {
-    name: "Mini Ghost",
-    damage: 50,
-    cooldown: 1,
-    effect: "spook_effect",
-    description: "Small ghost that spooks enemy briefly",
-    type: "debuff"
-  },
-  "shiro_shiro_no_mi": {
-    name: "Castle Wall",
-    damage: 55,
-    cooldown: 2,
-    effect: "defense_boost",
-    description: "Summon protective castle wall for defense",
-    type: "defense"
-  },
-  "beri_beri_no_mi": {
-    name: "Berry Barrage",
-    damage: 60,
-    cooldown: 1,
-    effect: "scatter_shot",
-    description: "Launch multiple berry projectiles at once",
-    type: "attack"
-  },
-  "sabi_sabi_no_mi": {
-    name: "Rust Touch",
-    damage: 65,
-    cooldown: 2,
-    effect: "weapon_degrade",
-    description: "Touch that rusts and weakens enemy weapons",
-    type: "debuff"
-  },
-  "shabon_shabon_no_mi": {
-    name: "Soap Slick",
-    damage: 50,
-    cooldown: 1,
-    effect: "slip_hazard",
-    description: "Create slippery soap surface under enemy",
-    type: "utility"
-  },
-  "mogu_mogu_no_mi": {
-    name: "Underground Strike",
-    damage: 60,
-    cooldown: 1,
-    effect: "surprise_attack",
-    description: "Burrow underground for surprise attack",
-    type: "attack"
-  },
-  "tori_tori_no_mi_basic": {
-    name: "Wing Buffet",
-    damage: 55,
-    cooldown: 1,
-    effect: "wind_gust",
-    description: "Powerful wing flaps create damaging wind",
-    type: "attack"
-  },
-  "inu_inu_no_mi_basic": {
-    name: "Loyal Bite",
-    damage: 60,
-    cooldown: 1,
-    effect: "faithful_strike",
-    description: "Faithful dog bite that never misses target",
-    type: "attack"
-  },
-  "neko_neko_no_mi_basic": {
-    name: "Cat Pounce",
-    damage: 55,
-    cooldown: 0,
-    effect: "agile_attack",
-    description: "Quick cat-like pounce with natural agility",
-    type: "attack"
-  },
-  "uma_uma_no_mi_basic": {
-    name: "Hoof Kick",
-    damage: 65,
-    cooldown: 1,
-    effect: "speed_strike",
-    description: "Swift horse kick with natural speed boost",
-    type: "attack"
-  },
-  "ushi_ushi_no_mi": {
-    name: "Bull Charge",
-    damage: 70,
-    cooldown: 2,
-    effect: "ram_attack",
-    description: "Powerful charging attack with horned head",
-    type: "attack"
-  },
-  "hitsuji_hitsuji_no_mi": {
-    name: "Wool Shield",
-    damage: 50,
-    cooldown: 2,
-    effect: "soft_defense",
-    description: "Fluffy wool absorbs incoming damage",
-    type: "defense"
-  },
-  "buta_buta_no_mi": {
-    name: "Pig Rush",
-    damage: 60,
-    cooldown: 1,
-    effect: "stubborn_attack",
-    description: "Determined pig charge that pushes through",
-    type: "attack"
-  },
-  "ryu_ryu_no_mi_basic": {
-    name: "Dragon Breath",
-    damage: 65,
-    cooldown: 2,
-    effect: "fire_puff",
-    description: "Small dragon breath with hint of flame",
-    type: "attack"
-  },
-  "kame_kame_no_mi": {
-    name: "Shell Defense",
-    damage: 50,
-    cooldown: 2,
-    effect: "turtle_shell",
-    description: "Retreat into shell for damage reduction",
-    type: "defense"
-  },
-  "taka_taka_no_mi_basic": {
-    name: "Talon Swipe",
-    damage: 60,
-    cooldown: 1,
-    effect: "aerial_strike",
-    description: "Sharp talon attack from above",
-    type: "attack"
-  },
-  "kani_kani_no_mi": {
-    name: "Pincer Grab",
-    damage: 65,
-    cooldown: 1,
-    effect: "grab_hold",
-    description: "Strong crab pincers grab and squeeze",
-    type: "attack"
-  },
-  "tako_tako_no_mi": {
-    name: "Tentacle Slap",
-    damage: 55,
-    cooldown: 1,
-    effect: "multi_arm_strike",
-    description: "Multiple tentacles strike simultaneously",
-    type: "attack"
-  },
-  "ika_ika_no_mi": {
-    name: "Ink Cloud",
-    damage: 50,
-    cooldown: 2,
-    effect: "ink_blind",
-    description: "Release ink cloud to blind enemy",
-    type: "utility"
-  },
-  "kumo_kumo_no_mi": {
-    name: "Web Shot",
-    damage: 55,
-    cooldown: 1,
-    effect: "web_trap",
-    description: "Shoot sticky web to slow enemy movement",
-    type: "utility"
-  },
-  "ari_ari_no_mi": {
-    name: "Colony Strength",
-    damage: 60,
-    cooldown: 1,
-    effect: "worker_boost",
-    description: "Channel collective strength of ant colony",
-    type: "buff"
-  },
-  "hachi_hachi_no_mi": {
-    name: "Stinger Jab",
-    damage: 55,
-    cooldown: 1,
-    effect: "poison_weak",
-    description: "Sharp stinger with mild poison effect",
-    type: "attack"
-  },
-  "cho_cho_no_mi": {
-    name: "Pollen Cloud",
-    damage: 50,
-    cooldown: 2,
-    effect: "sleep_powder",
-    description: "Release drowsy pollen that makes enemy sluggish",
-    type: "debuff"
-  },
-  "batto_batto_no_mi": {
-    name: "Sonic Screech",
-    damage: 60,
-    cooldown: 1,
-    effect: "sound_wave",
-    description: "High-pitched screech that disrupts enemy",
-    type: "attack"
-  },
-  "nezumi_nezumi_no_mi": {
-    name: "Quick Nibble",
-    damage: 55,
-    cooldown: 0,
-    effect: "speed_bite",
-    description: "Fast mouse bite that's hard to avoid",
-    type: "attack"
-  },
-  "risu_risu_no_mi": {
-    name: "Nut Throw",
-    damage: 50,
-    cooldown: 1,
-    effect: "projectile_barrage",
-    description: "Throw multiple nuts as projectile weapons",
-    type: "attack"
-  },
-  "usagi_usagi_no_mi": {
-    name: "Bunny Hop",
-    damage: 55,
-    cooldown: 1,
-    effect: "jump_strike",
-    description: "High jumping attack with powerful legs",
-    type: "attack"
-  },
-  "shika_shika_no_mi": {
-    name: "Antler Charge",
-    damage: 65,
-    cooldown: 1,
-    effect: "horn_attack",
-    description: "Charge forward with sharp antlers",
-    type: "attack"
-  },
-  "kuma_kuma_no_mi": {
-    name: "Bear Hug",
-    damage: 70,
-    cooldown: 2,
-    effect: "crushing_embrace",
-    description: "Powerful bear hug that squeezes enemy",
-    type: "attack"
-  },
-  "ookami_ookami_no_mi_basic": {
-    name: "Lone Howl",
-    damage: 60,
-    cooldown: 1,
-    effect: "intimidate",
-    description: "Intimidating howl that reduces enemy courage",
-    type: "debuff"
-  },
-  "kitsune_kitsune_no_mi": {
-    name: "Fox Fire",
-    damage: 60,
-    cooldown: 1,
-    effect: "mystical_flame",
-    description: "Mysterious fox fire with magical properties",
-    type: "attack"
-  },
-  "tanuki_tanuki_no_mi": {
-    name: "Leaf Disguise",
-    damage: 55,
-    cooldown: 2,
-    effect: "transformation_trick",
-    description: "Transform appearance to confuse enemy",
-    type: "utility"
-  },
-  "saru_saru_no_mi": {
-    name: "Banana Toss",
-    damage: 50,
-    cooldown: 1,
-    effect: "slip_trap",
-    description: "Throw banana peel to make enemy slip",
-    type: "utility"
-  },
-  "zou_zou_no_mi_basic": {
-    name: "Memory Strike",
-    damage: 65,
-    cooldown: 2,
-    effect: "never_forget",
-    description: "Elephant memory makes attacks more accurate",
-    type: "attack"
-  },
-  "kirin_kirin_no_mi": {
-    name: "Long Neck Slam",
-    damage: 60,
-    cooldown: 1,
-    effect: "reach_advantage",
-    description: "Use long neck for extended reach attacks",
-    type: "attack"
-  },
-  "hippo_hippo_no_mi": {
-    name: "Jaw Snap",
-    damage: 70,
-    cooldown: 2,
-    effect: "powerful_bite",
-    description: "Massive hippo jaws deliver crushing bite",
-    type: "attack"
-  },
-  "sai_sai_no_mi": {
-    name: "Horn Drill",
-    damage: 65,
-    cooldown: 1,
-    effect: "piercing_horn",
-    description: "Sharp horn pierces through defenses",
-    type: "attack"
-  },
-  "raion_raion_no_mi": {
-    name: "King's Roar",
-    damage: 65,
-    cooldown: 1,
-    effect: "royal_intimidation",
-    description: "Majestic roar that commands respect and fear",
-    type: "debuff"
-  },
-  "tora_tora_no_mi": {
-    name: "Tiger Swipe",
-    damage: 70,
-    cooldown: 1,
-    effect: "claw_slash",
-    description: "Powerful tiger claw leaves deep scratches",
-    type: "attack"
-  },
-  "hyou_hyou_no_mi": {
-    name: "Stealth Pounce",
-    damage: 60,
-    cooldown: 1,
-    effect: "stealth_attack",
-    description: "Stealthy leopard pounce from hiding",
-    type: "attack"
-  },
-  "ookami_ookami_no_mi_dire": {
-    name: "Pack Leader",
-    damage: 65,
-    cooldown: 2,
-    effect: "alpha_presence",
-    description: "Command presence of pack leader intimidates",
-    type: "debuff"
-  },
-  "wani_wani_no_mi_basic": {
-    name: "Death Roll",
-    damage: 70,
-    cooldown: 2,
-    effect: "spinning_attack",
-    description: "Crocodile death roll spins and crushes",
-    type: "attack"
-  },
-  "hebi_hebi_no_mi_basic": {
-    name: "Slither Strike",
-    damage: 60,
-    cooldown: 1,
-    effect: "quick_strike",
-    description: "Lightning-fast snake strike from any angle",
-    type: "attack"
-  },
-  "tokage_tokage_no_mi": {
-    name: "Tail Whip",
-    damage: 55,
-    cooldown: 1,
-    effect: "balance_strike",
-    description: "Strong tail whip that throws off balance",
-    type: "attack"
-  },
-  "kaeru_kaeru_no_mi": {
-    name: "Tongue Lash",
-    damage: 50,
-    cooldown: 1,
-    effect: "sticky_grab",
-    description: "Long sticky tongue grabs and pulls enemy",
-    type: "utility"
-  },
-  "sakana_sakana_no_mi": {
-    name: "Water Splash",
-    damage: 50,
-    cooldown: 1,
-    effect: "water_spray",
-    description: "Splash water to temporarily blind enemy",
-    type: "utility"
-  },
-  "same_same_no_mi_basic": {
-    name: "Fin Slice",
-    damage: 65,
-    cooldown: 1,
-    effect: "cutting_fin",
-    description: "Sharp dorsal fin slices through defenses",
-    type: "attack"
-  },
-  "kujira_kujira_no_mi": {
-    name: "Whale Song",
-    damage: 60,
-    cooldown: 2,
-    effect: "sound_wave_stun",
-    description: "Deep whale song creates stunning sound waves",
-    type: "attack"
-  },
-  "iruka_iruka_no_mi": {
-    name: "Sonar Pulse",
-    damage: 55,
-    cooldown: 1,
-    effect: "echolocation",
-    description: "Sonar pulse reveals weak points for precise strikes",
-    type: "utility"
-  },
-  "kurage_kurage_no_mi": {
-    name: "Poison Sting",
-    damage: 50,
-    cooldown: 1,
-    effect: "jellyfish_poison",
-    description: "Venomous tentacles deliver paralyzing sting",
-    type: "attack"
-  },
-  "hitode_hitode_no_mi": {
-    name: "Regeneration",
-    damage: 45,
-    cooldown: 3,
-    effect: "health_restore",
-    description: "Starfish regeneration slowly heals wounds",
-    type: "utility"
-  },
-  "uni_uni_no_mi": {
-    name: "Spine Shield",
-    damage: 55,
-    cooldown: 2,
-    effect: "spike_defense",
-    description: "Sharp spines protect and damage attackers",
-    type: "defense"
-  },
-  "ebi_ebi_no_mi": {
-    name: "Bubble Jet",
-    damage: 50,
-    cooldown: 1,
-    effect: "water_jet",
-    description: "High-pressure water jet with stunning force",
-    type: "attack"
-  },
-  "hotate_hotate_no_mi": {
-    name: "Shell Clap",
-    damage: 55,
-    cooldown: 1,
-    effect: "sonic_clap",
-    description: "Powerful shell clap creates damaging sound wave",
-    type: "attack"
-  },
-  "namako_namako_no_mi": {
-    name: "Slime Coat",
-    damage: 45,
-    cooldown: 2,
-    effect: "slippery_coating",
-    description: "Slippery slime makes enemy attacks slide off",
-    type: "defense"
-  },
-  "kaisou_kaisou_no_mi": {
-    name: "Kelp Wrap",
-    damage: 50,
-    cooldown: 2,
-    effect: "entangle",
-    description: "Long seaweed fronds wrap and restrict movement",
-    type: "utility"
-  },
-  "sango_sango_no_mi": {
-    name: "Calcium Spike",
-    damage: 60,
-    cooldown: 1,
-    effect: "hard_growth",
-    description: "Grow hard coral spikes for piercing attacks",
-    type: "attack"
-  },
-  "shinjyu_shinjyu_no_mi": {
-    name: "Lustrous Shield",
-    damage: 55,
-    cooldown: 2,
-    effect: "reflective_barrier",
-    description: "Beautiful pearl creates light-reflecting protective barrier",
-    type: "defense"
+// Placeholder skill effects by rarity
+const RARITY_SKILL_TEMPLATES = {
+  divine: {
+    damageRange: [280, 350],
+    cooldownRange: [6, 8],
+    effects: ['reality_bend', 'power_null', 'area_explosion', 'devastating_blast', 'world_shaker'],
+    type: 'ultimate'
+  },
+  mythical: {
+    damageRange: [200, 280],
+    cooldownRange: [5, 7],
+    effects: ['phoenix_rebirth', 'elemental_mastery', 'logia_immunity', 'mythical_power'],
+    type: 'special'
+  },
+  legendary: {
+    damageRange: [150, 200],
+    cooldownRange: [4, 6],
+    effects: ['spatial_control', 'gravity_field', 'legendary_technique', 'master_strike'],
+    type: 'attack'
+  },
+  epic: {
+    damageRange: [120, 150],
+    cooldownRange: [3, 5],
+    effects: ['epic_ability', 'enhanced_power', 'special_technique', 'strong_attack'],
+    type: 'attack'
+  },
+  rare: {
+    damageRange: [90, 120],
+    cooldownRange: [2, 4],
+    effects: ['rare_technique', 'focused_strike', 'tactical_ability'],
+    type: 'attack'
+  },
+  uncommon: {
+    damageRange: [70, 90],
+    cooldownRange: [1, 3],
+    effects: ['enhanced_strike', 'improved_technique', 'basic_power'],
+    type: 'attack'
+  },
+  common: {
+    damageRange: [50, 70],
+    cooldownRange: [1, 2],
+    effects: ['basic_attack', 'simple_technique', 'common_ability'],
+    type: 'attack'
   }
 };
 
-// Enhanced skill lookup with comprehensive mapping
+// Placeholder skill database - will be expanded later
+const DEVIL_FRUIT_SKILLS = {
+  // Divine skills - Ultimate powers
+  "yami_yami_gura_gura_no_mi": {
+    name: "Darkness Quake",
+    damage: 320,
+    cooldown: 8,
+    effect: "reality_bend",
+    description: "Combine darkness nullification with world-destroying earthquakes",
+    type: "ultimate"
+  },
+  
+  "gomu_gomu_nika_no_mi": {
+    name: "Gear 5: Liberation",
+    damage: 300,
+    cooldown: 7,
+    effect: "reality_bend", 
+    description: "Sun God's power to liberate and bend reality",
+    type: "ultimate"
+  },
+
+  "gura_gura_no_mi": {
+    name: "World Ender Quake",
+    damage: 310,
+    cooldown: 7,
+    effect: "area_explosion",
+    description: "Devastating earthquakes that crack the very air",
+    type: "ultimate"
+  },
+
+  "uo_uo_no_mi_seiryu": {
+    name: "Azure Dragon Storm",
+    damage: 290,
+    cooldown: 6,
+    effect: "elemental_mastery",
+    description: "Command wind, fire, and lightning as the Azure Dragon",
+    type: "ultimate"
+  },
+
+  // Mythical skills - Special powers
+  "goro_goro_no_mi": {
+    name: "Thunder God's Judgment",
+    damage: 250,
+    cooldown: 6,
+    effect: "lightning_mastery",
+    description: "Divine lightning strikes with godlike power",
+    type: "special"
+  },
+
+  "hie_hie_no_mi": {
+    name: "Absolute Zero",
+    damage: 240,
+    cooldown: 6,
+    effect: "freeze_everything",
+    description: "Freeze time and space with absolute cold",
+    type: "special"
+  },
+
+  "pika_pika_no_mi": {
+    name: "Light Speed Barrage",
+    damage: 245,
+    cooldown: 5,
+    effect: "light_speed",
+    description: "Attack at the speed of light with devastating precision",
+    type: "special"
+  },
+
+  // Add more specific skills as needed...
+};
+
+/**
+ * Get skill data for a fruit, with fallback generation
+ */
 function getSkillData(fruitId) {
-  // Direct match first
-  if (DEVIL_FRUIT_SKILLS[fruitId] && typeof DEVIL_FRUIT_SKILLS[fruitId] === 'object') {
+  // Check if we have a specific skill defined
+  if (DEVIL_FRUIT_SKILLS[fruitId]) {
     return DEVIL_FRUIT_SKILLS[fruitId];
   }
   
-  // Check if it's a mapped ID
-  if (typeof DEVIL_FRUIT_SKILLS[fruitId] === 'string') {
-    return DEVIL_FRUIT_SKILLS[DEVIL_FRUIT_SKILLS[fruitId]];
-  }
-  
-  // Try alternative ID formats for fruits not found
-  const alternatives = [
-    fruitId.replace(/_basic$/, ''),                    // Remove "_basic" suffix
-    fruitId.replace(/_no_mi.*$/, '_no_mi'),           // Remove model/variant info  
-    fruitId.split('_').slice(0, 3).join('_') + '_no_mi', // First 3 parts + _no_mi
-    fruitId.replace(/_(model|type)_.*$/, '_no_mi'),   // Remove model/type variants
-    fruitId.replace(/_advanced$/, ''),                 // Remove "_advanced" suffix
-    fruitId.replace(/_full$/, ''),                     // Remove "_full" suffix
-  ];
-  
-  for (const altId of alternatives) {
-    if (DEVIL_FRUIT_SKILLS[altId]) {
-      return typeof DEVIL_FRUIT_SKILLS[altId] === 'string' 
-        ? DEVIL_FRUIT_SKILLS[DEVIL_FRUIT_SKILLS[altId]]
-        : DEVIL_FRUIT_SKILLS[altId];
-    }
-  }
-  
-  return null; // Will use fallback
+  // If no specific skill, return null to use fallback
+  return null;
 }
 
-// Enhanced fallback with proper damage scaling
-function getFallbackSkill(fruitRarity) {
-  const fallbackDamage = {
-    'divine': 250,
-    'mythical': 200,
-    'legendary': 150,
-    'epic': 120,
-    'rare': 90,
-    'uncommon': 70,
-    'common': 50
-  };
-
-  const fallbackCooldown = {
-    'divine': 6,
-    'mythical': 5,
-    'legendary': 4,
-    'epic': 3,
-    'rare': 2,
-    'uncommon': 1,
-    'common': 1
-  };
-
-  const fallbackNames = {
-    'divine': 'Divine Manifestation',
-    'mythical': 'Mythical Power',
-    'legendary': 'Legendary Technique',
-    'epic': 'Epic Ability',
-    'rare': 'Special Move',
-    'uncommon': 'Enhanced Strike',
-    'common': 'Basic Attack'
-  };
-
+/**
+ * Generate fallback skill based on fruit rarity and info
+ */
+function getFallbackSkill(fruitRarity, fruitName = "Unknown Fruit", fruitElement = "Unknown") {
+  const template = RARITY_SKILL_TEMPLATES[fruitRarity] || RARITY_SKILL_TEMPLATES.common;
+  
+  // Generate damage within range
+  const damage = Math.floor(
+    Math.random() * (template.damageRange[1] - template.damageRange[0] + 1) + template.damageRange[0]
+  );
+  
+  // Generate cooldown within range
+  const cooldown = Math.floor(
+    Math.random() * (template.cooldownRange[1] - template.cooldownRange[0] + 1) + template.cooldownRange[0]
+  );
+  
+  // Select random effect
+  const effect = template.effects[Math.floor(Math.random() * template.effects.length)];
+  
+  // Generate skill name based on fruit
+  const skillName = generateSkillName(fruitName, fruitElement, fruitRarity);
+  
+  // Generate description
+  const description = generateSkillDescription(fruitName, fruitElement, fruitRarity, effect);
+  
   return {
-    name: fallbackNames[fruitRarity] || "Devil Fruit Power",
-    damage: fallbackDamage[fruitRarity] || 50,
-    cooldown: fallbackCooldown[fruitRarity] || 1,
-    effect: null,
-    description: `A ${fruitRarity} level devil fruit ability`,
-    type: "attack"
+    name: skillName,
+    damage: damage,
+    cooldown: cooldown,
+    effect: effect,
+    description: description,
+    type: template.type
   };
 }
 
-// Utility function to check if fruit has custom skill
-function hasCustomSkill(fruitId) {
-  return getSkillData(fruitId) !== null;
+/**
+ * Generate skill name based on fruit properties
+ */
+function generateSkillName(fruitName, element, rarity) {
+  const rarityPrefixes = {
+    divine: ['Divine', 'Godly', 'Supreme', 'Ultimate'],
+    mythical: ['Mythical', 'Legendary', 'Ancient', 'Eternal'],
+    legendary: ['Legendary', 'Master', 'Grand', 'Elite'],
+    epic: ['Epic', 'Great', 'Mighty', 'Powerful'],
+    rare: ['Enhanced', 'Advanced', 'Superior', 'Special'],
+    uncommon: ['Improved', 'Focused', 'Refined', 'Skilled'],
+    common: ['Basic', 'Simple', 'Standard', 'Regular']
+  };
+  
+  const elementActions = {
+    Lightning: ['Strike', 'Bolt', 'Storm', 'Judgment'],
+    Ice: ['Freeze', 'Blizzard', 'Shard', 'Glacier'],
+    Fire: ['Blaze', 'Inferno', 'Flame', 'Burn'],
+    Light: ['Beam', 'Flash', 'Ray', 'Brilliance'],
+    Darkness: ['Void', 'Shadow', 'Abyss', 'Eclipse'],
+    Magma: ['Eruption', 'Flow', 'Blast', 'Heat'],
+    Sand: ['Storm', 'Whirlwind', 'Burial', 'Desert'],
+    Smoke: ['Cloud', 'Veil', 'Shroud', 'Mist'],
+    Rubber: ['Bounce', 'Stretch', 'Slam', 'Impact'],
+    String: ['Web', 'Bind', 'Cut', 'Control'],
+    Earthquake: ['Quake', 'Tremor', 'Shatter', 'Crack'],
+    Soul: ['Drain', 'Command', 'Harvest', 'Bind'],
+    Gravity: ['Crush', 'Pull', 'Field', 'Force'],
+    Operation: ['Cut', 'Swap', 'Room', 'Surgery'],
+    Poison: ['Cloud', 'Bite', 'Spread', 'Decay'],
+    Diamond: ['Shine', 'Cut', 'Barrier', 'Reflection'],
+    Barrier: ['Wall', 'Shield', 'Block', 'Guard'],
+    Magnetism: ['Attract', 'Repel', 'Field', 'Storm'],
+    Mochi: ['Trap', 'Bind', 'Stretch', 'Form'],
+    Phoenix: ['Rebirth', 'Flame', 'Rise', 'Heal'],
+    Dragon: ['Roar', 'Claw', 'Breath', 'Rage'],
+    Leopard: ['Pounce', 'Claw', 'Hunt', 'Strike'],
+    Mammoth: ['Charge', 'Stomp', 'Tusk', 'Trumpet'],
+    Wolf: ['Howl', 'Pack', 'Hunt', 'Bite'],
+    Human: ['Punch', 'Kick', 'Grapple', 'Technique']
+  };
+  
+  const prefixes = rarityPrefixes[rarity] || rarityPrefixes.common;
+  const actions = elementActions[element] || ['Strike', 'Attack', 'Power', 'Force'];
+  
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const action = actions[Math.floor(Math.random() * actions.length)];
+  
+  return `${prefix} ${element} ${action}`;
 }
 
-// Get all skills by rarity for analysis
+/**
+ * Generate skill description
+ */
+function generateSkillDescription(fruitName, element, rarity, effect) {
+  const rarityDescriptors = {
+    divine: 'world-altering',
+    mythical: 'legendary',
+    legendary: 'masterful',
+    epic: 'powerful',
+    rare: 'enhanced',
+    uncommon: 'improved',
+    common: 'basic'
+  };
+  
+  const elementDescriptions = {
+    Lightning: 'devastating electrical energy',
+    Ice: 'freezing cold that chills to the bone',
+    Fire: 'intense flames that burn everything',
+    Light: 'blinding radiance and laser precision',
+    Darkness: 'consuming void that nullifies power',
+    Magma: 'molten rock with extreme heat',
+    Sand: 'dehydrating desert force',
+    Smoke: 'concealing mist and toxic clouds',
+    Rubber: 'elastic force and blunt immunity',
+    String: 'razor-sharp cutting threads',
+    Earthquake: 'earth-shaking tremors',
+    Soul: 'life force manipulation',
+    Gravity: 'crushing gravitational force',
+    Operation: 'surgical precision and spatial control',
+    Poison: 'deadly toxins and corrosive effects',
+    Diamond: 'indestructible crystalline power',
+    Barrier: 'impenetrable defensive force',
+    Magnetism: 'magnetic field manipulation',
+    Mochi: 'sticky binding and flexible assault',
+    Phoenix: 'regenerative flames of rebirth',
+    Dragon: 'ancient mythical beast power',
+    Leopard: 'predatory hunting instincts',
+    Mammoth: 'colossal ancient strength',
+    Wolf: 'pack hunting coordination',
+    Human: 'human intelligence and adaptability'
+  };
+  
+  const descriptor = rarityDescriptors[rarity] || 'basic';
+  const elementDesc = elementDescriptions[element] || 'mysterious devil fruit energy';
+  
+  return `A ${descriptor} technique that harnesses ${elementDesc} to devastating effect.`;
+}
+
+/**
+ * Check if fruit has custom skill
+ */
+function hasCustomSkill(fruitId) {
+  return DEVIL_FRUIT_SKILLS.hasOwnProperty(fruitId);
+}
+
+/**
+ * Get all skills by rarity for analysis
+ */
 function getSkillsByRarity(rarity) {
   const skills = [];
+  
+  // Get defined skills
   Object.entries(DEVIL_FRUIT_SKILLS).forEach(([fruitId, skill]) => {
     if (typeof skill === 'object' && skill.damage) {
       // Estimate rarity based on damage ranges
       let estimatedRarity = 'common';
-      if (skill.damage >= 250) estimatedRarity = 'divine';
+      if (skill.damage >= 280) estimatedRarity = 'divine';
       else if (skill.damage >= 200) estimatedRarity = 'mythical';
       else if (skill.damage >= 150) estimatedRarity = 'legendary';
       else if (skill.damage >= 120) estimatedRarity = 'epic';
@@ -1370,13 +294,258 @@ function getSkillsByRarity(rarity) {
       }
     }
   });
+  
   return skills;
 }
 
+/**
+ * Add custom skill for a specific fruit
+ */
+function addCustomSkill(fruitId, skillData) {
+  DEVIL_FRUIT_SKILLS[fruitId] = skillData;
+}
+
+/**
+ * Remove custom skill
+ */
+function removeCustomSkill(fruitId) {
+  delete DEVIL_FRUIT_SKILLS[fruitId];
+}
+
+/**
+ * Get skill template for rarity
+ */
+function getSkillTemplate(rarity) {
+  return RARITY_SKILL_TEMPLATES[rarity] || RARITY_SKILL_TEMPLATES.common;
+}
+
+/**
+ * Generate multiple skill options for a fruit
+ */
+function generateSkillOptions(fruitName, fruitElement, fruitRarity, count = 3) {
+  const options = [];
+  
+  for (let i = 0; i < count; i++) {
+    options.push(getFallbackSkill(fruitRarity, fruitName, fruitElement));
+  }
+  
+  return options;
+}
+
+/**
+ * Validate skill data
+ */
+function validateSkillData(skillData) {
+  const required = ['name', 'damage', 'cooldown', 'description', 'type'];
+  
+  for (const field of required) {
+    if (!skillData.hasOwnProperty(field)) {
+      return { valid: false, error: `Missing required field: ${field}` };
+    }
+  }
+  
+  if (typeof skillData.damage !== 'number' || skillData.damage < 1) {
+    return { valid: false, error: 'Damage must be a positive number' };
+  }
+  
+  if (typeof skillData.cooldown !== 'number' || skillData.cooldown < 0) {
+    return { valid: false, error: 'Cooldown must be a non-negative number' };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Get skill statistics
+ */
+function getSkillStats() {
+  const stats = {
+    totalCustomSkills: Object.keys(DEVIL_FRUIT_SKILLS).length,
+    byRarity: {},
+    byType: {},
+    averageDamage: {},
+    averageCooldown: {}
+  };
+  
+  // Analyze by rarity and type
+  Object.values(DEVIL_FRUIT_SKILLS).forEach(skill => {
+    // Estimate rarity from damage
+    let rarity = 'common';
+    if (skill.damage >= 280) rarity = 'divine';
+    else if (skill.damage >= 200) rarity = 'mythical';
+    else if (skill.damage >= 150) rarity = 'legendary';
+    else if (skill.damage >= 120) rarity = 'epic';
+    else if (skill.damage >= 90) rarity = 'rare';
+    else if (skill.damage >= 70) rarity = 'uncommon';
+    
+    // Count by rarity
+    stats.byRarity[rarity] = (stats.byRarity[rarity] || 0) + 1;
+    
+    // Count by type
+    const type = skill.type || 'attack';
+    stats.byType[type] = (stats.byType[type] || 0) + 1;
+    
+    // Calculate averages
+    if (!stats.averageDamage[rarity]) {
+      stats.averageDamage[rarity] = [];
+      stats.averageCooldown[rarity] = [];
+    }
+    stats.averageDamage[rarity].push(skill.damage);
+    stats.averageCooldown[rarity].push(skill.cooldown);
+  });
+  
+  // Calculate final averages
+  Object.keys(stats.averageDamage).forEach(rarity => {
+    const damages = stats.averageDamage[rarity];
+    const cooldowns = stats.averageCooldown[rarity];
+    
+    stats.averageDamage[rarity] = Math.round(
+      damages.reduce((a, b) => a + b, 0) / damages.length
+    );
+    stats.averageCooldown[rarity] = Math.round(
+      cooldowns.reduce((a, b) => a + b, 0) / cooldowns.length * 10
+    ) / 10;
+  });
+  
+  return stats;
+}
+
+/**
+ * Export custom skills to JSON
+ */
+function exportCustomSkills() {
+  return JSON.stringify(DEVIL_FRUIT_SKILLS, null, 2);
+}
+
+/**
+ * Import custom skills from JSON
+ */
+function importCustomSkills(jsonData) {
+  try {
+    const skills = JSON.parse(jsonData);
+    
+    // Validate each skill
+    for (const [fruitId, skillData] of Object.entries(skills)) {
+      const validation = validateSkillData(skillData);
+      if (!validation.valid) {
+        throw new Error(`Invalid skill data for ${fruitId}: ${validation.error}`);
+      }
+    }
+    
+    // Import if all valid
+    Object.assign(DEVIL_FRUIT_SKILLS, skills);
+    return { success: true, imported: Object.keys(skills).length };
+    
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get recommended skill for fruit based on its properties
+ */
+function getRecommendedSkill(fruitData) {
+  const { name, rarity, element, type, user } = fruitData;
+  
+  // Check if we have a custom skill
+  const customSkill = getSkillData(fruitData.id);
+  if (customSkill) {
+    return customSkill;
+  }
+  
+  // Generate appropriate fallback
+  return getFallbackSkill(rarity, name, element);
+}
+
+/**
+ * Batch generate skills for multiple fruits
+ */
+function batchGenerateSkills(fruitsData) {
+  const results = {};
+  
+  fruitsData.forEach(fruit => {
+    results[fruit.id] = getRecommendedSkill(fruit);
+  });
+  
+  return results;
+}
+
+/**
+ * Search skills by name or effect
+ */
+function searchSkills(query) {
+  const results = [];
+  const lowercaseQuery = query.toLowerCase();
+  
+  Object.entries(DEVIL_FRUIT_SKILLS).forEach(([fruitId, skill]) => {
+    if (
+      skill.name.toLowerCase().includes(lowercaseQuery) ||
+      skill.description.toLowerCase().includes(lowercaseQuery) ||
+      (skill.effect && skill.effect.toLowerCase().includes(lowercaseQuery))
+    ) {
+      results.push({ fruitId, ...skill });
+    }
+  });
+  
+  return results;
+}
+
+/**
+ * Get skills that need balancing (damage too high/low for rarity)
+ */
+function getUnbalancedSkills() {
+  const unbalanced = [];
+  
+  Object.entries(DEVIL_FRUIT_SKILLS).forEach(([fruitId, skill]) => {
+    // Determine expected rarity from damage
+    let expectedRarity = 'common';
+    if (skill.damage >= 280) expectedRarity = 'divine';
+    else if (skill.damage >= 200) expectedRarity = 'mythical';
+    else if (skill.damage >= 150) expectedRarity = 'legendary';
+    else if (skill.damage >= 120) expectedRarity = 'epic';
+    else if (skill.damage >= 90) expectedRarity = 'rare';
+    else if (skill.damage >= 70) expectedRarity = 'uncommon';
+    
+    // Check if damage is appropriate for rarity
+    const template = RARITY_SKILL_TEMPLATES[expectedRarity];
+    if (skill.damage < template.damageRange[0] || skill.damage > template.damageRange[1]) {
+      unbalanced.push({
+        fruitId,
+        skill,
+        expectedRarity,
+        issue: skill.damage < template.damageRange[0] ? 'too_low' : 'too_high'
+      });
+    }
+  });
+  
+  return unbalanced;
+}
+
+// Initialize logger
+const logger = new Logger('SKILLS');
+
+// Log initialization
+logger.info(`Devil Fruit Skills system initialized with ${Object.keys(DEVIL_FRUIT_SKILLS).length} custom skills`);
+
 module.exports = {
   DEVIL_FRUIT_SKILLS,
+  RARITY_SKILL_TEMPLATES,
   getSkillData,
   getFallbackSkill,
   hasCustomSkill,
-  getSkillsByRarity
+  getSkillsByRarity,
+  addCustomSkill,
+  removeCustomSkill,
+  getSkillTemplate,
+  generateSkillOptions,
+  validateSkillData,
+  getSkillStats,
+  exportCustomSkills,
+  importCustomSkills,
+  getRecommendedSkill,
+  batchGenerateSkills,
+  searchSkills,
+  getUnbalancedSkills,
+  generateSkillName,
+  generateSkillDescription
 };
