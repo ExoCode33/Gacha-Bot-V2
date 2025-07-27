@@ -216,7 +216,7 @@ const UNCOMMON_SKILLS = {
     cost: 18,
     special: {
       evilCleanse: true,
-      corruption Remove: true,
+      corruptionRemove: true,
       soulPurify: true
     }
   },
