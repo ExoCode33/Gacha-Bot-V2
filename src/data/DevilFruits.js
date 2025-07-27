@@ -1,126 +1,86 @@
-// src/data/DevilFruits.js - COMPLETE Devil Fruits Database (Uses DevilFruitSkills.js)
+// src/data/DevilFruits.js - COMPLETE OVERHAUL with New Fruit List
 const { getSkillData, getFallbackSkill } = require('./DevilFruitSkills');
 
 const DEVIL_FRUITS = {
   // =====================================================
-  // DIVINE FRUITS (5 fruits) - 3.2x to 4.0x CP
+  // DIVINE TIER (4 fruits) - Strength 7 - 3.5x to 4.0x CP
   // =====================================================
-  "gura_gura_no_mi": {
-    id: "gura_gura_no_mi",
-    name: "Gura Gura no Mi",
-    type: "Paramecia",
+  "yami_yami_gura_gura_no_mi": {
+    id: "yami_yami_gura_gura_no_mi",
+    name: "Yami Yami no Mi + Gura Gura no Mi",
+    type: "Logia + Paramecia",
     rarity: "divine",
-    element: "Tremor",
-    power: "Allows the user to create earthquakes",
-    description: "The power to destroy the world with vibrations and quakes.",
-    multiplier: 3.50,
-    user: "Edward Newgate (Whitebeard)",
+    element: "Darkness + Earthquake",
+    power: "Ultimate dual devil fruit power",
+    description: "The most feared combination - darkness that nullifies all powers combined with world-destroying earthquakes.",
+    multiplier: 4.00,
+    user: "Marshall D. Teach (Blackbeard)",
     divineWeight: 30
   },
 
-  "hito_hito_no_mi_nika": {
-    id: "hito_hito_no_mi_nika",
-    name: "Hito Hito no Mi, Model: Nika",
+  "gomu_gomu_nika_no_mi": {
+    id: "gomu_gomu_nika_no_mi", 
+    name: "Gomu Gomu no Mi/Hito Hito no Mi Model: Nika",
     type: "Mythical Zoan",
     rarity: "divine",
     element: "Sun God",
-    power: "Sun God Nika - grants ultimate freedom",
-    description: "Mythical Zoan of Sun God Nika, bringing joy and liberation.",
-    multiplier: 3.80,
-    user: "Monkey D. Luffy (Gear 5)",
+    power: "Liberation and infinite possibilities",
+    description: "The legendary Sun God Nika fruit that brings joy and freedom to the world.",
+    multiplier: 3.90,
+    user: "Monkey D. Luffy",
     divineWeight: 25
   },
 
-  "yami_yami_no_mi": {
-    id: "yami_yami_no_mi",
-    name: "Yami Yami no Mi",
-    type: "Logia",
+  "gura_gura_no_mi": {
+    id: "gura_gura_no_mi",
+    name: "Gura Gura no Mi", 
+    type: "Paramecia",
     rarity: "divine",
-    element: "Darkness",
-    power: "Allows the user to create and control darkness",
-    description: "Most dangerous Devil Fruit that can nullify all other powers.",
-    multiplier: 3.60,
-    user: "Marshall D. Teach (Blackbeard)",
+    element: "Earthquake",
+    power: "World-destroying earthquakes",
+    description: "The power to destroy the world itself through devastating tremors and quakes.",
+    multiplier: 3.80,
+    user: "Edward Newgate (Whitebeard)",
     divineWeight: 20
   },
 
-  "joy_boy_will": {
-    id: "joy_boy_will",
-    name: "Joy Boy's Will",
-    type: "Divine Legacy",
+  "uo_uo_no_mi_seiryu": {
+    id: "uo_uo_no_mi_seiryu",
+    name: "Uo Uo no Mi Model: Seiryu",
+    type: "Mythical Zoan", 
     rarity: "divine",
-    element: "Liberation",
-    power: "The inherited will of Joy Boy",
-    description: "Ancient will that brings freedom to the world.",
-    multiplier: 3.60,
-    user: "Joy Boy",
-    divineWeight: 24
-  },
-
-  "one_piece_treasure": {
-    id: "one_piece_treasure",
-    name: "One Piece",
-    type: "Divine Artifact",
-    rarity: "divine", 
-    element: "Truth",
-    power: "The ultimate treasure containing all secrets",
-    description: "The legendary treasure that reveals the true history. The rarest find in all the seas.",
-    multiplier: 4.00,
-    user: "Gol D. Roger",
-    divineWeight: 1 // ULTRA RARE
+    element: "Azure Dragon",
+    power: "Transform into the legendary Azure Dragon",
+    description: "Mythical dragon transformation with elemental mastery over wind, fire, and lightning.",
+    multiplier: 3.70,
+    user: "Kaidou",
+    divineWeight: 25
   },
 
   // =====================================================
-  // MYTHICAL TIER (2 fruits) - 2.6x to 3.2x CP
+  // MYTHICAL TIER (12 fruits) - Strength 7 & 6 - 2.6x to 3.2x CP
   // =====================================================
-  "tori_tori_no_mi_phoenix": {
-    id: "tori_tori_no_mi_phoenix",
-    name: "Tori Tori no Mi, Model: Phoenix",
-    type: "Mythical Zoan",
-    rarity: "mythical",
-    element: "Phoenix",
-    power: "Allows user to transform into a phoenix",
-    description: "Mythical Zoan that grants phoenix transformation with regeneration.",
-    multiplier: 2.8,
-    user: "Marco the Phoenix"
-  },
-
-  "ancient_weapon_pluton": {
-    id: "ancient_weapon_pluton",
-    name: "Ancient Weapon: Pluton",
-    type: "Ancient Weapon",
-    rarity: "mythical",
-    element: "Destruction",
-    power: "Power of the ancient weapon Pluton",
-    description: "Ancient weapon capable of destroying entire islands.",
-    multiplier: 3.0,
-    user: "Unknown"
-  },
-
-  // =====================================================
-  // LEGENDARY FRUITS (4 fruits) - 2.1x to 2.6x CP
-  // =====================================================
-  "mera_mera_no_mi": {
-    id: "mera_mera_no_mi",
-    name: "Mera Mera no Mi",
+  "goro_goro_no_mi": {
+    id: "goro_goro_no_mi",
+    name: "Goro Goro no Mi",
     type: "Logia",
-    rarity: "legendary",
-    element: "Fire",
-    power: "Complete fire generation and control",
-    description: "User becomes fire itself and can create massive infernos.",
-    multiplier: 2.3,
-    user: "Portgas D. Ace"
+    rarity: "mythical", 
+    element: "Lightning",
+    power: "Complete lightning generation and control",
+    description: "User becomes lightning itself, capable of devastating electrical attacks.",
+    multiplier: 3.20,
+    user: "Enel"
   },
 
   "hie_hie_no_mi": {
     id: "hie_hie_no_mi",
     name: "Hie Hie no Mi",
     type: "Logia",
-    rarity: "legendary",
-    element: "Ice",
+    rarity: "mythical",
+    element: "Ice", 
     power: "Complete ice generation and control",
-    description: "User becomes ice and can freeze entire landscapes.",
-    multiplier: 2.25,
+    description: "User becomes ice and can freeze entire landscapes instantly.",
+    multiplier: 3.10,
     user: "Kuzan (Aokiji)"
   },
 
@@ -128,87 +88,318 @@ const DEVIL_FRUITS = {
     id: "pika_pika_no_mi",
     name: "Pika Pika no Mi",
     type: "Logia",
-    rarity: "legendary",
+    rarity: "mythical",
     element: "Light",
-    power: "Allows user to create and become light",
-    description: "User becomes light and can move at light speed.",
-    multiplier: 2.4,
+    power: "Light speed movement and laser attacks", 
+    description: "User becomes light itself and can move at the speed of light.",
+    multiplier: 3.15,
     user: "Borsalino (Kizaru)"
+  },
+
+  "magu_magu_no_mi": {
+    id: "magu_magu_no_mi", 
+    name: "Magu Magu no Mi",
+    type: "Logia",
+    rarity: "mythical",
+    element: "Magma",
+    power: "Molten lava generation and control",
+    description: "User becomes magma with the highest offensive power among Logias.",
+    multiplier: 3.05,
+    user: "Sakazuki (Akainu)"
+  },
+
+  "soru_soru_no_mi": {
+    id: "soru_soru_no_mi",
+    name: "Soru Soru no Mi", 
+    type: "Paramecia",
+    rarity: "mythical",
+    element: "Soul",
+    power: "Soul manipulation and Homie creation",
+    description: "Manipulate souls and bring objects to life as powerful Homies.",
+    multiplier: 2.95,
+    user: "Charlotte Linlin (Big Mom)"
+  },
+
+  "zushi_zushi_no_mi": {
+    id: "zushi_zushi_no_mi",
+    name: "Zushi Zushi no Mi",
+    type: "Paramecia", 
+    rarity: "mythical",
+    element: "Gravity",
+    power: "Gravity manipulation and meteorite summoning",
+    description: "Control gravity itself and summon devastating meteorites from space.",
+    multiplier: 2.90,
+    user: "Issho (Fujitora)"
+  },
+
+  "mera_mera_no_mi": {
+    id: "mera_mera_no_mi",
+    name: "Mera Mera no Mi",
+    type: "Logia",
+    rarity: "mythical",
+    element: "Fire",
+    power: "Complete fire generation and control",
+    description: "User becomes fire itself with devastating flame attacks.",
+    multiplier: 2.85,
+    user: "Sabo"
+  },
+
+  "mori_mori_no_mi": {
+    id: "mori_mori_no_mi", 
+    name: "Mori Mori no Mi",
+    type: "Logia",
+    rarity: "mythical",
+    element: "Forest",
+    power: "Forest creation and plant control",
+    description: "User becomes a forest and can control all plant life.",
+    multiplier: 2.80,
+    user: "Aramaki (Green Bull)"
+  },
+
+  "ito_ito_no_mi": {
+    id: "ito_ito_no_mi",
+    name: "Ito Ito no Mi",
+    type: "Paramecia",
+    rarity: "mythical", 
+    element: "String",
+    power: "String manipulation and control",
+    description: "Create and control razor-sharp strings capable of cutting through anything.",
+    multiplier: 2.75,
+    user: "Donquixote Doflamingo"
+  },
+
+  "tori_tori_no_mi_phoenix": {
+    id: "tori_tori_no_mi_phoenix",
+    name: "Tori Tori no Mi Model: Phoenix",
+    type: "Mythical Zoan",
+    rarity: "mythical",
+    element: "Phoenix",
+    power: "Transform into the legendary Phoenix",
+    description: "Mythical phoenix transformation with regenerative blue flames.",
+    multiplier: 2.70,
+    user: "Marco the Phoenix"
+  },
+
+  "gasha_gasha_no_mi": {
+    id: "gasha_gasha_no_mi",
+    name: "Gasha Gasha no Mi",
+    type: "Paramecia", 
+    rarity: "mythical",
+    element: "Weaponry",
+    power: "Weapon creation and fusion",
+    description: "Create and combine any weapons imaginable from body parts.",
+    multiplier: 2.65,
+    user: "Douglas Bullet"
+  },
+
+  "uta_uta_no_mi": {
+    id: "uta_uta_no_mi",
+    name: "Uta Uta no Mi", 
+    type: "Paramecia",
+    rarity: "mythical",
+    element: "Song",
+    power: "Reality-altering song abilities",
+    description: "Create alternate realities and control minds through powerful songs.",
+    multiplier: 2.60,
+    user: "Uta"
+  },
+
+  // =====================================================
+  // LEGENDARY TIER (14 fruits) - Strength 6 - 2.1x to 2.6x CP
+  // =====================================================
+  "nikyu_nikyu_no_mi": {
+    id: "nikyu_nikyu_no_mi",
+    name: "Nikyu Nikyu no Mi",
+    type: "Paramecia",
+    rarity: "legendary",
+    element: "Paw",
+    power: "Repel anything with paw pads",
+    description: "Paw pads that can repel anything, including pain and memories.",
+    multiplier: 2.60,
+    user: "Bartholomew Kuma"
   },
 
   "ope_ope_no_mi": {
     id: "ope_ope_no_mi",
-    name: "Ope Ope no Mi",
+    name: "Ope Ope no Mi", 
     type: "Paramecia",
     rarity: "legendary",
     element: "Operation",
-    power: "Allows user to create a spherical 'room' where they can manipulate anything",
-    description: "Ultimate Devil Fruit that grants spatial manipulation and immortality surgery.",
-    multiplier: 2.35,
+    power: "Spatial manipulation within Room",
+    description: "Create operating rooms with complete spatial control and immortality surgery.",
+    multiplier: 2.55,
     user: "Trafalgar D. Water Law"
   },
 
-  // =====================================================
-  // EPIC FRUITS (15 fruits) - 1.7x to 2.1x CP
-  // =====================================================
   "suna_suna_no_mi": {
     id: "suna_suna_no_mi",
     name: "Suna Suna no Mi",
-    type: "Logia", 
-    rarity: "epic",
+    type: "Logia",
+    rarity: "legendary",
     element: "Sand",
-    power: "Allows user to create, control and transform into sand",
-    description: "User becomes sand itself and can control all sand in the area.",
-    multiplier: 1.85,
-    user: "Crocodile"
-  },
-
-  "moku_moku_no_mi": {
-    id: "moku_moku_no_mi",
-    name: "Moku Moku no Mi",
-    type: "Logia",
-    rarity: "epic",
-    element: "Smoke",
-    power: "Complete smoke manipulation and transformation",
-    description: "User becomes smoke and can create massive smoke constructs.",
-    multiplier: 1.78,
-    user: "Smoker"
-  },
-
-  "gasu_gasu_no_mi": {
-    id: "gasu_gasu_no_mi",
-    name: "Gasu Gasu no Mi",
-    type: "Logia",
-    rarity: "epic",
-    element: "Gas",
-    power: "Allows user to create and control various gases",
-    description: "User can become gas and create toxic or explosive gas mixtures.",
-    multiplier: 1.92,
-    user: "Caesar Clown"
+    power: "Complete sand generation and control",
+    description: "User becomes sand with moisture-draining abilities.",
+    multiplier: 2.50,
+    user: "Sir Crocodile"
   },
 
   "doku_doku_no_mi": {
     id: "doku_doku_no_mi",
     name: "Doku Doku no Mi",
-    type: "Paramecia",
-    rarity: "epic",
+    type: "Paramecia", 
+    rarity: "legendary",
     element: "Poison",
-    power: "Allows user to generate and control various poisons",
-    description: "User can create deadly poisons and become immune to all toxins.",
-    multiplier: 1.88,
+    power: "Deadly poison generation and immunity",
+    description: "Create any type of poison and become immune to all toxins.",
+    multiplier: 2.45,
     user: "Magellan"
   },
 
-  "doa_doa_no_mi": {
-    id: "doa_doa_no_mi",
-    name: "Doa Doa no Mi",
+  "fuwa_fuwa_no_mi": {
+    id: "fuwa_fuwa_no_mi",
+    name: "Fuwa Fuwa no Mi",
+    type: "Paramecia",
+    rarity: "legendary",
+    element: "Float",
+    power: "Levitation of self and objects",
+    description: "Make anything float and control floating islands.",
+    multiplier: 2.40,
+    user: "Shiki the Golden Lion"
+  },
+
+  "bari_bari_no_mi": {
+    id: "bari_bari_no_mi", 
+    name: "Bari Bari no Mi",
+    type: "Paramecia",
+    rarity: "legendary",
+    element: "Barrier",
+    power: "Indestructible barrier creation",
+    description: "Create absolutely indestructible barriers of any shape.",
+    multiplier: 2.35,
+    user: "Bartolomeo"
+  },
+
+  "jiki_jiki_no_mi": {
+    id: "jiki_jiki_no_mi",
+    name: "Jiki Jiki no Mi",
+    type: "Paramecia",
+    rarity: "legendary",
+    element: "Magnetism",
+    power: "Magnetic force manipulation",
+    description: "Control magnetic forces and manipulate metal objects.",
+    multiplier: 2.30,
+    user: "Eustass Kid"
+  },
+
+  "mochi_mochi_no_mi": {
+    id: "mochi_mochi_no_mi",
+    name: "Mochi Mochi no Mi",
+    type: "Special Paramecia",
+    rarity: "legendary",
+    element: "Mochi",
+    power: "Mochi generation and future sight",
+    description: "Logia-like mochi powers combined with advanced observation Haki.",
+    multiplier: 2.25,
+    user: "Charlotte Katakuri"
+  },
+
+  "neko_neko_no_mi_leopard": {
+    id: "neko_neko_no_mi_leopard",
+    name: "Neko Neko no Mi Model: Leopard",
+    type: "Carnivorous Zoan",
+    rarity: "legendary",
+    element: "Leopard",
+    power: "Leopard transformation with Rokushiki mastery", 
+    description: "Perfect predator form combined with martial arts mastery.",
+    multiplier: 2.20,
+    user: "Rob Lucci"
+  },
+
+  "zou_zou_no_mi_mammoth": {
+    id: "zou_zou_no_mi_mammoth",
+    name: "Zou Zou no Mi Model: Mammoth",
+    type: "Ancient Zoan",
+    rarity: "legendary", 
+    element: "Mammoth",
+    power: "Ancient mammoth transformation",
+    description: "Massive ancient mammoth with incredible destructive power.",
+    multiplier: 2.15,
+    user: "Jack the Drought"
+  },
+
+  "ryu_ryu_no_mi_pteranodon": {
+    id: "ryu_ryu_no_mi_pteranodon",
+    name: "Ryu Ryu no Mi Model: Pteranodon",
+    type: "Ancient Zoan",
+    rarity: "legendary",
+    element: "Pteranodon",
+    power: "Ancient flying reptile transformation",
+    description: "Ancient pteranodon with devastating aerial combat abilities.",
+    multiplier: 2.10,
+    user: "King the Conflagration"
+  },
+
+  "ryu_ryu_no_mi_brachiosaurus": {
+    id: "ryu_ryu_no_mi_brachiosaurus", 
+    name: "Ryu Ryu no Mi Model: Brachiosaurus",
+    type: "Ancient Zoan",
+    rarity: "legendary",
+    element: "Brachiosaurus",
+    power: "Ancient long-neck dinosaur transformation",
+    description: "Massive ancient dinosaur with incredible reach and power.",
+    multiplier: 2.05,
+    user: "Queen the Plague"
+  },
+
+  "hito_hito_no_mi_daibutsu": {
+    id: "hito_hito_no_mi_daibutsu",
+    name: "Hito Hito no Mi Model: Daibutsu",
+    type: "Mythical Zoan",
+    rarity: "legendary",
+    element: "Buddha",
+    power: "Golden Buddha transformation",
+    description: "Mythical Buddha form with shockwave palm strikes.",
+    multiplier: 2.00,
+    user: "Sengoku the Buddha"
+  },
+
+  "inu_inu_no_mi_okuchi_no_makami": {
+    id: "inu_inu_no_mi_okuchi_no_makami",
+    name: "Inu Inu no Mi Model: Okuchi no Makami",
+    type: "Mythical Zoan",
+    rarity: "legendary",
+    element: "Divine Wolf",
+    power: "Mythical wolf guardian transformation",
+    description: "Divine wolf form with ice powers and spiritual abilities.",
+    multiplier: 1.95,
+    user: "Yamato"
+  },
+
+  // =====================================================
+  // EPIC TIER (24 fruits) - Strength 5-6 & 4 - 1.7x to 2.1x CP
+  // =====================================================
+  "hobi_hobi_no_mi": {
+    id: "hobi_hobi_no_mi",
+    name: "Hobi Hobi no Mi",
     type: "Paramecia",
     rarity: "epic",
-    element: "Door",
-    power: "Allows user to create doors anywhere",
-    description: "User can create doors in any surface, including air.",
-    multiplier: 1.82,
-    user: "Blueno"
+    element: "Toy",
+    power: "Transform people into toys",
+    description: "Turn people into toys and erase memories of their existence.",
+    multiplier: 2.10,
+    user: "Sugar"
+  },
+
+  "gasu_gasu_no_mi": {
+    id: "gasu_gasu_no_mi",
+    name: "Gasu Gasu no Mi", 
+    type: "Logia",
+    rarity: "epic",
+    element: "Gas",
+    power: "Gas generation and manipulation",
+    description: "Create and control various types of deadly gases.",
+    multiplier: 2.05,
+    user: "Caesar Clown"
   },
 
   "kage_kage_no_mi": {
@@ -217,676 +408,460 @@ const DEVIL_FRUITS = {
     type: "Paramecia",
     rarity: "epic",
     element: "Shadow",
-    power: "Allows manipulation of shadows",
-    description: "User can manipulate shadows and steal them from others.",
-    multiplier: 1.87,
+    power: "Shadow manipulation and zombie creation",
+    description: "Control shadows and create an army of zombies.",
+    multiplier: 2.00,
     user: "Gecko Moria"
   },
 
-  "horo_horo_no_mi": {
-    id: "horo_horo_no_mi",
-    name: "Horo Horo no Mi",
+  "ishi_ishi_no_mi": {
+    id: "ishi_ishi_no_mi",
+    name: "Ishi Ishi no Mi",
     type: "Paramecia",
-    rarity: "epic",
-    element: "Ghost",
-    power: "Allows creation of ghosts",
-    description: "User can create powerful negative ghosts.",
-    multiplier: 1.75,
-    user: "Perona"
-  },
-
-  "shari_shari_no_mi": {
-    id: "shari_shari_no_mi",
-    name: "Shari Shari no Mi",
-    type: "Paramecia",
-    rarity: "epic",
-    element: "Wheel",
-    power: "Allows user to transform body parts into wheels",
-    description: "User can turn body parts into spinning wheels.",
-    multiplier: 1.80,
-    user: "Sharinguru"
-  },
-
-  "inu_inu_no_mi_wolf": {
-    id: "inu_inu_no_mi_wolf",
-    name: "Inu Inu no Mi, Model: Wolf",
-    type: "Zoan",
-    rarity: "epic",
-    element: "Wolf",
-    power: "Transform into wolf",
-    description: "Powerful wolf transformation with pack instincts.",
-    multiplier: 1.83,
-    user: "Jabra"
-  },
-
-  "neko_neko_no_mi_leopard": {
-    id: "neko_neko_no_mi_leopard",
-    name: "Neko Neko no Mi, Model: Leopard",
-    type: "Zoan",
-    rarity: "epic",
-    element: "Leopard",
-    power: "Transform into leopard",
-    description: "Swift and deadly leopard transformation.",
-    multiplier: 1.85,
-    user: "Rob Lucci"
-  },
-
-  "uma_uma_no_mi_pegasus": {
-    id: "uma_uma_no_mi_pegasus",
-    name: "Uma Uma no Mi, Model: Pegasus",
-    type: "Mythical Zoan",
-    rarity: "epic",
-    element: "Pegasus",
-    power: "Transform into pegasus",
-    description: "Mythical winged horse transformation.",
-    multiplier: 1.90,
-    user: "Stronger"
-  },
-
-  "zou_zou_no_mi_mammoth": {
-    id: "zou_zou_no_mi_mammoth",
-    name: "Zou Zou no Mi, Model: Mammoth",
-    type: "Ancient Zoan",
-    rarity: "epic",
-    element: "Mammoth",
-    power: "Transform into mammoth",
-    description: "Ancient mammoth transformation with massive strength.",
+    rarity: "epic", 
+    element: "Stone",
+    power: "Stone assimilation and control",
+    description: "Merge with and control stone structures on a massive scale.",
     multiplier: 1.95,
-    user: "Jack"
+    user: "Pica"
   },
 
-  "hebi_hebi_no_mi_anaconda": {
-    id: "hebi_hebi_no_mi_anaconda",
-    name: "Hebi Hebi no Mi, Model: Anaconda",
-    type: "Zoan",
+  "chiyu_chiyu_no_mi": {
+    id: "chiyu_chiyu_no_mi",
+    name: "Chiyu Chiyu no Mi",
+    type: "Paramecia",
     rarity: "epic",
-    element: "Anaconda",
-    power: "Transform into anaconda",
-    description: "Massive snake transformation with constricting power.",
-    multiplier: 1.82,
-    user: "Boa Sandersonia"
+    element: "Healing", 
+    power: "Instant healing abilities",
+    description: "Heal any injury or ailment with a touch.",
+    multiplier: 1.90,
+    user: "Princess Mansherry"
   },
 
-  "taka_taka_no_mi_falcon": {
-    id: "taka_taka_no_mi_falcon",
-    name: "Taka Taka no Mi, Model: Falcon",
-    type: "Zoan",
+  "shima_shima_no_mi": {
+    id: "shima_shima_no_mi",
+    name: "Shima Shima no Mi",
+    type: "Paramecia",
     rarity: "epic",
-    element: "Falcon",
-    power: "Transform into falcon",
-    description: "Swift falcon transformation with aerial superiority.",
-    multiplier: 1.78,
-    user: "Pell"
-  },
-
-  "ryu_ryu_no_mi_allosaurus": {
-    id: "ryu_ryu_no_mi_allosaurus",
-    name: "Ryu Ryu no Mi, Model: Allosaurus",
-    type: "Ancient Zoan",
-    rarity: "epic",
-    element: "Allosaurus",
-    power: "Transform into allosaurus",
-    description: "Ancient predator with devastating bite and claws.",
-    multiplier: 1.92,
-    user: "X Drake"
-  },
-
-  // =====================================================
-  // RARE FRUITS (27 fruits) - 1.4x to 1.7x CP  
-  // =====================================================
-  "bane_bane_no_mi": {
-    id: "bane_bane_no_mi",
-    name: "Bane Bane no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Spring",
-    power: "Allows user to turn body parts into springs",
-    description: "User can transform legs and other body parts into springs.",
-    multiplier: 1.45,
-    user: "Bellamy"
-  },
-
-  "sube_sube_no_mi": {
-    id: "sube_sube_no_mi",
-    name: "Sube Sube no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Smooth",
-    power: "Makes user's skin perfectly smooth",
-    description: "Everything slides off the user's slippery skin.",
-    multiplier: 1.52,
-    user: "Alvida"
-  },
-
-  "bomu_bomu_no_mi": {
-    id: "bomu_bomu_no_mi",
-    name: "Bomu Bomu no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Bomb",
-    power: "Allows user to make any part of their body explode",
-    description: "User can create explosions from their body parts.",
-    multiplier: 1.52,
-    user: "Mr. 5"
-  },
-
-  "kilo_kilo_no_mi": {
-    id: "kilo_kilo_no_mi",
-    name: "Kilo Kilo no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Weight",
-    power: "Allows user to change their weight from 1 to 10,000 kilograms",
-    description: "Advanced weight manipulation for crushing attacks.",
-    multiplier: 1.48,
-    user: "Miss Valentine"
+    element: "Island",
+    power: "Island manipulation and control",
+    description: "Merge with and control entire islands and their structures.",
+    multiplier: 1.85,
+    user: "Avalo Pizarro"
   },
 
   "hana_hana_no_mi": {
     id: "hana_hana_no_mi",
     name: "Hana Hana no Mi",
     type: "Paramecia",
-    rarity: "rare",
+    rarity: "epic",
     element: "Flower",
-    power: "Allows user to sprout body parts anywhere",
-    description: "User can sprout arms, legs, and other body parts from any surface.",
-    multiplier: 1.56,
+    power: "Body part sprouting anywhere",
+    description: "Sprout arms, legs, and other body parts from any surface.",
+    multiplier: 1.80,
     user: "Nico Robin"
   },
 
-  "doru_doru_no_mi": {
-    id: "doru_doru_no_mi",
-    name: "Doru Doru no Mi",
+  "bisu_bisu_no_mi": {
+    id: "bisu_bisu_no_mi",
+    name: "Bisu Bisu no Mi",
     type: "Paramecia",
-    rarity: "rare",
-    element: "Wax",
-    power: "Allows user to create and manipulate wax",
-    description: "User can create hardened wax constructs for offense and defense.",
-    multiplier: 1.43,
-    user: "Mr. 3"
+    rarity: "epic",
+    element: "Biscuit",
+    power: "Biscuit generation and hardening",
+    description: "Create infinitely hard biscuit soldiers and armor.",
+    multiplier: 1.78,
+    user: "Charlotte Cracker"
   },
 
-  "baku_baku_no_mi": {
-    id: "baku_baku_no_mi",
-    name: "Baku Baku no Mi",
+  "hoya_hoya_no_mi": {
+    id: "hoya_hoya_no_mi",
+    name: "Hoya Hoya no Mi",
     type: "Paramecia",
-    rarity: "rare",
-    element: "Eating",
-    power: "Allows user to eat anything and integrate it into their body",
-    description: "User can consume and become part of anything they eat.",
-    multiplier: 1.50,
-    user: "Wapol"
+    rarity: "epic",
+    element: "Lamp",
+    power: "Genie summoning from body",
+    description: "Summon powerful genies from body parts to fight.",
+    multiplier: 1.76,
+    user: "Charlotte Daifuku"
   },
 
-  "mane_mane_no_mi": {
-    id: "mane_mane_no_mi",
-    name: "Mane Mane no Mi",
+  "shibo_shibo_no_mi": {
+    id: "shibo_shibo_no_mi",
+    name: "Shibo Shibo no Mi",
     type: "Paramecia",
-    rarity: "rare",
-    element: "Clone",
-    power: "Allows user to transform into a perfect copy of anyone",
-    description: "User can perfectly mimic anyone they've touched.",
-    multiplier: 1.47,
-    user: "Bon Clay"
+    rarity: "epic",
+    element: "Wring",
+    power: "Liquid extraction from anything",
+    description: "Wring out any liquid from objects or people.",
+    multiplier: 1.74,
+    user: "Charlotte Smoothie"
   },
 
-  "supa_supa_no_mi": {
-    id: "supa_supa_no_mi",
-    name: "Supa Supa no Mi",
+  "wara_wara_no_mi": {
+    id: "wara_wara_no_mi",
+    name: "Wara Wara no Mi",
     type: "Paramecia",
-    rarity: "rare",
-    element: "Blade",
-    power: "Allows user to turn any part of their body into steel blades",
-    description: "Body becomes steel blades for slicing attacks.",
-    multiplier: 1.54,
-    user: "Daz Bonez"
+    rarity: "epic",
+    element: "Straw",
+    power: "Straw voodoo and damage redirection",
+    description: "Create voodoo dolls and redirect damage taken.",
+    multiplier: 1.72,
+    user: "Basil Hawkins"
   },
 
-  "toge_toge_no_mi": {
-    id: "toge_toge_no_mi",
-    name: "Toge Toge no Mi",
+  "shiro_shiro_no_mi": {
+    id: "shiro_shiro_no_mi",
+    name: "Shiro Shiro no Mi",
     type: "Paramecia",
-    rarity: "rare",
-    element: "Spike",
-    power: "Allows user to grow spikes from their body",
-    description: "User can sprout sharp spikes from any part of their body.",
-    multiplier: 1.46,
-    user: "Miss Doublefinger"
+    rarity: "epic",
+    element: "Castle",
+    power: "Body fortress transformation",
+    description: "Transform body into a mobile fortress with artillery.",
+    multiplier: 1.70,
+    user: "Capone Bege"
   },
 
-  "ori_ori_no_mi": {
-    id: "ori_ori_no_mi",
-    name: "Ori Ori no Mi",
+  "horu_horu_no_mi": {
+    id: "horu_horu_no_mi",
+    name: "Horu Horu no Mi",
     type: "Paramecia",
-    rarity: "rare",
-    element: "Cage",
-    power: "Allows user to bind opponents with iron bonds",
-    description: "User can create iron restraints to bind enemies.",
-    multiplier: 1.49,
-    user: "Hina"
+    rarity: "epic",
+    element: "Hormone",
+    power: "Hormone manipulation and gender change",
+    description: "Control hormones to enhance abilities and change bodies.",
+    multiplier: 1.68,
+    user: "Emporio Ivankov"
   },
 
-  "noro_noro_no_mi": {
-    id: "noro_noro_no_mi",
-    name: "Noro Noro no Mi",
+  "wapu_wapu_no_mi": {
+    id: "wapu_wapu_no_mi",
+    name: "Wapu Wapu no Mi",
     type: "Paramecia",
-    rarity: "rare",
-    element: "Slow",
-    power: "Allows user to emit photons that slow down anything for 30 seconds",
-    description: "User can slow down opponents with photon beams.",
-    multiplier: 1.44,
-    user: "Foxy"
+    rarity: "epic",
+    element: "Warp",
+    power: "Teleportation over vast distances",
+    description: "Instantly teleport self and others across great distances.",
+    multiplier: 1.66,
+    user: "Van Augur"
   },
 
-  "kama_kama_no_mi": {
-    id: "kama_kama_no_mi",
-    name: "Kama Kama no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Sickle",
-    power: "Allows user to create blades of wind",
-    description: "User can generate cutting wind blades from their claws.",
-    multiplier: 1.51,
-    user: "Eric"
-  },
-
-  "yomi_yomi_no_mi": {
-    id: "yomi_yomi_no_mi",
-    name: "Yomi Yomi no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Resurrection",
-    power: "Grants a second life and soul powers",
-    description: "User gains a second life and can manipulate souls.",
-    multiplier: 1.58,
-    user: "Brook"
-  },
-
-  "kachi_kachi_no_mi": {
-    id: "kachi_kachi_no_mi",
-    name: "Kachi Kachi no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Heat",
-    power: "Allows user to harden body and generate heat",
-    description: "User can make body rock-hard and generate intense heat.",
-    multiplier: 1.47,
-    user: "Bear King"
-  },
-
-  "awa_awa_no_mi": {
-    id: "awa_awa_no_mi",
-    name: "Awa Awa no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Soap",
-    power: "Allows user to create and manipulate soap",
-    description: "User can create soap that weakens opponents.",
-    multiplier: 1.42,
-    user: "Kalifa"
-  },
-
-  "goe_goe_no_mi": {
-    id: "goe_goe_no_mi",
-    name: "Goe Goe no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Voice",
-    power: "Allows user to create destructive sound waves",
-    description: "User's voice can create devastating sonic attacks.",
-    multiplier: 1.53,
-    user: "Eldoraggo"
-  },
-
-  "hiso_hiso_no_mi": {
-    id: "hiso_hiso_no_mi",
-    name: "Hiso Hiso no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Whisper",
-    power: "Allows user to communicate with animals",
-    description: "User can understand and communicate with all animals.",
-    multiplier: 1.41,
-    user: "Apis"
-  },
-
-  "kama_kama_no_mi_mantis": {
-    id: "kama_kama_no_mi_mantis",
-    name: "Kama Kama no Mi, Model: Mantis",
-    type: "Zoan",
-    rarity: "rare",
-    element: "Mantis",
-    power: "Transform into mantis",
-    description: "User can transform into a praying mantis.",
-    multiplier: 1.55,
-    user: "Unknown"
-  },
-
-  "noko_noko_no_mi": {
-    id: "noko_noko_no_mi",
-    name: "Noko Noko no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Spore",
-    power: "Allows user to create and control spores",
-    description: "User can release toxic and hallucinogenic spores.",
-    multiplier: 1.45,
-    user: "Musshuru"
-  },
-
-  "ami_ami_no_mi": {
-    id: "ami_ami_no_mi",
-    name: "Ami Ami no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Net",
-    power: "Allows user to create nets",
-    description: "User can create various types of nets and traps.",
-    multiplier: 1.43,
-    user: "Largo"
-  },
-
-  "kopi_kopi_no_mi": {
-    id: "kopi_kopi_no_mi",
-    name: "Kopi Kopi no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Copy",
-    power: "Allows user to copy others' abilities",
-    description: "User can temporarily copy other Devil Fruit powers.",
-    multiplier: 1.59,
-    user: "Charlotte Brulee"
-  },
-
-  "moa_moa_no_mi": {
-    id: "moa_moa_no_mi",
-    name: "Moa Moa no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "More",
-    power: "Allows user to increase size and speed of objects",
-    description: "User can amplify the size and speed of anything they touch.",
-    multiplier: 1.57,
-    user: "Byrnndi World"
-  },
-
-  "kyubu_kyubu_no_mi": {
-    id: "kyubu_kyubu_no_mi",
-    name: "Kyubu Kyubu no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Cube",
-    power: "Allows user to transform things into cubes",
-    description: "User can turn anything into compressed cubes.",
-    multiplier: 1.48,
-    user: "Unknown"
-  },
-
-  "jake_jake_no_mi": {
-    id: "jake_jake_no_mi",
-    name: "Jake Jake no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Jacket",
-    power: "Allows user to become a jacket",
-    description: "User can transform into a jacket to control others.",
-    multiplier: 1.40,
-    user: "Kelly Funk"
-  },
-
-  "ato_ato_no_mi": {
-    id: "ato_ato_no_mi",
-    name: "Ato Ato no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Art",
-    power: "Allows user to turn people and objects into art",
-    description: "User can transform anything into living art.",
-    multiplier: 1.51,
-    user: "Jora"
-  },
-
-  "hobi_hobi_no_mi": {
-    id: "hobi_hobi_no_mi",
-    name: "Hobi Hobi no Mi",
-    type: "Paramecia",
-    rarity: "rare",
-    element: "Hobby",
-    power: "Allows user to turn people into toys",
-    description: "User can transform people into toys and erase memories.",
-    multiplier: 1.62,
-    user: "Sugar"
-  },
-
-  // =====================================================
-  // UNCOMMON FRUITS (37 fruits) - 1.2x to 1.4x CP
-  // =====================================================
-  "gomu_gomu_no_mi": {
-    id: "gomu_gomu_no_mi",
-    name: "Gomu Gomu no Mi",
-    type: "Paramecia", 
-    rarity: "uncommon",
-    element: "Rubber",
-    power: "Grants rubber properties to the user's body",
-    description: "The user's body becomes rubber, immune to blunt attacks and electricity.",
-    multiplier: 1.25,
-    user: "Monkey D. Luffy"
-  },
-
-  "bara_bara_no_mi": {
-    id: "bara_bara_no_mi",
-    name: "Bara Bara no Mi",
-    type: "Paramecia",
-    rarity: "uncommon", 
-    element: "Split",
-    power: "Allows user to split body into pieces",
-    description: "User can separate body parts and control them remotely.",
-    multiplier: 1.28,
-    user: "Buggy the Clown"
-  },
-
-  "sube_sube_no_mi_basic": {
-    id: "sube_sube_no_mi_basic",
-    name: "Sube Sube no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Smooth",
-    power: "Makes user's skin smooth",
-    description: "Basic smoothness that deflects some attacks.",
-    multiplier: 1.22,
-    user: "Alvida"
-  },
-
-  "moku_moku_no_mi_basic": {
-    id: "moku_moku_no_mi_basic",
-    name: "Moku Moku no Mi (Basic)",
+  "moku_moku_no_mi": {
+    id: "moku_moku_no_mi",
+    name: "Moku Moku no Mi",
     type: "Logia",
-    rarity: "uncommon",
-    element: "Smoke", 
-    power: "Allows user to create and control smoke",
-    description: "Basic smoke manipulation for concealment.",
-    multiplier: 1.32,
+    rarity: "epic",
+    element: "Smoke",
+    power: "Smoke generation and capture",
+    description: "User becomes smoke and can trap enemies in smoke prison.",
+    multiplier: 1.64,
     user: "Smoker"
   },
 
-  "mera_mera_no_mi_basic": {
-    id: "mera_mera_no_mi_basic",
-    name: "Mera Mera no Mi (Basic)",
-    type: "Logia",
-    rarity: "uncommon",
-    element: "Fire",
-    power: "Basic fire manipulation",
-    description: "Control small flames and heat.",
-    multiplier: 1.35,
-    user: "Portgas D. Ace"
+  "suke_suke_no_mi": {
+    id: "suke_suke_no_mi",
+    name: "Suke Suke no Mi",
+    type: "Paramecia",
+    rarity: "epic",
+    element: "Invisibility",
+    power: "Complete invisibility",
+    description: "Become completely invisible along with anything touched.",
+    multiplier: 1.62,
+    user: "Shiryu of the Rain"
   },
 
-  "ton_ton_no_mi": {
-    id: "ton_ton_no_mi",
-    name: "Ton Ton no Mi",
+  "riki_riki_no_mi": {
+    id: "riki_riki_no_mi",
+    name: "Riki Riki no Mi",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Weight",
-    power: "Allows user to change their weight",
-    description: "User can drastically increase their body weight.",
-    multiplier: 1.26,
-    user: "Miss Valentine"
+    rarity: "epic",
+    element: "Strength",
+    power: "Superhuman strength amplification",
+    description: "Amplify physical strength to incredible levels.",
+    multiplier: 1.60,
+    user: "Jesus Burgess"
   },
 
-  "hana_hana_no_mi_basic": {
-    id: "hana_hana_no_mi_basic",
-    name: "Hana Hana no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Flower",
-    power: "Basic limb sprouting",
-    description: "User can sprout extra arms for basic attacks.",
-    multiplier: 1.29,
-    user: "Nico Robin"
+  "hito_hito_no_mi_chopper": {
+    id: "hito_hito_no_mi_chopper",
+    name: "Hito Hito no Mi",
+    type: "Zoan",
+    rarity: "epic",
+    element: "Human",
+    power: "Human transformation with Rumble Balls",
+    description: "Transform into human form with multiple transformation points.",
+    multiplier: 1.58,
+    user: "Tony Tony Chopper"
   },
 
-  "doru_doru_no_mi_basic": {
-    id: "doru_doru_no_mi_basic",
-    name: "Doru Doru no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Wax",
-    power: "Basic wax manipulation",
-    description: "User can create simple wax constructs.",
-    multiplier: 1.24,
-    user: "Mr. 3"
+  "ryu_ryu_no_mi_allosaurus": {
+    id: "ryu_ryu_no_mi_allosaurus",
+    name: "Ryu Ryu no Mi Model: Allosaurus",
+    type: "Ancient Zoan",
+    rarity: "epic",
+    element: "Allosaurus",
+    power: "Ancient predator dinosaur transformation",
+    description: "Fierce ancient carnivorous dinosaur with powerful jaws.",
+    multiplier: 1.56,
+    user: "X Drake"
   },
 
-  "baku_baku_no_mi_basic": {
-    id: "baku_baku_no_mi_basic",
-    name: "Baku Baku no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Eating",
-    power: "Basic eating abilities",
-    description: "User can eat unusual things and gain minor benefits.",
-    multiplier: 1.27,
-    user: "Wapol"
+  "ryu_ryu_no_mi_spinosaurus": {
+    id: "ryu_ryu_no_mi_spinosaurus",
+    name: "Ryu Ryu no Mi Model: Spinosaurus",
+    type: "Ancient Zoan",
+    rarity: "epic",
+    element: "Spinosaurus",
+    power: "Ancient aquatic dinosaur transformation",
+    description: "Massive ancient dinosaur adapted for both land and water combat.",
+    multiplier: 1.54,
+    user: "Page One"
   },
 
-  "mane_mane_no_mi_basic": {
-    id: "mane_mane_no_mi_basic",
-    name: "Mane Mane no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Clone",
-    power: "Basic transformation abilities",
-    description: "User can copy basic appearance features.",
-    multiplier: 1.25,
-    user: "Bon Clay"
+  "ryu_ryu_no_mi_pachycephalosaurus": {
+    id: "ryu_ryu_no_mi_pachycephalosaurus",
+    name: "Ryu Ryu no Mi Model: Pachycephalosaurus",
+    type: "Ancient Zoan",
+    rarity: "epic",
+    element: "Pachycephalosaurus",
+    power: "Thick-skulled dinosaur transformation",
+    description: "Ancient dinosaur with incredibly thick skull for devastating headbutts.",
+    multiplier: 1.52,
+    user: "Ulti"
   },
 
-  "supa_supa_no_mi_basic": {
-    id: "supa_supa_no_mi_basic",
-    name: "Supa Supa no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Blade",
-    power: "Basic blade abilities",
-    description: "User can turn fingers into small blades.",
-    multiplier: 1.31,
-    user: "Daz Bonez"
+  "ryu_ryu_no_mi_triceratops": {
+    id: "ryu_ryu_no_mi_triceratops",
+    name: "Ryu Ryu no Mi Model: Triceratops",
+    type: "Ancient Zoan",
+    rarity: "epic",
+    element: "Triceratops",
+    power: "Three-horned dinosaur transformation",
+    description: "Ancient armored dinosaur with powerful charging attacks.",
+    multiplier: 1.50,
+    user: "Sasaki"
   },
 
-  "toge_toge_no_mi_basic": {
-    id: "toge_toge_no_mi_basic",
-    name: "Toge Toge no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Spike",
-    power: "Basic spike abilities",
-    description: "User can grow small spikes from fingertips.",
-    multiplier: 1.26,
-    user: "Miss Doublefinger"
+  "kumo_kumo_no_mi_rosamygale": {
+    id: "kumo_kumo_no_mi_rosamygale",
+    name: "Kumo Kumo no Mi Model: Rosamygale Grauvogeli",
+    type: "Ancient Zoan",
+    rarity: "epic",
+    element: "Ancient Spider",
+    power: "Ancient spider transformation",
+    description: "Ancient spider form with web manipulation and venom.",
+    multiplier: 1.48,
+    user: "Black Maria"
   },
 
-  "ori_ori_no_mi_basic": {
-    id: "ori_ori_no_mi_basic",
-    name: "Ori Ori no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Cage",
-    power: "Basic binding abilities",
-    description: "User can create simple restraints.",
-    multiplier: 1.28,
-    user: "Hina"
+  "neko_neko_no_mi_saber_tiger": {
+    id: "neko_neko_no_mi_saber_tiger",
+    name: "Neko Neko no Mi Model: Saber Tiger",
+    type: "Ancient Zoan",
+    rarity: "epic",
+    element: "Saber-toothed Tiger",
+    power: "Ancient saber-toothed cat transformation",
+    description: "Ancient predatory cat with massive saber teeth.",
+    multiplier: 1.46,
+    user: "Who's-Who"
   },
 
-  "noro_noro_no_mi_basic": {
-    id: "noro_noro_no_mi_basic",
-    name: "Noro Noro no Mi (Basic)",
+  // =====================================================
+  // RARE TIER (15 fruits) - Strength 5 & some 4 - 1.4x to 1.7x CP
+  // =====================================================
+  "doa_doa_no_mi": {
+    id: "doa_doa_no_mi",
+    name: "Doa Doa no Mi",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Slow",
-    power: "Basic slowing abilities",
-    description: "User can slightly slow down opponents.",
-    multiplier: 1.23,
-    user: "Foxy"
-  },
-
-  "awa_awa_no_mi_basic": {
-    id: "awa_awa_no_mi_basic",
-    name: "Awa Awa no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Soap",
-    power: "Basic soap creation",
-    description: "User can create slippery soap bubbles.",
-    multiplier: 1.22,
-    user: "Kalifa"
-  },
-
-  "doa_doa_no_mi_basic": {
-    id: "doa_doa_no_mi_basic",
-    name: "Doa Doa no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
+    rarity: "rare",
     element: "Door",
-    power: "Basic door creation",
-    description: "User can create small doors in surfaces.",
-    multiplier: 1.30,
+    power: "Door creation anywhere",
+    description: "Create doors in any surface, including air itself.",
+    multiplier: 1.70,
     user: "Blueno"
   },
 
-  "kama_kama_no_mi_basic": {
-    id: "kama_kama_no_mi_basic",
-    name: "Kama Kama no Mi (Basic)",
+  "buki_buki_no_mi": {
+    id: "buki_buki_no_mi",
+    name: "Buki Buki no Mi",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Sickle",
-    power: "Basic wind blade creation",
-    description: "User can create small cutting wind.",
-    multiplier: 1.29,
-    user: "Eric"
+    rarity: "rare",
+    element: "Weapon",
+    power: "Transform body parts into weapons",
+    description: "Turn any body part into any weapon imaginable.",
+    multiplier: 1.68,
+    user: "Baby 5"
   },
 
-  "yomi_yomi_no_mi_basic": {
-    id: "yomi_yomi_no_mi_basic",
-    name: "Yomi Yomi no Mi (Basic)",
+  "memo_memo_no_mi": {
+    id: "memo_memo_no_mi",
+    name: "Memo Memo no Mi",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Soul",
-    power: "Basic soul abilities",
-    description: "User has minor soul-based powers.",
-    multiplier: 1.33,
-    user: "Brook"
+    rarity: "rare",
+    element: "Memory",
+    power: "Memory manipulation",
+    description: "Extract, modify, and implant memories.",
+    multiplier: 1.66,
+    user: "Charlotte Pudding"
   },
 
-  "gasu_gasu_no_mi_basic": {
-    id: "gasu_gasu_no_mi_basic",
-    name: "Gasu Gasu no Mi (Basic)",
-    type: "Logia",
+  "nomi_nomi_no_mi": {
+    id: "nomi_nomi_no_mi",
+    name: "Nomi Nomi no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Brain",
+    power: "Brain enhancement and knowledge storage",
+    description: "Enhance brain capacity and store infinite knowledge.",
+    multiplier: 1.64,
+    user: "Dr. Vegapunk"
+  },
+
+  "mero_mero_no_mi": {
+    id: "mero_mero_no_mi",
+    name: "Mero Mero no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Love",
+    power: "Petrification through attraction",
+    description: "Turn those attracted to you into stone statues.",
+    multiplier: 1.62,
+    user: "Boa Hancock"
+  },
+
+  "toki_toki_no_mi": {
+    id: "toki_toki_no_mi",
+    name: "Toki Toki no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Time",
+    power: "Time travel to the future",
+    description: "Send yourself or others forward through time.",
+    multiplier: 1.60,
+    user: "Kozuki Toki"
+  },
+
+  "toshi_toshi_no_mi": {
+    id: "toshi_toshi_no_mi",
+    name: "Toshi Toshi no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Age",
+    power: "Age manipulation",
+    description: "Manipulate the age of yourself and others.",
+    multiplier: 1.58,
+    user: "Jewelry Bonney"
+  },
+
+  "deka_deka_no_mi": {
+    id: "deka_deka_no_mi",
+    name: "Deka Deka no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Size",
+    power: "Size enlargement",
+    description: "Grow to colossal sizes while maintaining strength.",
+    multiplier: 1.56,
+    user: "San Juan Wolf"
+  },
+
+  "fude_fude_no_mi": {
+    id: "fude_fude_no_mi",
+    name: "Fude Fude no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Brush",
+    power: "Ink paintings come to life",
+    description: "Bring ink paintings and drawings to life.",
+    multiplier: 1.54,
+    user: "Kurozumi Kanjuro"
+  },
+
+  "shiku_shiku_no_mi": {
+    id: "shiku_shiku_no_mi",
+    name: "Shiku Shiku no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Disease",
+    power: "Disease manipulation",
+    description: "Create and control various diseases and plagues.",
+    multiplier: 1.52,
+    user: "Doc Q"
+  },
+
+  "kira_kira_no_mi": {
+    id: "kira_kira_no_mi",
+    name: "Kira Kira no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Diamond",
+    power: "Diamond body transformation",
+    description: "Transform body parts into indestructible diamond.",
+    multiplier: 1.50,
+    user: "Jozu"
+  },
+
+  "inu_inu_no_mi_kyubi": {
+    id: "inu_inu_no_mi_kyubi",
+    name: "Inu Inu no Mi Model: Kyubi no Kitsune",
+    type: "Mythical Zoan",
+    rarity: "rare",
+    element: "Nine-Tailed Fox",
+    power: "Nine-tailed fox transformation",
+    description: "Mythical nine-tailed fox with illusion abilities.",
+    multiplier: 1.48,
+    user: "Catarina Devon"
+  },
+
+  "hebi_hebi_no_mi_yamata": {
+    id: "hebi_hebi_no_mi_yamata",
+    name: "Hebi Hebi no Mi Model: Yamata-no-Orochi",
+    type: "Mythical Zoan",
+    rarity: "rare",
+    element: "Eight-Headed Snake",
+    power: "Eight-headed snake transformation",
+    description: "Mythical eight-headed serpent with multiple lives.",
+    multiplier: 1.46,
+    user: "Kurozumi Orochi"
+  },
+
+  "ryu_ryu_no_mi_kirin": {
+    id: "ryu_ryu_no_mi_kirin",
+    name: "Ryu Ryu no Mi Model: Kirin",
+    type: "Ancient Zoan",
+    rarity: "rare",
+    element: "Kirin",
+    power: "Ancient giraffe transformation",
+    description: "Ancient long-necked creature with enhanced reach.",
+    multiplier: 1.44,
+    user: "Killingham"
+  },
+
+  "artificial_dragon_fruit": {
+    id: "artificial_dragon_fruit",
+    name: "Artificial Dragon Fruit",
+    type: "Artificial Zoan",
+    rarity: "rare",
+    element: "Dragon",
+    power: "Incomplete dragon transformation",
+    description: "Artificial dragon fruit with limited but growing power.",
+    multiplier: 1.42,
+    user: "Kozuki Momonosuke"
+  },
+
+  // =====================================================
+  // UNCOMMON TIER (1 fruit + 35 more) - Strength 4-3 - 1.2x to 1.4x CP
+  // =====================================================
+  "kibi_kibi_no_mi": {
+    id: "kibi_kibi_no_mi",
+    name: "Kibi Kibi no Mi",
+    type: "Paramecia",
     rarity: "uncommon",
-    element: "Gas",
-    power: "Basic gas manipulation",
-    description: "User can create harmless gas clouds.",
-    multiplier: 1.34,
-    user: "Caesar Clown"
+    element: "Dango",
+    power: "Animal taming through dango",
+    description: "Tame any animal by feeding them magical dango.",
+    multiplier: 1.40,
+    user: "Otama"
   },
 
   "yuki_yuki_no_mi": {
@@ -895,94 +870,143 @@ const DEVIL_FRUITS = {
     type: "Logia",
     rarity: "uncommon",
     element: "Snow",
-    power: "Allows user to create and control snow",
-    description: "User can generate and manipulate snow.",
-    multiplier: 1.30,
+    power: "Snow generation and control",
+    description: "Create and control snow, ice, and blizzards.",
+    multiplier: 1.38,
     user: "Monet"
   },
 
-  "sara_sara_no_mi": {
-    id: "sara_sara_no_mi",
-    name: "Sara Sara no Mi, Model: Axolotl",
-    type: "Zoan",
+  "susu_susu_no_mi": {
+    id: "susu_susu_no_mi",
+    name: "Susu Susu no Mi",
+    type: "Logia",
     rarity: "uncommon",
-    element: "Axolotl",
-    power: "Transform into axolotl",
-    description: "User can transform into an axolotl.",
-    multiplier: 1.26,
-    user: "Smiley"
+    element: "Soot",
+    power: "Soot generation and control",
+    description: "Create and manipulate soot for concealment and attacks.",
+    multiplier: 1.36,
+    user: "Karasu"
   },
 
-  "nagi_nagi_no_mi": {
-    id: "nagi_nagi_no_mi",
-    name: "Nagi Nagi no Mi",
+  "bara_bara_no_mi": {
+    id: "bara_bara_no_mi",
+    name: "Bara Bara no Mi",
     type: "Paramecia",
     rarity: "uncommon",
-    element: "Calm",
-    power: "Allows user to create soundproof barriers",
-    description: "User can nullify sound in designated areas.",
-    multiplier: 1.28,
-    user: "Rosinante"
-  },
-
-  "chiyu_chiyu_no_mi": {
-    id: "chiyu_chiyu_no_mi",
-    name: "Chiyu Chiyu no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Heal",
-    power: "Allows user to heal others",
-    description: "User can heal injuries by touch.",
-    multiplier: 1.35,
-    user: "Mansherry"
-  },
-
-  "soku_soku_no_mi": {
-    id: "soku_soku_no_mi",
-    name: "Soku Soku no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Speed",
-    power: "Allows user to manipulate speed",
-    description: "User can increase or decrease movement speed.",
-    multiplier: 1.32,
-    user: "Unknown"
-  },
-
-  "mero_mero_no_mi": {
-    id: "mero_mero_no_mi",
-    name: "Mero Mero no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Love",
-    power: "Allows user to turn people to stone with love",
-    description: "User can petrify those attracted to them.",
-    multiplier: 1.37,
-    user: "Boa Hancock"
-  },
-
-  "doku_doku_no_mi_basic": {
-    id: "doku_doku_no_mi_basic",
-    name: "Doku Doku no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Poison",
-    power: "Basic poison creation",
-    description: "User can create weak poisons.",
-    multiplier: 1.31,
-    user: "Magellan"
-  },
-
-  "horu_horu_no_mi": {
-    id: "horu_horu_no_mi",
-    name: "Horu Horu no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Hormone",
-    power: "Allows user to control hormones",
-    description: "User can manipulate hormones to change bodies.",
+    element: "Chop",
+    power: "Body separation immunity",
+    description: "Split body into pieces and become immune to cutting attacks.",
     multiplier: 1.34,
-    user: "Emporio Ivankov"
+    user: "Buggy the Clown"
+  },
+
+  "bomu_bomu_no_mi": {
+    id: "bomu_bomu_no_mi",
+    name: "Bomu Bomu no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Bomb",
+    power: "Explosive body parts",
+    description: "Make any part of your body explode without harm to yourself.",
+    multiplier: 1.32,
+    user: "Mr. 5"
+  },
+
+  "supa_supa_no_mi": {
+    id: "supa_supa_no_mi",
+    name: "Supa Supa no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Blade",
+    power: "Steel blade body transformation",
+    description: "Turn any body part into sharp steel blades.",
+    multiplier: 1.30,
+    user: "Daz Bonez (Mr. 1)"
+  },
+
+  "doru_doru_no_mi": {
+    id: "doru_doru_no_mi",
+    name: "Doru Doru no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Wax",
+    power: "Wax generation and hardening",
+    description: "Create and harden wax for offense and defense.",
+    multiplier: 1.28,
+    user: "Galdino (Mr. 3)"
+  },
+
+  "baku_baku_no_mi": {
+    id: "baku_baku_no_mi",
+    name: "Baku Baku no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Munch",
+    power: "Eat anything and gain properties",
+    description: "Eat anything and incorporate it into your body.",
+    multiplier: 1.26,
+    user: "Wapol"
+  },
+
+  "mane_mane_no_mi": {
+    id: "mane_mane_no_mi",
+    name: "Mane Mane no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Clone",
+    power: "Perfect physical mimicry",
+    description: "Perfectly copy the appearance of anyone you touch.",
+    multiplier: 1.24,
+    user: "Bentham (Mr. 2)"
+  },
+
+  "awa_awa_no_mi": {
+    id: "awa_awa_no_mi",
+    name: "Awa Awa no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Bubble",
+    power: "Soap bubble generation",
+    description: "Create soap bubbles that clean away strength and defenses.",
+    multiplier: 1.22,
+    user: "Kalifa"
+  },
+
+  "noro_noro_no_mi": {
+    id: "noro_noro_no_mi",
+    name: "Noro Noro no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Slow",
+    power: "Slow beam projection",
+    description: "Emit beams that slow down anything for 30 seconds.",
+    multiplier: 1.20,
+    user: "Foxy"
+  },
+
+  // Continue with remaining uncommon fruits...
+  "yomi_yomi_no_mi": {
+    id: "yomi_yomi_no_mi",
+    name: "Yomi Yomi no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Revive",
+    power: "Second life and soul projection",
+    description: "Return from death once and project soul from body.",
+    multiplier: 1.38,
+    user: "Brook"
+  },
+
+  "horo_horo_no_mi": {
+    id: "horo_horo_no_mi",
+    name: "Horo Horo no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Ghost",
+    power: "Ghost creation and negative emotion",
+    description: "Create ghosts that drain willpower and cause depression.",
+    multiplier: 1.36,
+    user: "Perona"
   },
 
   "choki_choki_no_mi": {
@@ -991,130 +1015,34 @@ const DEVIL_FRUITS = {
     type: "Paramecia",
     rarity: "uncommon",
     element: "Scissors",
-    power: "Allows user to cut anything like paper",
-    description: "User can cut through anything as if it were paper.",
-    multiplier: 1.29,
+    power: "Cut anything like paper",
+    description: "Turn hands into scissors that can cut anything.",
+    multiplier: 1.34,
     user: "Inazuma"
   },
 
-  "gura_gura_no_mi_basic": {
-    id: "gura_gura_no_mi_basic",
-    name: "Gura Gura no Mi (Basic)",
+  "oto_oto_no_mi": {
+    id: "oto_oto_no_mi",
+    name: "Oto Oto no Mi",
     type: "Paramecia",
     rarity: "uncommon",
-    element: "Tremor",
-    power: "Basic earthquake abilities",
-    description: "User can create small tremors.",
-    multiplier: 1.38,
-    user: "Edward Newgate"
-  },
-
-  "yami_yami_no_mi_basic": {
-    id: "yami_yami_no_mi_basic",
-    name: "Yami Yami no Mi (Basic)",
-    type: "Logia",
-    rarity: "uncommon",
-    element: "Darkness",
-    power: "Basic darkness manipulation",
-    description: "User can create small areas of darkness.",
-    multiplier: 1.36,
-    user: "Marshall D. Teach"
-  },
-
-  "pika_pika_no_mi_basic": {
-    id: "pika_pika_no_mi_basic",
-    name: "Pika Pika no Mi (Basic)",
-    type: "Logia",
-    rarity: "uncommon",
-    element: "Light",
-    power: "Basic light manipulation",
-    description: "User can create bright flashes of light.",
-    multiplier: 1.35,
-    user: "Borsalino"
-  },
-
-  "hie_hie_no_mi_basic": {
-    id: "hie_hie_no_mi_basic",
-    name: "Hie Hie no Mi (Basic)",
-    type: "Logia",
-    rarity: "uncommon",
-    element: "Ice",
-    power: "Basic ice manipulation",
-    description: "User can create ice projectiles.",
-    multiplier: 1.33,
-    user: "Kuzan"
-  },
-
-  "magu_magu_no_mi_basic": {
-    id: "magu_magu_no_mi_basic",
-    name: "Magu Magu no Mi (Basic)",
-    type: "Logia",
-    rarity: "uncommon",
-    element: "Magma",
-    power: "Basic magma manipulation",
-    description: "User can create small amounts of lava.",
-    multiplier: 1.37,
-    user: "Sakazuki"
-  },
-
-  "goro_goro_no_mi_basic": {
-    id: "goro_goro_no_mi_basic",
-    name: "Goro Goro no Mi (Basic)",
-    type: "Logia",
-    rarity: "uncommon",
-    element: "Lightning",
-    power: "Basic lightning manipulation",
-    description: "User can generate electric shocks.",
-    multiplier: 1.36,
-    user: "Enel"
-  },
-
-  "ope_ope_no_mi_basic": {
-    id: "ope_ope_no_mi_basic",
-    name: "Ope Ope no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Operation",
-    power: "Basic surgical abilities",
-    description: "User can perform precise cuts.",
-    multiplier: 1.34,
-    user: "Trafalgar Law"
-  },
-
-  "hobi_hobi_no_mi_basic": {
-    id: "hobi_hobi_no_mi_basic",
-    name: "Hobi Hobi no Mi (Basic)",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Hobby",
-    power: "Basic toy transformation",
-    description: "User can turn small objects into toys.",
+    element: "Sound",
+    power: "Sound wave attacks",
+    description: "Convert body parts into musical instruments for sonic attacks.",
     multiplier: 1.32,
-    user: "Sugar"
+    user: "Scratchmen Apoo"
   },
 
-  "bari_bari_no_mi": {
-    id: "bari_bari_no_mi",
-    name: "Bari Bari no Mi",
+  "mato_mato_no_mi": {
+    id: "mato_mato_no_mi",
+    name: "Mato Mato no Mi",
     type: "Paramecia",
     rarity: "uncommon",
-    element: "Barrier",
-    power: "Allows user to create barriers",
-    description: "User can create transparent barriers for defense.",
-    multiplier: 1.33,
-    user: "Bartolomeo"
-  },
-
-  "nui_nui_no_mi": {
-    id: "nui_nui_no_mi",
-    name: "Nui Nui no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Stitch",
-    power: "Allows user to stitch anything together",
-    description: "User can sew anything together like fabric.",
-    multiplier: 1.27,
-    user: "Leo"
+    element: "Mark",
+    power: "Lock-on targeting",
+    description: "Mark targets for homing attacks that never miss.",
+    multiplier: 1.30,
+    user: "Vander Decken IX"
   },
 
   "giro_giro_no_mi": {
@@ -1122,35 +1050,47 @@ const DEVIL_FRUITS = {
     name: "Giro Giro no Mi",
     type: "Paramecia",
     rarity: "uncommon",
-    element: "Clairvoyance",
-    power: "Allows user to see through anything",
-    description: "User can see through objects and read minds.",
-    multiplier: 1.31,
+    element: "Glare",
+    power: "X-ray vision and mind reading",
+    description: "See through anything and read minds and emotions.",
+    multiplier: 1.28,
     user: "Viola"
   },
 
-  "ishi_ishi_no_mi": {
-    id: "ishi_ishi_no_mi",
-    name: "Ishi Ishi no Mi",
+  "woshu_woshu_no_mi": {
+    id: "woshu_woshu_no_mi",
+    name: "Woshu Woshu no Mi",
     type: "Paramecia",
     rarity: "uncommon",
-    element: "Stone",
-    power: "Allows user to merge with and control stone",
-    description: "User can assimilate with stone and control it.",
-    multiplier: 1.30,
-    user: "Pica"
+    element: "Wash",
+    power: "Washing and cleansing",
+    description: "Wash and cleanse anything, including evil from hearts.",
+    multiplier: 1.26,
+    user: "Tsuru"
   },
 
-  "hoya_hoya_no_mi": {
-    id: "hoya_hoya_no_mi",
-    name: "Hoya Hoya no Mi",
+  "mira_mira_no_mi": {
+    id: "mira_mira_no_mi",
+    name: "Mira Mira no Mi",
     type: "Paramecia",
     rarity: "uncommon",
-    element: "Lamp",
-    power: "Allows user to summon genies",
-    description: "User can summon and control lamp genies.",
-    multiplier: 1.35,
-    user: "Unknown"
+    element: "Mirror",
+    power: "Mirror world creation",
+    description: "Create mirrors and travel through mirror dimensions.",
+    multiplier: 1.24,
+    user: "Charlotte Brûlée"
+  },
+
+  "pero_pero_no_mi": {
+    id: "pero_pero_no_mi",
+    name: "Pero Pero no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Candy",
+    power: "Candy creation and manipulation",
+    description: "Create and control various types of candy.",
+    multiplier: 1.22,
+    user: "Charlotte Perospero"
   },
 
   "netsu_netsu_no_mi": {
@@ -1159,229 +1099,338 @@ const DEVIL_FRUITS = {
     type: "Paramecia",
     rarity: "uncommon",
     element: "Heat",
-    power: "Allows user to manipulate heat",
-    description: "User can absorb and redirect heat energy.",
-    multiplier: 1.32,
+    power: "Heat transfer and temperature control",
+    description: "Heat up your body and anything you touch to extreme temperatures.",
+    multiplier: 1.20,
     user: "Charlotte Oven"
   },
 
-  "kuku_kuku_no_mi": {
-    id: "kuku_kuku_no_mi",
-    name: "Kuku Kuku no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Cook",
-    power: "Allows user to cook anything instantly",
-    description: "User can cook any ingredient perfectly.",
-    multiplier: 1.25,
-    user: "Streusen"
-  },
-
-  "bisu_bisu_no_mi": {
-    id: "bisu_bisu_no_mi",
-    name: "Bisu Bisu no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Biscuit",
-    power: "Allows user to create and control biscuits",
-    description: "User can generate hard biscuit armor and soldiers.",
-    multiplier: 1.34,
-    user: "Charlotte Cracker"
-  },
-
   // =====================================================
-  // COMMON FRUITS (60 fruits) - 1.0x to 1.2x CP
+  // COMMON TIER (60+ fruits) - Strength 2-3 - 1.0x to 1.2x CP
   // =====================================================
-  "suke_suke_no_mi": {
-    id: "suke_suke_no_mi",
-    name: "Suke Suke no Mi",
-    type: "Paramecia",
+  "numa_numa_no_mi": {
+    id: "numa_numa_no_mi",
+    name: "Numa Numa no Mi",
+    type: "Logia",
     rarity: "common",
-    element: "Invisibility",
-    power: "Allows the user to turn invisible",
-    description: "User can become completely invisible at will.",
-    multiplier: 1.08,
-    user: "Absalom"
+    element: "Swamp",
+    power: "Swamp creation and storage",
+    description: "Create swamps and store unlimited items in your body.",
+    multiplier: 1.20,
+    user: "Caribou"
   },
 
-  "kage_kage_no_mi_basic": {
-    id: "kage_kage_no_mi_basic",
-    name: "Kage Kage no Mi (Basic)",
+  "sube_sube_no_mi": {
+    id: "sube_sube_no_mi",
+    name: "Sube Sube no Mi",
     type: "Paramecia",
     rarity: "common",
-    element: "Shadow",
-    power: "Allows manipulation of shadows",
-    description: "Basic shadow manipulation abilities.",
-    multiplier: 1.06,
-    user: "Gecko Moria"
+    element: "Slip",
+    power: "Slippery skin",
+    description: "Perfect smooth skin that makes everything slip off.",
+    multiplier: 1.18,
+    user: "Alvida"
   },
 
-  "horo_horo_no_mi_basic": {
-    id: "horo_horo_no_mi_basic", 
-    name: "Horo Horo no Mi (Basic)",
+  "kiro_kiro_no_mi": {
+    id: "kiro_kiro_no_mi",
+    name: "Kiro Kiro no Mi",
     type: "Paramecia",
     rarity: "common",
-    element: "Ghost",
-    power: "Allows creation of ghosts",
-    description: "Create small ghosts that can spook enemies.",
-    multiplier: 1.04,
-    user: "Perona"
+    element: "Weight",
+    power: "Weight manipulation",
+    description: "Change your weight from 1 to 10,000 kilograms.",
+    multiplier: 1.16,
+    user: "Miss Valentine"
   },
 
-  "shiro_shiro_no_mi": {
-    id: "shiro_shiro_no_mi",
-    name: "Shiro Shiro no Mi",
-    type: "Paramecia", 
+  "toge_toge_no_mi": {
+    id: "toge_toge_no_mi",
+    name: "Toge Toge no Mi",
+    type: "Paramecia",
     rarity: "common",
-    element: "Castle",
-    power: "Allows user to become a living fortress",
-    description: "Transform body into castle-like structures for defense.",
-    multiplier: 1.07,
-    user: "Capone Bege"
+    element: "Spike",
+    power: "Spike generation from body",
+    description: "Grow sharp spikes from any part of your body.",
+    multiplier: 1.14,
+    user: "Paula (Miss Doublefinger)"
+  },
+
+  "ori_ori_no_mi": {
+    id: "ori_ori_no_mi",
+    name: "Ori Ori no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Cage",
+    power: "Iron restraint creation",
+    description: "Create iron bonds to restrain and capture enemies.",
+    multiplier: 1.12,
+    user: "Hina"
+  },
+
+  "bane_bane_no_mi": {
+    id: "bane_bane_no_mi",
+    name: "Bane Bane no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Spring",
+    power: "Spring leg transformation",
+    description: "Transform legs into springs for bouncing attacks.",
+    multiplier: 1.10,
+    user: "Bellamy"
   },
 
   "beri_beri_no_mi": {
     id: "beri_beri_no_mi",
     name: "Beri Beri no Mi",
     type: "Paramecia",
-    rarity: "common", 
+    rarity: "common",
     element: "Berry",
-    power: "Allows user to split into berries",
-    description: "User can split body into small berry-like spheres.",
-    multiplier: 1.05,
+    power: "Berry sphere body splitting",
+    description: "Split body into berry-like spheres for defense.",
+    multiplier: 1.08,
     user: "Very Good"
   },
 
   "sabi_sabi_no_mi": {
     id: "sabi_sabi_no_mi",
-    name: "Sabi Sabi no Mi", 
+    name: "Sabi Sabi no Mi",
     type: "Paramecia",
     rarity: "common",
     element: "Rust",
-    power: "Allows user to rust metal",
-    description: "User can cause metal objects to rust and decay.",
+    power: "Metal rusting",
+    description: "Rust and corrode metal objects on contact.",
     multiplier: 1.06,
     user: "Shu"
   },
 
-  "shabon_shabon_no_mi": {
-    id: "shabon_shabon_no_mi",
-    name: "Shabon Shabon no Mi",
+  "shari_shari_no_mi": {
+    id: "shari_shari_no_mi",
+    name: "Shari Shari no Mi",
     type: "Paramecia",
     rarity: "common",
-    element: "Soap",
-    power: "Allows user to create soap",
-    description: "User can produce and manipulate soap bubbles.",
-    multiplier: 1.03,
-    user: "Kalifa"
+    element: "Wheel",
+    power: "Wheel body transformation",
+    description: "Transform body parts into spinning wheels.",
+    multiplier: 1.04,
+    user: "Sharinguru"
   },
 
-  "mogu_mogu_no_mi": {
-    id: "mogu_mogu_no_mi",
-    name: "Mogu Mogu no Mi",
-    type: "Zoan",
+  "beta_beta_no_mi": {
+    id: "beta_beta_no_mi",
+    name: "Beta Beta no Mi",
+    type: "Paramecia",
     rarity: "common",
-    element: "Mole",
-    power: "Allows user to transform into a mole",
-    description: "User can burrow underground and surface anywhere.",
-    multiplier: 1.08,
-    user: "Miss Merry Christmas"
+    element: "Sticky",
+    power: "Sticky mucus secretion",
+    description: "Secrete sticky mucus to trap enemies.",
+    multiplier: 1.02,
+    user: "Trebol"
   },
 
-  "tori_tori_no_mi_basic": {
-    id: "tori_tori_no_mi_basic",
-    name: "Tori Tori no Mi (Basic)",
-    type: "Zoan",
+  "guru_guru_no_mi": {
+    id: "guru_guru_no_mi",
+    name: "Guru Guru no Mi",
+    type: "Paramecia",
     rarity: "common",
-    element: "Bird",
-    power: "Allows user to transform into a bird",
-    description: "Basic bird transformation with flight abilities.",
+    element: "Spin",
+    power: "Propeller transformation",
+    description: "Transform body parts into spinning propellers for flight.",
+    multiplier: 1.04,
+    user: "Buffalo"
+  },
+
+  "ato_ato_no_mi": {
+    id: "ato_ato_no_mi",
+    name: "Ato Ato no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Art",
+    power: "Artistic transformation",
+    description: "Transform people and objects into abstract art.",
     multiplier: 1.06,
-    user: "Pell"
+    user: "Jora"
   },
 
-  "inu_inu_no_mi_basic": {
-    id: "inu_inu_no_mi_basic",
-    name: "Inu Inu no Mi (Basic)",
-    type: "Zoan",
+  "sui_sui_no_mi": {
+    id: "sui_sui_no_mi",
+    name: "Sui Sui no Mi",
+    type: "Paramecia",
     rarity: "common",
-    element: "Dog",
-    power: "Transform into dog",
-    description: "Basic dog transformation.",
-    multiplier: 1.07,
-    user: "Chaka"
-  },
-
-  "neko_neko_no_mi_basic": {
-    id: "neko_neko_no_mi_basic",
-    name: "Neko Neko no Mi (Basic)",
-    type: "Zoan",
-    rarity: "common",
-    element: "Cat",
-    power: "Transform into cat",
-    description: "Basic cat transformation.",
-    multiplier: 1.05,
-    user: "Rob Lucci"
-  },
-
-  "uma_uma_no_mi_basic": {
-    id: "uma_uma_no_mi_basic",
-    name: "Uma Uma no Mi (Basic)",
-    type: "Zoan",
-    rarity: "common",
-    element: "Horse",
-    power: "Transform into horse",
-    description: "Basic horse transformation.",
+    element: "Swim",
+    power: "Swimming through solid surfaces",
+    description: "Swim through any solid surface as if it were water.",
     multiplier: 1.08,
-    user: "Pierre"
+    user: "Senor Pink"
   },
 
-  "ushi_ushi_no_mi": {
-    id: "ushi_ushi_no_mi",
-    name: "Ushi Ushi no Mi",
+  "hira_hira_no_mi": {
+    id: "hira_hira_no_mi",
+    name: "Hira Hira no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Flag",
+    power: "Flag transformation and wind control",
+    description: "Transform into flags and control wind currents.",
+    multiplier: 1.10,
+    user: "Diamante"
+  },
+
+  "nui_nui_no_mi": {
+    id: "nui_nui_no_mi",
+    name: "Nui Nui no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Stitch",
+    power: "Sewing and stitching anything",
+    description: "Sew and stitch anything together like fabric.",
+    multiplier: 1.12,
+    user: "Leo"
+  },
+
+  "iku_iku_no_mi": {
+    id: "iku_iku_no_mi",
+    name: "Iku Iku no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Go",
+    power: "Enhanced movement and transportation",
+    description: "Enhance movement speed and transportation abilities.",
+    multiplier: 1.14,
+    user: "Biblo"
+  },
+
+  "muchi_muchi_no_mi": {
+    id: "muchi_muchi_no_mi",
+    name: "Muchi Muchi no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Whip",
+    power: "Whip creation and manipulation",
+    description: "Create and control various types of whips.",
+    multiplier: 1.16,
+    user: "Kujaku"
+  },
+
+  "nori_nori_no_mi": {
+    id: "nori_nori_no_mi",
+    name: "Nori Nori no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Ride",
+    power: "Mount and ride anything",
+    description: "Mount and ride any creature or object.",
+    multiplier: 1.18,
+    user: "Bluegrass"
+  },
+
+  "gabu_gabu_no_mi": {
+    id: "gabu_gabu_no_mi",
+    name: "Gabu Gabu no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Drink",
+    power: "Unlimited liquid consumption",
+    description: "Drink unlimited amounts of liquid and use them as weapons.",
+    multiplier: 1.20,
+    user: "Vasco Shot"
+  },
+
+  "tsutsu_tsutsu_no_mi": {
+    id: "tsutsu_tsutsu_no_mi",
+    name: "Tsutsu Tsutsu no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Tube",
+    power: "Body tube transformation",
+    description: "Transform body parts into tubes for projectile attacks.",
+    multiplier: 1.18,
+    user: "Urban"
+  },
+
+  "aro_aro_no_mi": {
+    id: "aro_aro_no_mi",
+    name: "Aro Aro no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Arrow",
+    power: "Arrow trajectory control",
+    description: "Control the trajectory of any projectile like arrows.",
+    multiplier: 1.16,
+    user: "Gunko"
+  },
+
+  "kuku_kuku_no_mi": {
+    id: "kuku_kuku_no_mi",
+    name: "Kuku Kuku no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Cook",
+    power: "Cooking enhancement and food animation",
+    description: "Cook anything into delicious food and animate ingredients.",
+    multiplier: 1.14,
+    user: "Streusen"
+  },
+
+  // Zoan Common Fruits
+  "ushi_ushi_no_mi_bison": {
+    id: "ushi_ushi_no_mi_bison",
+    name: "Ushi Ushi no Mi Model: Bison",
     type: "Zoan",
     rarity: "common",
-    element: "Bull",
-    power: "Transform into bull",
-    description: "Powerful bull transformation.",
-    multiplier: 1.09,
+    element: "Bison",
+    power: "Bison transformation",
+    description: "Transform into a powerful bison with charging attacks.",
+    multiplier: 1.12,
     user: "Dalton"
   },
 
-  "hitsuji_hitsuji_no_mi": {
-    id: "hitsuji_hitsuji_no_mi",
-    name: "Hitsuji Hitsuji no Mi",
+  "inu_inu_no_mi_dachshund": {
+    id: "inu_inu_no_mi_dachshund",
+    name: "Inu Inu no Mi Model: Dachshund",
     type: "Zoan",
     rarity: "common",
-    element: "Sheep",
-    power: "Transform into sheep",
-    description: "Fluffy sheep transformation.",
-    multiplier: 1.04,
-    user: "Unknown"
+    element: "Dachshund",
+    power: "Dachshund transformation",
+    description: "Gun that ate Zoan fruit, can transform into dachshund.",
+    multiplier: 1.10,
+    user: "Lassoo"
   },
 
-  "buta_buta_no_mi": {
-    id: "buta_buta_no_mi",
-    name: "Buta Buta no Mi",
+  "inu_inu_no_mi_jackal": {
+    id: "inu_inu_no_mi_jackal",
+    name: "Inu Inu no Mi Model: Jackal",
     type: "Zoan",
     rarity: "common",
-    element: "Pig",
-    power: "Transform into pig",
-    description: "Stubborn pig transformation.",
-    multiplier: 1.06,
-    user: "Unknown"
-  },
-
-  "ryu_ryu_no_mi_basic": {
-    id: "ryu_ryu_no_mi_basic",
-    name: "Ryu Ryu no Mi (Basic)",
-    type: "Zoan",
-    rarity: "common",
-    element: "Dragon",
-    power: "Basic dragon form",
-    description: "Small dragon transformation.",
+    element: "Jackal",
+    power: "Jackal transformation",
+    description: "Transform into a desert jackal with enhanced senses.",
     multiplier: 1.08,
-    user: "Unknown"
+    user: "Chaka"
+  },
+
+  "uma_uma_no_mi": {
+    id: "uma_uma_no_mi",
+    name: "Uma Uma no Mi",
+    type: "Zoan",
+    rarity: "common",
+    element: "Horse",
+    power: "Horse transformation",
+    description: "Bird that ate Zoan fruit, can transform into horse.",
+    multiplier: 1.06,
+    user: "Pierre"
+  },
+
+  "zou_zou_no_mi": {
+    id: "zou_zou_no_mi",
+    name: "Zou Zou no Mi",
+    type: "Zoan",
+    rarity: "common",
+    element: "Elephant",
+    power: "Elephant transformation",
+    description: "Sword that ate Zoan fruit, can transform into elephant.",
+    multiplier: 1.04,
+    user: "Funkfreed"
   },
 
   "kame_kame_no_mi": {
@@ -1390,106 +1439,46 @@ const DEVIL_FRUITS = {
     type: "Zoan",
     rarity: "common",
     element: "Turtle",
-    power: "Transform into turtle",
-    description: "Defensive turtle form.",
-    multiplier: 1.05,
-    user: "Unknown"
+    power: "Turtle transformation",
+    description: "Transform into a turtle with defensive shell abilities.",
+    multiplier: 1.02,
+    user: "Pekoms"
   },
 
-  "taka_taka_no_mi_basic": {
-    id: "taka_taka_no_mi_basic",
-    name: "Taka Taka no Mi (Basic)",
+  "sara_sara_no_mi_axolotl": {
+    id: "sara_sara_no_mi_axolotl",
+    name: "Sara Sara no Mi Model: Axolotl",
     type: "Zoan",
     rarity: "common",
-    element: "Falcon",
-    power: "Basic falcon form",
-    description: "Swift falcon transformation.",
-    multiplier: 1.07,
-    user: "Unknown"
+    element: "Axolotl",
+    power: "Axolotl transformation",
+    description: "Poisonous salamander transformation with regeneration.",
+    multiplier: 1.00,
+    user: "Smiley"
   },
 
-  "kani_kani_no_mi": {
-    id: "kani_kani_no_mi",
-    name: "Kani Kani no Mi",
+  "mushi_mushi_no_mi": {
+    id: "mushi_mushi_no_mi",
+    name: "Mushi Mushi no Mi Models",
     type: "Zoan",
     rarity: "common",
-    element: "Crab",
-    power: "Transform into crab",
-    description: "Strong crab transformation with pincers.",
+    element: "Insect",
+    power: "Insect transformation",
+    description: "Transform into various insects with flight abilities.",
     multiplier: 1.08,
-    user: "Unknown"
+    user: "Kabu & Bian"
   },
 
-  "tako_tako_no_mi": {
-    id: "tako_tako_no_mi",
-    name: "Tako Tako no Mi",
+  "tori_tori_no_mi_albatross": {
+    id: "tori_tori_no_mi_albatross",
+    name: "Tori Tori no Mi Model: Albatross",
     type: "Zoan",
     rarity: "common",
-    element: "Octopus",
-    power: "Transform into octopus",
-    description: "Multiple tentacles for versatile attacks.",
-    multiplier: 1.07,
-    user: "Unknown"
-  },
-
-  "ika_ika_no_mi": {
-    id: "ika_ika_no_mi",
-    name: "Ika Ika no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Squid",
-    power: "Transform into squid",
-    description: "Squid form with ink abilities.",
+    element: "Albatross",
+    power: "Albatross transformation",
+    description: "Transform into large seabird with excellent flight range.",
     multiplier: 1.06,
-    user: "Unknown"
-  },
-
-  "kumo_kumo_no_mi": {
-    id: "kumo_kumo_no_mi",
-    name: "Kumo Kumo no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Spider",
-    power: "Transform into spider",
-    description: "Spider form with web creation.",
-    multiplier: 1.07,
-    user: "Unknown"
-  },
-
-  "ari_ari_no_mi": {
-    id: "ari_ari_no_mi",
-    name: "Ari Ari no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Ant",
-    power: "Transform into ant",
-    description: "Ant form with collective strength.",
-    multiplier: 1.06,
-    user: "Unknown"
-  },
-
-  "hachi_hachi_no_mi": {
-    id: "hachi_hachi_no_mi",
-    name: "Hachi Hachi no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Bee",
-    power: "Transform into bee",
-    description: "Bee form with stinger and flight.",
-    multiplier: 1.07,
-    user: "Unknown"
-  },
-
-  "cho_cho_no_mi": {
-    id: "cho_cho_no_mi",
-    name: "Cho Cho no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Butterfly",
-    power: "Transform into butterfly",
-    description: "Butterfly form with pollen abilities.",
-    multiplier: 1.05,
-    user: "Unknown"
+    user: "Morgans"
   },
 
   "batto_batto_no_mi": {
@@ -1498,439 +1487,284 @@ const DEVIL_FRUITS = {
     type: "Zoan",
     rarity: "common",
     element: "Bat",
-    power: "Transform into bat",
-    description: "Bat form with echolocation.",
-    multiplier: 1.08,
-    user: "Unknown"
-  },
-
-  "nezumi_nezumi_no_mi": {
-    id: "nezumi_nezumi_no_mi",
-    name: "Nezumi Nezumi no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Mouse",
-    power: "Transform into mouse",
-    description: "Small, fast mouse form.",
+    power: "Bat transformation",
+    description: "Transform into a bat with echolocation and flight.",
     multiplier: 1.04,
-    user: "Unknown"
+    user: "Stussy"
   },
 
-  "risu_risu_no_mi": {
-    id: "risu_risu_no_mi",
-    name: "Risu Risu no Mi",
+  // Remaining Low-Power Fruits
+  "mogu_mogu_no_mi": {
+    id: "mogu_mogu_no_mi",
+    name: "Mogu Mogu no Mi",
     type: "Zoan",
     rarity: "common",
-    element: "Squirrel",
-    power: "Transform into squirrel",
-    description: "Agile squirrel with nut storage.",
-    multiplier: 1.05,
-    user: "Unknown"
+    element: "Mole",
+    power: "Mole transformation",
+    description: "Transform into a mole for underground movement.",
+    multiplier: 1.02,
+    user: "Miss Merry Christmas"
   },
 
-  "usagi_usagi_no_mi": {
-    id: "usagi_usagi_no_mi",
-    name: "Usagi Usagi no Mi",
-    type: "Zoan",
+  "jake_jake_no_mi": {
+    id: "jake_jake_no_mi",
+    name: "Jake Jake no Mi",
+    type: "Paramecia",
     rarity: "common",
-    element: "Rabbit",
-    power: "Transform into rabbit",
-    description: "Fast rabbit with jumping ability.",
+    element: "Jacket",
+    power: "Jacket transformation",
+    description: "Transform into a jacket to control whoever wears you.",
+    multiplier: 1.00,
+    user: "Kelly Funk"
+  },
+
+  "fuku_fuku_no_mi": {
+    id: "fuku_fuku_no_mi",
+    name: "Fuku Fuku no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Clothing",
+    power: "Clothing manipulation",
+    description: "Create and manipulate clothing for disguises.",
+    multiplier: 1.02,
+    user: "Kin'emon"
+  },
+
+  "poke_poke_no_mi": {
+    id: "poke_poke_no_mi",
+    name: "Poke Poke no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Pocket",
+    power: "Pocket dimension creation",
+    description: "Create pockets in your body to store items.",
+    multiplier: 1.04,
+    user: "Blamenco"
+  },
+
+  "kuri_kuri_no_mi": {
+    id: "kuri_kuri_no_mi",
+    name: "Kuri Kuri no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Cream",
+    power: "Cream generation and manipulation",
+    description: "Generate and control cream for various uses.",
     multiplier: 1.06,
-    user: "Unknown"
+    user: "Charlotte Opera"
   },
 
-  "shika_shika_no_mi": {
-    id: "shika_shika_no_mi",
-    name: "Shika Shika no Mi",
-    type: "Zoan",
+  "bata_bata_no_mi": {
+    id: "bata_bata_no_mi",
+    name: "Bata Bata no Mi",
+    type: "Paramecia",
     rarity: "common",
-    element: "Deer",
-    power: "Transform into deer",
-    description: "Deer form with antlers.",
-    multiplier: 1.07,
-    user: "Unknown"
+    element: "Butter",
+    power: "Butter generation and manipulation",
+    description: "Generate butter to make surfaces slippery.",
+    multiplier: 1.08,
+    user: "Charlotte Galette"
   },
 
-  "kuma_kuma_no_mi": {
-    id: "kuma_kuma_no_mi",
-    name: "Kuma Kuma no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Bear",
-    power: "Transform into bear",
-    description: "Strong bear transformation.",
-    multiplier: 1.10,
-    user: "Unknown"
+  // Additional Rare and Epic fruits to complete the list
+  "buku_buku_no_mi": {
+    id: "buku_buku_no_mi",
+    name: "Buku Buku no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Book",
+    power: "Book world manipulation",
+    description: "Trap people in books and control book dimensions.",
+    multiplier: 1.25,
+    user: "Charlotte Mont-d'Or"
   },
 
-  "ookami_ookami_no_mi_basic": {
-    id: "ookami_ookami_no_mi_basic",
-    name: "Ookami Ookami no Mi (Basic)",
+  "gocha_gocha_no_mi": {
+    id: "gocha_gocha_no_mi",
+    name: "Gocha Gocha no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Fusion",
+    power: "Object fusion and combination",
+    description: "Fuse different objects together into new combinations.",
+    multiplier: 1.23,
+    user: "Charlotte Newshi"
+  },
+
+  "juku_juku_no_mi": {
+    id: "juku_juku_no_mi",
+    name: "Juku Juku no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Mature",
+    power: "Aging and ripening",
+    description: "Age and ripen anything you touch to maturity.",
+    multiplier: 1.21,
+    user: "Shinobu"
+  },
+
+  "maki_maki_no_mi": {
+    id: "maki_maki_no_mi",
+    name: "Maki Maki no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Scroll",
+    power: "Scroll storage and manipulation",
+    description: "Store and retrieve objects from magical scrolls.",
+    multiplier: 1.19,
+    user: "Raizo"
+  },
+
+  "oshi_oshi_no_mi": {
+    id: "oshi_oshi_no_mi",
+    name: "Oshi Oshi no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Push",
+    power: "Ground manipulation through pushing",
+    description: "Push and manipulate the ground like clay.",
+    multiplier: 1.17,
+    user: "Morley"
+  },
+
+  "pamu_pamu_no_mi": {
+    id: "pamu_pamu_no_mi",
+    name: "Pamu Pamu no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Rupture",
+    power: "Object rupturing and explosion",
+    description: "Make inorganic objects rupture and explode.",
+    multiplier: 1.15,
+    user: "Gladius"
+  },
+
+  "ton_ton_no_mi": {
+    id: "ton_ton_no_mi",
+    name: "Ton Ton no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Weight",
+    power: "Weight increase up to 10,000 tons",
+    description: "Increase your weight up to 10,000 tons for crushing attacks.",
+    multiplier: 1.13,
+    user: "Machvise"
+  },
+
+  "nagi_nagi_no_mi": {
+    id: "nagi_nagi_no_mi",
+    name: "Nagi Nagi no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Calm",
+    power: "Sound nullification",
+    description: "Create soundproof barriers and nullify all sounds.",
+    multiplier: 1.11,
+    user: "Donquixote Rosinante"
+  },
+
+  "kobu_kobu_no_mi": {
+    id: "kobu_kobu_no_mi",
+    name: "Kobu Kobu no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Inspire",
+    power: "Inspiration and motivation",
+    description: "Inspire others and boost their fighting spirit and abilities.",
+    multiplier: 1.09,
+    user: "Belo Betty"
+  },
+
+  "unnamed_paramecia_urouge": {
+    id: "unnamed_paramecia_urouge",
+    name: "Unnamed Paramecia",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Karma",
+    power: "Damage conversion to strength",
+    description: "Convert received damage into increased physical strength.",
+    multiplier: 1.35,
+    user: "Mad Monk Urouge"
+  },
+
+  "tori_tori_no_mi_falcon": {
+    id: "tori_tori_no_mi_falcon",
+    name: "Tori Tori no Mi Model: Falcon",
     type: "Zoan",
-    rarity: "common",
+    rarity: "uncommon",
+    element: "Falcon",
+    power: "Falcon transformation",
+    description: "Transform into a peregrine falcon with incredible speed.",
+    multiplier: 1.33,
+    user: "Pell"
+  },
+
+  "inu_inu_no_mi_wolf": {
+    id: "inu_inu_no_mi_wolf",
+    name: "Inu Inu no Mi Model: Wolf",
+    type: "Zoan",
+    rarity: "uncommon",
     element: "Wolf",
-    power: "Basic wolf transformation",
-    description: "Basic wolf form with pack instincts.",
-    multiplier: 1.08,
-    user: "Unknown"
+    power: "Wolf transformation",
+    description: "Transform into a wolf with pack hunting instincts.",
+    multiplier: 1.31,
+    user: "Jabra"
   },
 
-  "kitsune_kitsune_no_mi": {
-    id: "kitsune_kitsune_no_mi",
-    name: "Kitsune Kitsune no Mi",
+  "hebi_hebi_no_mi_anaconda": {
+    id: "hebi_hebi_no_mi_anaconda",
+    name: "Hebi Hebi no Mi Model: Anaconda/King Cobra",
     type: "Zoan",
-    rarity: "common",
-    element: "Fox",
-    power: "Transform into fox",
-    description: "Cunning fox with mystical abilities.",
-    multiplier: 1.08,
-    user: "Unknown"
-  },
-
-  "tanuki_tanuki_no_mi": {
-    id: "tanuki_tanuki_no_mi",
-    name: "Tanuki Tanuki no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Raccoon Dog",
-    power: "Transform into tanuki",
-    description: "Shapeshifting tanuki with trickster abilities.",
-    multiplier: 1.07,
-    user: "Unknown"
-  },
-
-  "saru_saru_no_mi": {
-    id: "saru_saru_no_mi",
-    name: "Saru Saru no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Monkey",
-    power: "Transform into monkey",
-    description: "Agile monkey with climbing abilities.",
-    multiplier: 1.07,
-    user: "Unknown"
-  },
-
-  "zou_zou_no_mi_basic": {
-    id: "zou_zou_no_mi_basic",
-    name: "Zou Zou no Mi (Basic)",
-    type: "Zoan",
-    rarity: "common",
-    element: "Elephant",
-    power: "Basic elephant transformation",
-    description: "Small elephant form with trunk.",
-    multiplier: 1.09,
-    user: "Unknown"
-  },
-
-  "kirin_kirin_no_mi": {
-    id: "kirin_kirin_no_mi",
-    name: "Kirin Kirin no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Giraffe",
-    power: "Transform into giraffe",
-    description: "Tall giraffe with long neck reach.",
-    multiplier: 1.08,
-    user: "Kaku"
-  },
-
-  "hippo_hippo_no_mi": {
-    id: "hippo_hippo_no_mi",
-    name: "Hippo Hippo no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Hippopotamus",
-    power: "Transform into hippo",
-    description: "Massive hippo with powerful jaws.",
-    multiplier: 1.10,
-    user: "Unknown"
-  },
-
-  "sai_sai_no_mi": {
-    id: "sai_sai_no_mi",
-    name: "Sai Sai no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Rhinoceros",
-    power: "Transform into rhino",
-    description: "Armored rhino with charging horn.",
-    multiplier: 1.09,
-    user: "Unknown"
-  },
-
-  "raion_raion_no_mi": {
-    id: "raion_raion_no_mi",
-    name: "Raion Raion no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Lion",
-    power: "Transform into lion",
-    description: "Majestic lion with royal presence.",
-    multiplier: 1.09,
-    user: "Unknown"
-  },
-
-  "tora_tora_no_mi": {
-    id: "tora_tora_no_mi",
-    name: "Tora Tora no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Tiger",
-    power: "Transform into tiger",
-    description: "Fierce tiger with deadly claws.",
-    multiplier: 1.10,
-    user: "Unknown"
-  },
-
-  "hyou_hyou_no_mi": {
-    id: "hyou_hyou_no_mi",
-    name: "Hyou Hyou no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Leopard",
-    power: "Transform into leopard",
-    description: "Stealthy leopard with speed.",
-    multiplier: 1.08,
-    user: "Unknown"
-  },
-
-  "ookami_ookami_no_mi_dire": {
-    id: "ookami_ookami_no_mi_dire",
-    name: "Ookami Ookami no Mi, Model: Dire Wolf",
-    type: "Ancient Zoan",
-    rarity: "common",
-    element: "Dire Wolf",
-    power: "Transform into dire wolf",
-    description: "Ancient wolf species with pack leadership.",
-    multiplier: 1.11,
-    user: "Unknown"
-  },
-
-  "wani_wani_no_mi_basic": {
-    id: "wani_wani_no_mi_basic",
-    name: "Wani Wani no Mi (Basic)",
-    type: "Zoan",
-    rarity: "common",
-    element: "Crocodile",
-    power: "Basic crocodile transformation",
-    description: "Crocodile form with powerful bite.",
-    multiplier: 1.10,
-    user: "Unknown"
-  },
-
-  "hebi_hebi_no_mi_basic": {
-    id: "hebi_hebi_no_mi_basic",
-    name: "Hebi Hebi no Mi (Basic)",
-    type: "Zoan",
-    rarity: "common",
+    rarity: "uncommon",
     element: "Snake",
-    power: "Basic snake transformation",
-    description: "Snake form with quick strikes.",
-    multiplier: 1.07,
-    user: "Unknown"
+    power: "Large snake transformation",
+    description: "Transform into massive constrictor snakes.",
+    multiplier: 1.29,
+    user: "Boa Sisters"
   },
 
-  "tokage_tokage_no_mi": {
-    id: "tokage_tokage_no_mi",
-    name: "Tokage Tokage no Mi",
+  "tama_tama_no_mi": {
+    id: "tama_tama_no_mi",
+    name: "Tama Tama no Mi",
     type: "Zoan",
-    rarity: "common",
-    element: "Lizard",
-    power: "Transform into lizard",
-    description: "Lizard form with wall climbing.",
-    multiplier: 1.06,
-    user: "Unknown"
+    rarity: "uncommon",
+    element: "Egg",
+    power: "Egg-chicken lifecycle transformation",
+    description: "Transform through egg and chicken forms, becoming stronger when 'killed'.",
+    multiplier: 1.27,
+    user: "Tamago"
   },
 
-  "kaeru_kaeru_no_mi": {
-    id: "kaeru_kaeru_no_mi",
-    name: "Kaeru Kaeru no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Frog",
-    power: "Transform into frog",
-    description: "Frog form with jumping and swimming.",
-    multiplier: 1.05,
-    user: "Unknown"
-  },
-
-  "sakana_sakana_no_mi": {
-    id: "sakana_sakana_no_mi",
-    name: "Sakana Sakana no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Fish",
-    power: "Transform into fish",
-    description: "Fish form with underwater breathing.",
-    multiplier: 1.04,
-    user: "Unknown"
-  },
-
-  "same_same_no_mi_basic": {
-    id: "same_same_no_mi_basic",
-    name: "Same Same no Mi (Basic)",
-    type: "Zoan",
-    rarity: "common",
-    element: "Shark",
-    power: "Basic shark transformation",
-    description: "Shark form with water dominance.",
-    multiplier: 1.09,
-    user: "Unknown"
-  },
-
-  "kujira_kujira_no_mi": {
-    id: "kujira_kujira_no_mi",
-    name: "Kujira Kujira no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Whale",
-    power: "Transform into whale",
-    description: "Massive whale with sonic abilities.",
-    multiplier: 1.11,
-    user: "Unknown"
-  },
-
-  "iruka_iruka_no_mi": {
-    id: "iruka_iruka_no_mi",
-    name: "Iruka Iruka no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Dolphin",
-    power: "Transform into dolphin",
-    description: "Intelligent dolphin with echolocation.",
-    multiplier: 1.08,
-    user: "Unknown"
-  },
-
-  "kurage_kurage_no_mi": {
-    id: "kurage_kurage_no_mi",
-    name: "Kurage Kurage no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Jellyfish",
-    power: "Transform into jellyfish",
-    description: "Jellyfish form with stinging tentacles.",
-    multiplier: 1.06,
-    user: "Unknown"
-  },
-
-  "hitode_hitode_no_mi": {
-    id: "hitode_hitode_no_mi",
-    name: "Hitode Hitode no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Starfish",
-    power: "Transform into starfish",
-    description: "Starfish form with regeneration.",
-    multiplier: 1.05,
-    user: "Unknown"
-  },
-
-  "uni_uni_no_mi": {
-    id: "uni_uni_no_mi",
-    name: "Uni Uni no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Sea Urchin",
-    power: "Transform into sea urchin",
-    description: "Spiky sea urchin with defensive spines.",
-    multiplier: 1.07,
-    user: "Unknown"
-  },
-
-  "ebi_ebi_no_mi": {
-    id: "ebi_ebi_no_mi",
-    name: "Ebi Ebi no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Shrimp",
-    power: "Transform into shrimp",
-    description: "Shrimp form with water jets.",
-    multiplier: 1.05,
-    user: "Unknown"
-  },
-
-  "hotate_hotate_no_mi": {
-    id: "hotate_hotate_no_mi",
-    name: "Hotate Hotate no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Scallop",
-    power: "Transform into scallop",
-    description: "Scallop form with shell protection.",
-    multiplier: 1.06,
-    user: "Unknown"
-  },
-
-  "namako_namako_no_mi": {
-    id: "namako_namako_no_mi",
-    name: "Namako Namako no Mi",
-    type: "Zoan",
-    rarity: "common",
-    element: "Sea Cucumber",
-    power: "Transform into sea cucumber",
-    description: "Sea cucumber with slippery defense.",
-    multiplier: 1.04,
-    user: "Unknown"
-  },
-
-  "kaisou_kaisou_no_mi": {
-    id: "kaisou_kaisou_no_mi",
-    name: "Kaisou Kaisou no Mi",
-    type: "Paramecia",
-    rarity: "common",
-    element: "Seaweed",
-    power: "Control and become seaweed",
-    description: "User can manipulate seaweed for binding.",
-    multiplier: 1.05,
-    user: "Unknown"
-  },
-
-  "sango_sango_no_mi": {
-    id: "sango_sango_no_mi",
-    name: "Sango Sango no Mi",
-    type: "Paramecia",
-    rarity: "common",
-    element: "Coral",
-    power: "Create and control coral",
-    description: "User can grow hard coral structures.",
-    multiplier: 1.08,
-    user: "Unknown"
-  },
-
-  "shinjyu_shinjyu_no_mi": {
-    id: "shinjyu_shinjyu_no_mi",
-    name: "Shinjyu Shinjyu no Mi",
-    type: "Paramecia",
-    rarity: "common",
-    element: "Pearl",
-    power: "Create and control pearls",
-    description: "User can produce lustrous pearls for defense.",
-    multiplier: 1.07,
-    user: "Unknown"
+  "uma_uma_no_mi_pegasus": {
+    id: "uma_uma_no_mi_pegasus",
+    name: "Uma Uma no Mi Model: Pegasus",
+    type: "Mythical Zoan",
+    rarity: "uncommon",
+    element: "Pegasus",
+    power: "Winged horse transformation",
+    description: "Transform into a mythical winged horse.",
+    multiplier: 1.25,
+    user: "Stronger"
   }
 };
 
-// FIXED RARITY WEIGHTS - Much Lower Divine Rate
+// RARITY WEIGHTS - Balanced distribution
 const RARITY_WEIGHTS = {
-  common: 50,        // 50%
+  common: 45,        // 45%
   uncommon: 30,      // 30%  
   rare: 15,          // 15%
-  epic: 4,           // 4%
-  legendary: 0.8,    // 0.8%
-  mythical: 0.19,    // 0.19%
-  divine: 0.01       // 0.01%
+  epic: 7,           // 7%
+  legendary: 2.5,    // 2.5%
+  mythical: 0.45,    // 0.45%
+  divine: 0.05       // 0.05%
 };
 
 // DIVINE FRUIT WEIGHTS (for when divine is selected)
 const DIVINE_WEIGHTS = {
-  "gura_gura_no_mi": 30,
-  "hito_hito_no_mi_nika": 25, 
-  "yami_yami_no_mi": 20,
-  "joy_boy_will": 24,
-  "one_piece_treasure": 1    // ULTRA RARE - only 1% of divine pulls
+  "yami_yami_gura_gura_no_mi": 30,
+  "gomu_gomu_nika_no_mi": 25, 
+  "gura_gura_no_mi": 20,
+  "uo_uo_no_mi_seiryu": 25
 };
 
 // Rarity colors for embeds
@@ -1955,7 +1789,7 @@ const RARITY_EMOJIS = {
   divine: '✨'
 };
 
-// Enhanced utility functions that use DevilFruitSkills.js
+// Enhanced utility functions
 function getRarityWeights(pityCount = 0) {
   return { ...RARITY_WEIGHTS };
 }
@@ -1998,11 +1832,18 @@ function getFruitWithSkill(fruitId) {
   const fruit = DEVIL_FRUITS[fruitId];
   if (!fruit) return null;
   
-  // Get skill from DevilFruitSkills.js
-  const skillData = getSkillData(fruitId);
+  // Get skill from DevilFruitSkills.js or use placeholder
+  const skillData = getSkillData ? getSkillData(fruitId) : null;
   
-  // Use skill from DevilFruitSkills.js or fallback
-  const skill = skillData || getFallbackSkill(fruit.rarity);
+  // Use skill from DevilFruitSkills.js or create placeholder
+  const skill = skillData || {
+    name: `${fruit.name} Power`,
+    damage: Math.floor(fruit.multiplier * 50), // Base damage based on multiplier
+    cooldown: Math.max(1, Math.floor(fruit.multiplier / 2)), // Cooldown based on power
+    effect: null,
+    description: `A powerful ${fruit.rarity} level devil fruit ability`,
+    type: "attack"
+  };
   
   return {
     ...fruit,
@@ -2042,7 +1883,7 @@ function getDivineStats() {
     stats[fruit.name] = {
       weight,
       percentage: percentage + '%',
-      isRarest: fruit.id === 'one_piece_treasure'
+      isRarest: false // No ultra rare fruit in this system
     };
   });
   
@@ -2060,8 +1901,8 @@ module.exports = {
   getFruitById,
   getRandomFruitByRarity,
   selectWeightedDivineFruit,
-  getFruitWithSkill,        // NEW: Get fruit with skill data
-  getAllFruitsWithSkills,   // NEW: Get all fruits with skills
+  getFruitWithSkill,        // Get fruit with skill data
+  getAllFruitsWithSkills,   // Get all fruits with skills
   getAllFruits,
   getStats,
   getDivineStats
