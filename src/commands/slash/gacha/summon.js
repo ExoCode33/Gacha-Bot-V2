@@ -11,6 +11,7 @@ const {
     createEnhancedGachaReveal,
     createSinglePullReveal,
     getSkillDisplay,
+    formatSkillForDisplay,
     createSummaryEmbed
 } = require('../../../utils/GachaRevealUtils');
 
@@ -127,7 +128,8 @@ class SummonAnimator {
         try {
             const skillData = getSkillDisplay(result?.fruit?.fruit_id || fruit?.id || 'unknown', safeFruit.rarity);
             if (skillData) {
-                skillInfo = `${skillData.name} (${skillData.damage} DMG, ${skillData.cooldown}s CD)`;
+                // Use enhanced formatting to show effects
+                skillInfo = formatSkillForDisplay(skillData, true); // Compact mode for animation
             }
         } catch (error) {
             console.warn('Failed to get skill display, using fallback:', error.message);
