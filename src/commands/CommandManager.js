@@ -1,4 +1,4 @@
-// src/commands/CommandManager.js - Professional Command Management
+// src/commands/CommandManager.js - FIXED: Graceful database error handling
 const fs = require('fs').promises;
 const path = require('path');
 const { Collection } = require('discord.js');
@@ -229,8 +229,8 @@ class CommandManager {
             // Log successful execution
             this.logger.command(userId, commandName, true, duration);
             
-            // Record to database
-            await this.recordCommandUsage(userId, commandName, guildId, true, duration);
+            // FIXED: Record to database with graceful error handling
+            await this.recordCommandUsageGraceful(userId, commandName, guildId, true, duration);
             
         } catch (error) {
             const duration = timer.end();
@@ -238,8 +238,8 @@ class CommandManager {
             this.logger.error(`Command ${commandName} failed:`, error);
             this.logger.command(userId, commandName, false, duration, error.message);
             
-            // Record failed execution
-            await this.recordCommandUsage(userId, commandName, guildId, false, duration, error.message);
+            // FIXED: Record failed execution with graceful error handling
+            await this.recordCommandUsageGraceful(userId, commandName, guildId, false, duration, error.message);
             
             // Send error response
             await this.handleCommandError(interaction, error);
@@ -386,17 +386,52 @@ class CommandManager {
     }
 
     /**
-     * Record command usage to database
+     * FIXED: Record command usage to database with graceful error handling
+     * This prevents foreign key constraint violations and handles database issues gracefully
      */
-    async recordCommandUsage(userId, commandName, guildId, success, executionTime, errorMessage = null) {
+    async recordCommandUsageGraceful(userId, commandName, guildId, success, executionTime, errorMessage = null) {
         try {
-            await this.client.db.query(`
+            // First verify user exists (additional safety check)
+            const DatabaseManager = require('../database/DatabaseManager');
+            const user = await DatabaseManager.getUser(userId);
+            
+            if (!user) {
+                this.logger.warn(`Cannot record command usage: User ${userId} not found in database`);
+                return; // Silently skip recording if user doesn't exist
+            }
+            
+            // Record command usage
+            await DatabaseManager.query(`
                 INSERT INTO command_usage (user_id, command_name, guild_id, success, execution_time, error_message, created_at)
                 VALUES ($1, $2, $3, $4, $5, $6, NOW())
             `, [userId, commandName, guildId, success, executionTime, errorMessage]);
             
+            this.logger.debug(`✅ Recorded command usage: ${commandName} by ${userId}`);
+            
         } catch (error) {
-            this.logger.error('Failed to record command usage:', error);
+            // Log the error but don't let it crash the command execution
+            this.logger.error('Failed to record command usage (non-fatal):', {
+                userId,
+                commandName,
+                guildId,
+                success,
+                executionTime,
+                errorMessage,
+                error: error.message,
+                errorCode: error.code,
+                constraint: error.constraint
+            });
+            
+            // If it's a foreign key constraint error, log it specially
+            if (error.code === '23503' && error.constraint?.includes('user_id_fkey')) {
+                this.logger.error('🚨 FOREIGN KEY VIOLATION: User not found in database when recording command usage', {
+                    userId,
+                    commandName,
+                    guildId,
+                    constraint: error.constraint,
+                    detail: error.detail
+                });
+            }
         }
     }
 
