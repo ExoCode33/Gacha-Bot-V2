@@ -1,4 +1,4 @@
-// src/data/Constants.js - FIXED: Much Lower Divine Rates + Balanced Pity
+// src/data/Constants.js - UPDATED: New Balanced Rarity System
 module.exports = {
     // Game Economy Constants
     PULL_COST: 1000,
@@ -41,47 +41,47 @@ module.exports = {
         divine: 'Divine'       // Divine Tier
     },
     
-    // FIXED: Much Lower Divine Rates + Reduced Legendary/Mythical
+    // NEW BALANCED PULL RATES - Based on actual distribution
     BASE_PULL_RATES: {
-        common: 50,             // Increased to compensate
-        uncommon: 30,           // Same
-        rare: 15,               // Same
-        epic: 4,                // Slightly reduced
-        legendary: 0.8,         // REDUCED from 2%
-        mythical: 0.19,         // REDUCED from 0.4%
-        divine: 0.01            // HEAVILY REDUCED from 0.05%
+        common: 45,             // 45% - Most fruits
+        uncommon: 30,           // 30% - Common but useful
+        rare: 15,               // 15% - Notable powers
+        epic: 7,                // 7% - Strong abilities
+        legendary: 2.5,         // 2.5% - Very powerful
+        mythical: 0.45,         // 0.45% - Extremely rare
+        divine: 0.05            // 0.05% - Ultra rare
     },
 
-    // FIXED PITY SYSTEM - Remove Legendary, Divine 1% on Pity
+    // BALANCED PITY SYSTEM - Mythical/Divine focus
     PITY_SYSTEM: {
-        HARD_PITY_LIMIT: 1500,     // Back to 1500
+        HARD_PITY_LIMIT: 1500,     // Guaranteed at 1500
         
         // Premium rates when pity procs - ONLY Mythical/Divine
         PREMIUM_RATES: {
-            mythical: 99.0,         // 99% when pity procs  
-            divine: 1.0             // 1% when pity procs (very low)
+            mythical: 90.0,         // 90% when pity procs  
+            divine: 10.0            // 10% when pity procs
         },
         
-        // Pity proc chance calculation - MUCH SLOWER
+        // Pity proc chance calculation
         BASE_PITY_CHANCE: 0.0,      // Base chance at 0 pulls
         MAX_PITY_CHANCE: 100.0,     // 100% chance at 1500 pulls
         
-        // Pity resets ONLY on mythical/divine (removed legendary)
+        // Pity resets on mythical/divine
         RESET_RARITIES: ['mythical', 'divine'],
         
-        // Much slower scaling
-        SCALING_POWER: 3.0          // Increased from 2.5
+        // Scaling power
+        SCALING_POWER: 3.0          // Exponential scaling
     },
 
     // UPDATED Display Rates
     RARITY_DROP_RATES: {
-        common: '50%',
+        common: '45%',
         uncommon: '30%', 
         rare: '15%',
-        epic: '4%',
-        legendary: '0.8%',         // UPDATED
-        mythical: '0.19%',         // UPDATED
-        divine: '0.01%'            // UPDATED
+        epic: '7%',
+        legendary: '2.5%',
+        mythical: '0.45%',
+        divine: '0.05%'
     },
     
     // Enhanced PvP Battle System Constants
@@ -99,7 +99,9 @@ module.exports = {
             'Zoan': { strong: ['Logia'], weak: ['Paramecia'], neutral: ['Ancient Zoan', 'Mythical Zoan'] },
             'Ancient Zoan': { strong: ['Paramecia', 'Logia'], weak: ['Mythical Zoan'], neutral: ['Zoan'] },
             'Mythical Zoan': { strong: ['Ancient Zoan', 'Zoan'], weak: ['Divine'], neutral: ['Paramecia', 'Logia'] },
-            'Divine': { strong: ['All'], weak: ['None'], neutral: [] }
+            'Carnivorous Zoan': { strong: ['Zoan', 'Ancient Zoan'], weak: ['Mythical Zoan'], neutral: ['Paramecia', 'Logia'] },
+            'Special Paramecia': { strong: ['Paramecia', 'Zoan'], weak: ['Logia'], neutral: ['Ancient Zoan', 'Mythical Zoan'] },
+            'Artificial Zoan': { strong: ['None'], weak: ['All'], neutral: ['Artificial Zoan'] }
         },
         
         // Enhanced battle mechanics
@@ -114,15 +116,15 @@ module.exports = {
         STATUS_STACK_LIMIT: 3
     },
     
-    // CP Multipliers by rarity (enhanced)
+    // NEW CP Multipliers by rarity (based on actual fruit data)
     CP_MULTIPLIERS: {
         common: { min: 1.0, max: 1.2 },
         uncommon: { min: 1.2, max: 1.4 },
         rare: { min: 1.4, max: 1.7 },
         epic: { min: 1.7, max: 2.1 },
-        legendary: { min: 2.1, max: 2.6 },
+        legendary: { min: 1.95, max: 2.6 },
         mythical: { min: 2.6, max: 3.2 },
-        divine: { min: 3.2, max: 4.0 }    
+        divine: { min: 3.7, max: 4.0 }    
     },
 
     // PvP Skill Categories
@@ -160,7 +162,7 @@ module.exports = {
         REFLECT: { type: 'special', icon: '🪞' }
     },
 
-    // Achievements System
+    // Updated Achievements System
     ACHIEVEMENTS: {
         FIRST_PULL: { 
             id: 'first_pull', 
@@ -169,61 +171,96 @@ module.exports = {
             reward: 500,
             icon: '🍈'
         },
+        UNCOMMON_COLLECTOR: { 
+            id: 'uncommon_collector', 
+            name: 'Rising Pirate', 
+            description: 'Pull an uncommon devil fruit',
+            reward: 1000,
+            icon: '🟢'
+        },
+        RARE_HUNTER: { 
+            id: 'rare_hunter', 
+            name: 'Rare Fruit Hunter', 
+            description: 'Pull a rare devil fruit',
+            reward: 2500,
+            icon: '🔵'
+        },
+        EPIC_MASTER: {
+            id: 'epic_master',
+            name: 'Epic Power User',
+            description: 'Pull an epic devil fruit',
+            reward: 5000,
+            icon: '🟣'
+        },
         LEGENDARY_HUNTER: { 
             id: 'legendary_hunter', 
             name: 'Legendary Pirate', 
             description: 'Pull a legendary devil fruit',
-            reward: 5000,
+            reward: 15000,
             icon: '🌟'
         },
         MYTHICAL_MASTER: {
             id: 'mythical_master',
             name: 'Mythical Legend',
             description: 'Pull a mythical devil fruit',
-            reward: 25000,          // Increased reward
+            reward: 50000,
             icon: '🟠'
         },
         DIVINE_ASCENSION: {
             id: 'divine_ascension',
             name: 'Divine Ascension',
             description: 'Pull a divine devil fruit',
-            reward: 100000,         // Increased reward
+            reward: 200000,
             icon: '✨'
         },
-        ONE_PIECE_FINDER: {
-            id: 'one_piece_finder',
-            name: 'Pirate King',
-            description: 'Find the legendary One Piece treasure',
-            reward: 1000000,        // MASSIVE reward
-            icon: '👑'
+        BLACKBEARD_SPECIAL: {
+            id: 'blackbeard_special',
+            name: 'Dual Devil Fruit User',
+            description: 'Pull the Yami Yami + Gura Gura no Mi',
+            reward: 500000,
+            icon: '⚫'
+        },
+        GEAR_FIFTH: {
+            id: 'gear_fifth',
+            name: 'Sun God Awakening',
+            description: 'Pull the Gomu Gomu/Nika no Mi',
+            reward: 500000,
+            icon: '☀️'
         },
         COLLECTOR_10: { 
             id: 'collector_10', 
             name: 'Novice Collector', 
             description: 'Collect 10 unique fruits',
-            reward: 2000,
+            reward: 3000,
             icon: '📚'
         },
         COLLECTOR_25: {
             id: 'collector_25',
             name: 'Expert Collector',
             description: 'Collect 25 unique fruits', 
-            reward: 5000,
+            reward: 8000,
             icon: '📖'
         },
         COLLECTOR_50: { 
             id: 'collector_50', 
             name: 'Master Collector', 
             description: 'Collect 50 unique fruits',
-            reward: 10000,
+            reward: 20000,
             icon: '📜'
         },
         COLLECTOR_100: {
             id: 'collector_100',
             name: 'Legendary Collector',
             description: 'Collect 100 unique fruits',
-            reward: 25000,
+            reward: 50000,
             icon: '🗞️'
+        },
+        FULL_COLLECTION: {
+            id: 'full_collection',
+            name: 'Complete Devil Fruit Encyclopedia',
+            description: 'Collect all unique fruits',
+            reward: 1000000,
+            icon: '📕'
         },
         RICH_PIRATE: { 
             id: 'rich_pirate', 
@@ -243,22 +280,29 @@ module.exports = {
             id: 'pvp_rookie',
             name: 'Battle Rookie',
             description: 'Win your first PvP battle',
-            reward: 3000,
+            reward: 5000,
             icon: '⚔️'
         },
         PVP_VETERAN: {
             id: 'pvp_veteran', 
             name: 'Battle Veteran',
             description: 'Win 10 PvP battles',
-            reward: 10000,
+            reward: 15000,
             icon: '🏆'
         },
         PVP_CHAMPION: {
             id: 'pvp_champion',
             name: 'Battle Champion',
             description: 'Win 50 PvP battles',
-            reward: 50000,
+            reward: 75000,
             icon: '👑'
+        },
+        PITY_BREAKER: {
+            id: 'pity_breaker',
+            name: 'Pity System Master',
+            description: 'Trigger the pity system for a guaranteed high-tier fruit',
+            reward: 25000,
+            icon: '🎯'
         }
     },
 
@@ -284,7 +328,8 @@ module.exports = {
         COLLECTION: 'collection',
         ADMIN: 'admin',
         GENERAL: 'general',
-        LEADERBOARD: 'leaderboard'
+        LEADERBOARD: 'leaderboard',
+        INFO: 'info'
     },
 
     // Embed Limits (Discord limits)
@@ -300,8 +345,8 @@ module.exports = {
 
     // Enhanced Pagination
     PAGINATION: {
-        ITEMS_PER_PAGE: 12,  
-        MAX_PAGES: 30,
+        ITEMS_PER_PAGE: 15,  // Increased for better display
+        MAX_PAGES: 50,       // Increased for large collections
         TIMEOUT: 300000      
     },
 
@@ -322,16 +367,18 @@ module.exports = {
         { name: 'pirates battling in PvP! ⚔️', type: 3 }, 
         { name: 'the ocean waves 🌊', type: 2 }, 
         { name: 'with devil fruit powers! 💪', type: 0 }, 
-        { name: 'legendary battles unfold! 🌟', type: 3 } 
+        { name: 'legendary battles unfold! 🌟', type: 3 },
+        { name: 'for mythical treasures! 🟠', type: 3 },
+        { name: 'divine power awakening! ✨', type: 3 }
     ],
 
     // Enhanced Level System
     LEVEL_SYSTEM: {
         BASE_EXP: 100,
         EXP_MULTIPLIER: 1.4,      
-        CP_PER_LEVEL: 12,         
-        MAX_LEVEL: 150,           
-        PRESTIGE_LEVEL: 100,      
+        CP_PER_LEVEL: 15,         // Increased
+        MAX_LEVEL: 200,           // Increased
+        PRESTIGE_LEVEL: 150,      // Increased
         PRESTIGE_BONUS: 1.5       
     },
 
@@ -350,7 +397,7 @@ module.exports = {
     PVP_QUEUE: {
         MAX_WAIT_TIME: 120000,    
         RANK_DIFFERENCE: 3,       
-        CP_DIFFERENCE: 500,       
+        CP_DIFFERENCE: 1000,      // Increased for balance
         TIMEOUT_PENALTY: 300000   
     },
 
@@ -378,11 +425,11 @@ module.exports = {
     // Maximum values for various systems
     MAX_VALUES: {
         BERRIES: 999999999,       
-        CP: 999999,               
-        LEVEL: 150,               
-        COLLECTION_SIZE: 1000,    
-        DAILY_PULLS: 100,         
-        PVP_BATTLES_DAILY: 50     
+        CP: 9999999,              // Increased for higher tier fruits
+        LEVEL: 200,               // Increased
+        COLLECTION_SIZE: 200,     // Based on actual fruit count
+        DAILY_PULLS: 200,         // Increased
+        PVP_BATTLES_DAILY: 100    // Increased
     },
 
     // Cooldown periods (in seconds)
@@ -413,6 +460,57 @@ module.exports = {
             description: 'Special PvP rewards available!',
             multiplier: 1,
             icon: '🏆'
+        },
+        MYTHICAL_RATE_UP: {
+            name: 'Mythical Rate Up',
+            description: 'Increased chances for Mythical and Divine fruits!',
+            multiplier: 3,
+            icon: '🟠'
+        },
+        PITY_BOOST: {
+            name: 'Pity System Boost',
+            description: 'Pity builds up 50% faster!',
+            multiplier: 1.5,
+            icon: '🎯'
         }
+    },
+
+    // New Fruit Categories for filtering
+    FRUIT_CATEGORIES: {
+        PARAMECIA: 'paramecia',
+        LOGIA: 'logia', 
+        ZOAN: 'zoan',
+        ANCIENT_ZOAN: 'ancient_zoan',
+        MYTHICAL_ZOAN: 'mythical_zoan',
+        CARNIVOROUS_ZOAN: 'carnivorous_zoan',
+        SPECIAL_PARAMECIA: 'special_paramecia',
+        ARTIFICIAL_ZOAN: 'artificial_zoan'
+    },
+
+    // User Rankings based on collection/power
+    USER_RANKS: {
+        ROOKIE: { min: 0, max: 10, name: 'Rookie Pirate', icon: '⚪' },
+        PIRATE: { min: 11, max: 25, name: 'Pirate', icon: '🟢' },
+        CAPTAIN: { min: 26, max: 50, name: 'Pirate Captain', icon: '🔵' },
+        SUPERNOVA: { min: 51, max: 100, name: 'Supernova', icon: '🟣' },
+        SHICHIBUKAI: { min: 101, max: 150, name: 'Shichibukai', icon: '🌟' },
+        YONKO: { min: 151, max: 180, name: 'Yonko', icon: '🟠' },
+        PIRATE_KING: { min: 181, max: 999, name: 'Pirate King', icon: '✨' }
+    },
+
+    // Featured fruit rotation
+    FEATURED_ROTATION_DAYS: 7, // Weekly rotation
+
+    // Collection milestones
+    COLLECTION_MILESTONES: [5, 10, 25, 50, 75, 100, 125, 150, 175, 200],
+
+    // Rarity upgrade chances (for future features)
+    RARITY_UPGRADE_CHANCES: {
+        common_to_uncommon: 0.1,
+        uncommon_to_rare: 0.05,
+        rare_to_epic: 0.02,
+        epic_to_legendary: 0.01,
+        legendary_to_mythical: 0.005,
+        mythical_to_divine: 0.001
     }
 };
