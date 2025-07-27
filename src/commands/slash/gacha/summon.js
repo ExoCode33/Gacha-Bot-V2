@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - Complete Updated Summon Command with FULL ANIMATIONS
+// src/commands/slash/gacha/summon.js - Complete Updated Summon Command with FULL ANIMATIONS (RESTORED ORIGINAL)
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { 
     createEnhancedBatchReveal, 
