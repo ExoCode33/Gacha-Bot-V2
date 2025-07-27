@@ -1,4 +1,5 @@
 // src/utils/GachaRevealUtils.js - FIXED: Complete Enhanced Gacha Reveal System
+// src/utils/GachaRevealUtils.js - FIXED: Complete Enhanced Gacha Reveal System
 const { EmbedBuilder } = require('discord.js');
 const { skillsManager } = require('../data/DevilFruitSkills');
 const { DEVIL_FRUITS } = require('../data/DevilFruits');
@@ -113,13 +114,13 @@ function createEnhancedGachaReveal(results, batchNumber = 1, totalBatches = 1) {
                 const statusEmoji = isNew ? '🆕' : '🔄';
                 const statusText = isNew ? 'New!' : `Total Owned: ${fruit.count || 1}`;
 
-                // Try to get skill information
+                // Try to get skill information with enhanced formatting
                 let skillInfo = 'Unknown Ability (50 DMG, 2s CD)';
                 try {
                     const skillData = getSkillDisplay(safeId, safeRarity);
                     if (skillData && skillData.name) {
-                        const cost = skillData.cost ? ` | ${skillData.cost} Energy` : '';
-                        skillInfo = `${skillData.name} (${skillData.damage || 50} DMG, ${skillData.cooldown || 2}s CD${cost})`;
+                        // Use enhanced formatting for embed display
+                        skillInfo = formatSkillForDisplay(skillData, false); // Show full details
                     }
                 } catch (skillError) {
                     console.warn(`Failed to get skill for ${safeId}:`, skillError.message);
@@ -252,7 +253,7 @@ function createSummaryEmbed(allResults, userStats) {
 }
 
 /**
- * FIXED: Get skill display with comprehensive error handling
+ * FIXED: Get detailed skill display with effects and special abilities
  */
 function getSkillDisplay(fruitId, rarity) {
     try {
@@ -287,6 +288,73 @@ function getSkillDisplay(fruitId, rarity) {
     } catch (error) {
         console.warn('Error getting skill display:', error.message);
         return generateFallbackSkill(fruitId, rarity);
+    }
+}
+
+/**
+ * ENHANCED: Format skill info with effects for display
+ */
+function formatSkillForDisplay(skillData, compact = false) {
+    if (!skillData) {
+        return 'Unknown Ability (50 DMG, 2s CD)';
+    }
+
+    try {
+        // Basic skill info
+        const name = skillData.name || 'Unknown Ability';
+        const damage = skillData.damage || 50;
+        const cooldown = skillData.cooldown || 2;
+        const cost = skillData.cost || 0;
+
+        // Build basic info
+        let skillInfo = `${name} (${damage} DMG, ${cooldown}s CD`;
+        if (cost > 0) {
+            skillInfo += ` | ${cost} Energy`;
+        }
+        skillInfo += ')';
+
+        // Add effects if not compact mode
+        if (!compact) {
+            const effects = [];
+
+            // Status effect
+            if (skillData.effect) {
+                const effectName = skillData.effect.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                effects.push(`Effect: ${effectName}`);
+            }
+
+            // Special abilities
+            if (skillData.special && typeof skillData.special === 'object') {
+                Object.entries(skillData.special).forEach(([key, value]) => {
+                    if (value === true) {
+                        const specialName = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+                        effects.push(`Special: ${specialName.charAt(0).toUpperCase() + specialName.slice(1)}`);
+                    } else if (value !== false && value !== null && value !== undefined) {
+                        const specialName = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+                        effects.push(`${specialName.charAt(0).toUpperCase() + specialName.slice(1)}: ${value}`);
+                    }
+                });
+            }
+
+            // Add type and range if available
+            if (skillData.type && skillData.type !== 'attack') {
+                effects.push(`Type: ${skillData.type.charAt(0).toUpperCase() + skillData.type.slice(1)}`);
+            }
+            if (skillData.range && skillData.range !== 'single') {
+                effects.push(`Range: ${skillData.range.charAt(0).toUpperCase() + skillData.range.slice(1)}`);
+            }
+
+            // Append effects
+            if (effects.length > 0) {
+                skillInfo += ` • ${effects.join(' • ')}`;
+            }
+        }
+
+        return skillInfo;
+
+    } catch (error) {
+        console.warn('Error formatting skill for display:', error.message);
+        return `${skillData.name || 'Unknown Ability'} (${skillData.damage || 50} DMG, ${skillData.cooldown || 2}s CD)`;
     }
 }
 
@@ -341,8 +409,9 @@ function createSinglePullReveal(result) {
         const statusEmoji = isNew ? '🆕' : '🔄';
         const statusText = isNew ? 'New Addition!' : `Total Owned: ${fruit.count || 1}`;
 
-        // Get skill data
+        // Get skill data with enhanced display
         const skillData = getSkillDisplay(fruit.id || fruit.fruit_id, safeRarity);
+        const skillInfo = formatSkillForDisplay(skillData, false); // Show full details
 
         const embed = new EmbedBuilder()
             .setTitle(`🍈 Devil Fruit Summoned!`)
@@ -361,9 +430,11 @@ function createSinglePullReveal(result) {
                 {
                     name: '⚔️ Combat Ability',
                     value: [
-                        `**Skill:** ${skillData?.name || 'Unknown Ability'}`,
-                        `**Damage:** ${skillData?.damage || 50}`,
-                        `**Cooldown:** ${skillData?.cooldown || 2}s`
+                        `**Full Ability:** ${skillInfo}`,
+                        `**Basic Stats:** ${skillData?.damage || 50} DMG, ${skillData?.cooldown || 2}s CD`,
+                        `**Energy Cost:** ${skillData?.cost || 0}`,
+                        `**Type:** ${skillData?.type || 'attack'}`,
+                        `**Range:** ${skillData?.range || 'single'}`
                     ].join('\n'),
                     inline: true
                 },
@@ -402,5 +473,8 @@ module.exports = {
     createSummaryEmbed,
     createSinglePullReveal,
     getSkillDisplay,
-    generateFallbackSkill
+    formatSkillForDisplay,
+    generateFallbackSkill,
+    safeCharAt,
+    formatRarityName
 };
