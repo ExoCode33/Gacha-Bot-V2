@@ -1,24 +1,9 @@
-// src/commands/slash/gacha/summon.js - COMPLETE FIXED FILE WITH NaN PREVENTION
+// src/commands/slash/gacha/summon.js - COMPLETE FIXED FILE
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
 const DatabaseManager = require('../../../database/DatabaseManager');
-const Config = require('../../../config/Config');
-
-// FIXED: Safe import of constants with fallbacks
-let PULL_COST, RARITY_COLORS, RARITY_EMOJIS;
-try {
-    const constants = require('../../../data/Constants');
-    PULL_COST = constants.PULL_COST || 1000;
-    RARITY_COLORS = constants.RARITY_COLORS || {};
-    RARITY_EMOJIS = constants.RARITY_EMOJIS || {};
-} catch (error) {
-    console.warn('Failed to load Constants, using fallbacks:', error.message);
-    PULL_COST = 1000;
-    RARITY_COLORS = { common: 0x808080, legendary: 0xFFD700 };
-    RARITY_EMOJIS = { common: '⚪', legendary: '🌟' };
-}
-
+const { PULL_COST, RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 const { getFruitsByRarity, getRandomFruitByRarity } = require('../../../data/DevilFruits');
 
 // FIXED: Import GachaRevealUtils with error handling
@@ -132,7 +117,7 @@ class SummonAnimator {
         };
 
         const raritySquare = this.getRaritySquare(safeFruit.rarity);
-        const color = RARITY_COLORS[safeFruit.rarity] || RARITY_COLORS.common || 0x808080;
+        const color = RARITY_COLORS[safeFruit.rarity] || RARITY_COLORS.common;
         const pattern = Array(20).fill(raritySquare).join(' ');
         
         const duplicateCount = result?.duplicateCount || 1;
@@ -143,6 +128,7 @@ class SummonAnimator {
         try {
             const skillData = getSkillDisplay(result?.fruit?.fruit_id || fruit?.id || 'unknown', safeFruit.rarity);
             if (skillData) {
+                // Use enhanced formatting to show effects
                 skillInfo = formatSkillForDisplay(skillData, true); // Compact mode for animation
             }
         } catch (error) {
@@ -176,6 +162,7 @@ class SummonAnimator {
 
     // FIXED: Enhanced 10x summary with proper error handling
     static create10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
+        // FIXED: Enhanced error handling and data validation
         try {
             // Validate input data
             if (!fruits || !Array.isArray(fruits) || fruits.length === 0) {
@@ -234,7 +221,7 @@ class SummonAnimator {
                 }
             });
 
-            const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity] || RARITY_COLORS.common || 0x808080;
+            const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity] || RARITY_COLORS.common;
             enhancedEmbed.setColor(highestColor);
             
             let footerText = totalBatches > 1 ? `Batch ${batchNumber} of ${totalBatches}` : '🏴‍☠️ Your legend grows on the Grand Line!';
@@ -247,6 +234,17 @@ class SummonAnimator {
             
         } catch (error) {
             console.warn('Enhanced reveal failed, using fallback:', error.message);
+            console.warn('Fruits data sample:', fruits?.slice(0, 2)?.map(f => ({ 
+                id: f?.id, 
+                name: f?.name, 
+                rarity: f?.rarity, 
+                type: f?.type,
+                hasName: !!f?.name,
+                hasRarity: !!f?.rarity,
+                rarityType: typeof f?.rarity
+            })));
+            
+            // Fallback to original implementation with error handling
             return this.createOriginal10xSummary(fruits || [], results || [], balance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
         }
     }
@@ -307,7 +305,7 @@ class SummonAnimator {
                     return (rarityPriority[currentRarity] || 1) > (rarityPriority[bestRarity] || 1) ? currentRarity : bestRarity;
                 }, 'common') : 'legendary';
             
-            const color = bestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[bestRarity] || RARITY_COLORS.common || 0x808080;
+            const color = bestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[bestRarity] || RARITY_COLORS.common;
             summaryEmbed.setColor(color);
 
             let footerText = '🏴‍☠️ Your legend grows on the Grand Line!';
@@ -320,6 +318,16 @@ class SummonAnimator {
             
         } catch (error) {
             console.warn('Enhanced mega summary failed, using fallback:', error.message);
+            console.warn('Fruits data sample:', allFruits?.slice(0, 3)?.map(f => ({ 
+                id: f?.id, 
+                name: f?.name, 
+                rarity: f?.rarity, 
+                type: f?.type,
+                hasName: !!f?.name,
+                hasRarity: !!f?.rarity 
+            })));
+            
+            // Fallback to original implementation
             return this.createOriginalMegaSummary(allFruits || [], allResults || [], balance, pityInfo, pityUsedInSession, totalPulls);
         }
     }
@@ -377,7 +385,7 @@ class SummonAnimator {
             });
         }
 
-        const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity] || RARITY_COLORS.common || 0x808080;
+        const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity] || RARITY_COLORS.common;
 
         let title = '🍈 10x Devil Fruit Summoning Complete!';
         if (totalBatches > 1) {
@@ -449,7 +457,7 @@ class SummonAnimator {
         summaryText += GachaService.formatPityDisplay(pityInfo, pityUsedInSession);
 
         const bestRarity = bestFruits.length > 0 ? (bestFruits[0]?.rarity || 'legendary') : 'legendary';
-        const color = bestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[bestRarity] || RARITY_COLORS.common || 0x808080;
+        const color = bestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[bestRarity] || RARITY_COLORS.common;
 
         const embed = new EmbedBuilder()
             .setTitle(`🏆 ${totalPulls}x MEGA SUMMONING RESULTS!`)
@@ -490,71 +498,16 @@ module.exports = {
     category: 'gacha',
     cooldown: 5,
     
-    // COMPLETELY FIXED execute method with comprehensive NaN prevention
     async execute(interaction) {
         const userId = interaction.user.id;
-        const summonCount = interaction.options.getInteger('count') || 10;
+        const summonCount = interaction.options.getInteger('count') || 10; // Default to 10x
         const skipAnimation = interaction.options.getBoolean('skip_animation') || false;
         
         try {
-            // CRITICAL FIX: Validate summon count first
-            if (!summonCount || isNaN(summonCount) || !Number.isInteger(summonCount) || summonCount <= 0 || summonCount > 100) {
-                return interaction.reply({
-                    content: '❌ Invalid summon count! Must be between 1-100.',
-                    ephemeral: true
-                });
-            }
-
-            // CRITICAL FIX: Get pull cost safely with multiple fallbacks
-            let pullCost = PULL_COST;
-            
-            // Additional safety checks for pull cost
-            if (!pullCost || isNaN(pullCost) || pullCost <= 0) {
-                // Try Config fallback
-                pullCost = Config.game?.pullCost || 1000;
-                interaction.client.logger.warn('PULL_COST was invalid, using fallback:', pullCost);
-            }
-            
-            // Final validation of pull cost
-            if (!pullCost || isNaN(pullCost) || pullCost <= 0) {
-                interaction.client.logger.error('All pull cost sources failed, using emergency fallback');
-                pullCost = 1000; // Emergency fallback
-            }
-
-            // CRITICAL FIX: Calculate cost with comprehensive validation
-            const cost = Math.floor(Number(pullCost) * Number(summonCount));
-            
-            // CRITICAL FIX: Validate the cost calculation result
-            if (!cost || isNaN(cost) || !Number.isFinite(cost) || cost <= 0) {
-                interaction.client.logger.error('Cost calculation failed:', {
-                    pullCost,
-                    summonCount,
-                    cost,
-                    pullCostType: typeof pullCost,
-                    summonCountType: typeof summonCount,
-                    costType: typeof cost,
-                    isNaN: isNaN(cost),
-                    isFinite: Number.isFinite(cost)
-                });
-                
-                return interaction.reply({
-                    content: '❌ Error calculating summon cost. Please try again or contact support.',
-                    ephemeral: true
-                });
-            }
-
-            interaction.client.logger.info(`Summon cost calculation: ${summonCount} × ${pullCost} = ${cost}`);
+            // Calculate cost WITHOUT DISCOUNTS - full price for all pulls
+            const cost = PULL_COST * summonCount;
             
             const balance = await EconomyService.getBalance(userId);
-            
-            // CRITICAL FIX: Validate balance
-            if (isNaN(balance) || !Number.isFinite(balance) || balance < 0) {
-                interaction.client.logger.error('Invalid balance returned:', balance);
-                return interaction.reply({
-                    content: '❌ Error retrieving your balance. Please try again.',
-                    ephemeral: true
-                });
-            }
             
             if (balance < cost) {
                 const pityInfo = await GachaService.getPityInfo(userId);
@@ -575,36 +528,9 @@ module.exports = {
             // ALWAYS defer the reply first for longer operations
             await interaction.deferReply();
             
-            // CRITICAL FIX: Deduct berries with comprehensive error handling
-            let newBalance;
-            try {
-                interaction.client.logger.info(`Attempting to deduct ${cost} berries from user ${userId}`);
-                
-                // Validate cost one more time before deduction
-                if (!cost || isNaN(cost) || !Number.isFinite(cost) || cost <= 0) {
-                    throw new Error(`Invalid cost for deduction: ${cost}`);
-                }
-                
-                newBalance = await EconomyService.deductBerries(userId, cost, 'gacha_summon');
-                
-                // Validate returned balance
-                if (isNaN(newBalance) || !Number.isFinite(newBalance)) {
-                    throw new Error(`Invalid balance returned after deduction: ${newBalance}`);
-                }
-                
-                interaction.client.logger.info(`Successfully deducted ${cost} berries. New balance: ${newBalance}`);
-                
-            } catch (deductError) {
-                interaction.client.logger.error('Berry deduction failed:', deductError);
-                
-                await interaction.editReply({
-                    content: '❌ Payment processing failed. Please try again or contact support.',
-                    ephemeral: true
-                });
-                return;
-            }
+            await EconomyService.deductBerries(userId, cost, 'gacha_summon');
+            const newBalance = balance - cost;
             
-            // Continue with summon logic based on count
             if (summonCount === 10) {
                 await this.run10xSummon(interaction, newBalance, skipAnimation);
             } else if (summonCount === 50) {
@@ -1035,7 +961,7 @@ module.exports = {
         };
 
         const raritySquare = SummonAnimator.getRaritySquare(safeFruit.rarity);
-        const color = RARITY_COLORS[safeFruit.rarity] || RARITY_COLORS.common || 0x808080;
+        const color = RARITY_COLORS[safeFruit.rarity] || RARITY_COLORS.common;
         const colors = ['🟧', '🟨', '🟩', '🟦', '🟪', '⬜', '🟥'];
         
         let pattern = [];
@@ -1094,7 +1020,6 @@ module.exports = {
             .setFooter({ text: footerText });
     },
 
-    // Continue with remaining methods (showBatchNavigation, show10xSummary, etc.)
     async showBatchNavigation(interaction, batchEmbeds, summaryEmbed, currentPage) {
         const totalPages = batchEmbeds.length;
         const hasSummary = summaryEmbed !== null;
