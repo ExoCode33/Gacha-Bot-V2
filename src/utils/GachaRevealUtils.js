@@ -1,438 +1,406 @@
-// src/utils/GachaRevealUtils.js - Complete Enhanced Gacha Reveal System
+// src/utils/GachaRevealUtils.js - FIXED: Complete Enhanced Gacha Reveal System
 const { EmbedBuilder } = require('discord.js');
 const { skillsManager } = require('../data/DevilFruitSkills');
 const { DEVIL_FRUITS } = require('../data/DevilFruits');
 const { RARITY_EMOJIS, RARITY_COLORS } = require('../data/Constants');
 
 /**
- * Create enhanced gacha reveal embed with users and real skills
- * @param {Array} results - Array of pull results
- * @param {number} batchNumber - Current batch number
- * @param {number} totalBatches - Total number of batches
- * @returns {EmbedBuilder} Enhanced embed with skill details
+ * DEBUGGING: Safe charAt function with full error tracking
  */
-function createEnhancedGachaReveal(results, batchNumber, totalBatches) {
-    const embed = new EmbedBuilder()
-        .setTitle(`🍈 Devil Fruit Batch ${batchNumber}/${totalBatches} Complete!`)
-        .setColor(RARITY_COLORS.legendary)
-        .setDescription(`🎉 **Batch ${batchNumber} Results:** 🎉`)
-        .setTimestamp();
+function safeCharAt(str, index, context = 'unknown') {
+    try {
+        if (str === null || str === undefined) {
+            console.error(`SAFE_CHARAT: String is null/undefined in context: ${context}`, { str, index, type: typeof str });
+            return '';
+        }
+        if (typeof str !== 'string') {
+            console.error(`SAFE_CHARAT: Not a string in context: ${context}`, { str, index, type: typeof str });
+            return '';
+        }
+        if (str.length === 0) {
+            console.error(`SAFE_CHARAT: Empty string in context: ${context}`, { str, index });
+            return '';
+        }
+        if (index >= str.length || index < 0) {
+            console.error(`SAFE_CHARAT: Index out of bounds in context: ${context}`, { str, index, length: str.length });
+            return '';
+        }
+        return str.charAt(index);
+    } catch (error) {
+        console.error(`SAFE_CHARAT: Unexpected error in context: ${context}`, { str, index, error: error.message });
+        return '';
+    }
+}
 
-    results.forEach((result, index) => {
-        const { fruit, isNew } = result;
-        const fruitData = DEVIL_FRUITS[fruit.id];
+/**
+ * DEBUGGING: Safe rarity name formatter
+ */
+function formatRarityName(rarity, context = 'unknown') {
+    try {
+        if (!rarity) {
+            console.warn(`FORMAT_RARITY: No rarity provided in context: ${context}`, { rarity, type: typeof rarity });
+            return 'Common';
+        }
         
-        if (!fruitData) {
-            console.error(`Fruit data not found for ID: ${fruit.id}`);
-            return;
+        if (typeof rarity !== 'string') {
+            console.warn(`FORMAT_RARITY: Rarity is not a string in context: ${context}`, { rarity, type: typeof rarity });
+            return 'Common';
+        }
+        
+        if (rarity.length === 0) {
+            console.warn(`FORMAT_RARITY: Empty rarity string in context: ${context}`, { rarity });
+            return 'Common';
+        }
+        
+        const firstChar = safeCharAt(rarity, 0, `formatRarityName-${context}`);
+        if (!firstChar) {
+            console.warn(`FORMAT_RARITY: Failed to get first character in context: ${context}`, { rarity });
+            return 'Common';
+        }
+        
+        return firstChar.toUpperCase() + rarity.slice(1);
+        
+    } catch (error) {
+        console.error(`FORMAT_RARITY: Unexpected error in context: ${context}`, { rarity, error: error.message, stack: error.stack });
+        return 'Common';
+    }
+}
+
+/**
+ * FIXED: Create enhanced gacha reveal embed with comprehensive safety checks
+ */
+function createEnhancedGachaReveal(results, batchNumber = 1, totalBatches = 1) {
+    try {
+        // Validate input parameters
+        if (!results || !Array.isArray(results) || results.length === 0) {
+            console.warn('Invalid results data for enhanced reveal, using fallback');
+            throw new Error('Invalid results array');
         }
 
-        // Get skill data from the new skills system
-        const skillData = skillsManager.getSkillData(fruit.id, fruit.rarity);
-        
-        // Format skill info
-        let skillInfo = "Unknown Ability (50 DMG, 2s CD)"; // Fallback
-        if (skillData) {
-            const cost = skillData.cost ? ` | ${skillData.cost} Energy` : '';
-            skillInfo = `${skillData.name} (${skillData.damage} DMG, ${skillData.cooldown}s CD${cost})`;
-        }
+        const embed = new EmbedBuilder()
+            .setTitle(`🍈 Devil Fruit Batch ${batchNumber}/${totalBatches} Complete!`)
+            .setColor(RARITY_COLORS.legendary || 0xFFD700)
+            .setTimestamp();
 
-        // Get user from fruit data
-        const user = fruitData.user || "Unknown User";
+        let description = `🎉 **Batch ${batchNumber} Results:** 🎉\n\n`;
 
-        // Status emoji and text
-        const statusEmoji = isNew ? '🆕' : '🔄';
-        const statusText = isNew ? 'New!' : `Total Owned: ${fruit.count || 1}`;
+        results.forEach((result, index) => {
+            try {
+                // COMPREHENSIVE safety checks for result structure
+                if (!result || typeof result !== 'object') {
+                    console.warn(`Invalid result at index ${index}, skipping`);
+                    return;
+                }
 
-        // Rarity emoji and name
-        const rarityEmoji = RARITY_EMOJIS[fruit.rarity] || '⚪';
-        const rarityName = fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1);
+                // Extract fruit data with multiple fallback strategies
+                const fruit = result.fruit || result || {};
+                
+                // CRITICAL: Ensure all required properties exist with safe defaults
+                const safeId = fruit.id || fruit.fruit_id || `unknown_${index}`;
+                const safeName = fruit.fruit_name || fruit.name || 'Unknown Fruit';
+                const safeType = fruit.fruit_type || fruit.type || 'Unknown';
+                const safeRarity = fruit.fruit_rarity || fruit.rarity || 'common'; // ALWAYS fallback to 'common'
+                const safeDescription = fruit.fruit_description || fruit.description || fruit.power || 'A mysterious Devil Fruit power';
+                
+                // FIXED: Use the safe rarity formatter
+                const rarityName = formatRarityName(safeRarity, `enhancedReveal-fruit-${index}`);
 
-        // Build field value with enhanced formatting
-        const fieldValue = [
-            `${statusEmoji} **Status:** ${statusText}`,
-            `🧬 **Type:** ${fruitData.type}`,
-            `⚡ **CP Multiplier:** x${fruitData.multiplier}`,
-            `👤 **User:** ${user}`,
-            `📝 **Description:** ${fruitData.description}`,
-            `⚔️ **Ability:** ${skillInfo}`
-        ].join('\n');
+                // Get rarity emoji with fallback
+                const rarityEmoji = RARITY_EMOJIS[safeRarity] || '⚪';
 
-        // Add field to embed
-        embed.addFields({
-            name: `${String(index + 1).padStart(2, '0')}. ${rarityEmoji} ${fruitData.name} (${rarityName})`,
-            value: fieldValue,
-            inline: false
+                // Status information
+                const isNew = result.isNew !== false; // Default to true if not specified
+                const statusEmoji = isNew ? '🆕' : '🔄';
+                const statusText = isNew ? 'New!' : `Total Owned: ${fruit.count || 1}`;
+
+                // Try to get skill information
+                let skillInfo = 'Unknown Ability (50 DMG, 2s CD)';
+                try {
+                    const skillData = getSkillDisplay(safeId, safeRarity);
+                    if (skillData && skillData.name) {
+                        const cost = skillData.cost ? ` | ${skillData.cost} Energy` : '';
+                        skillInfo = `${skillData.name} (${skillData.damage || 50} DMG, ${skillData.cooldown || 2}s CD${cost})`;
+                    }
+                } catch (skillError) {
+                    console.warn(`Failed to get skill for ${safeId}:`, skillError.message);
+                }
+
+                // Calculate CP with safety checks
+                const baseCP = fruit.base_cp || (parseFloat(fruit.multiplier) || 1) * 100;
+                const totalCP = fruit.total_cp || baseCP;
+
+                // Global number for batch display
+                const globalNumber = ((batchNumber - 1) * 10 + index + 1).toString().padStart(2, '0');
+
+                // Build the detailed result entry
+                description += `**${globalNumber}.** ${rarityEmoji} **${safeName}** (${rarityName})\n`;
+                description += `      ${statusEmoji} **Status:** ${statusText}\n`;
+                description += `      🔮 **Type:** ${safeType}\n`;
+                description += `      💪 **CP:** ${Math.floor(totalCP).toLocaleString()}\n`;
+                description += `      🎯 **Description:** ${safeDescription}\n`;
+                description += `      ⚔️ **Ability:** ${skillInfo}\n\n`;
+
+            } catch (itemError) {
+                console.error(`Error processing result item ${index}:`, itemError.message);
+                description += `**${String(index + 1).padStart(2, '0')}.** ⚪ **Unknown Fruit** (Common)\n`;
+                description += `      ❌ **Error:** Failed to process this fruit\n\n`;
+            }
         });
-    });
 
-    return embed;
+        // Set the final description
+        embed.setDescription(description);
+
+        return embed;
+
+    } catch (error) {
+        console.error('Enhanced gacha reveal failed:', error.message);
+        throw error; // Re-throw to trigger fallback
+    }
 }
 
 /**
- * Enhanced batch reveal with skill details
- * @param {Interaction} interaction - Discord interaction object
- * @param {Array} allResults - All pull results
- * @returns {Array} Array of embed objects
- */
-async function createEnhancedBatchReveal(interaction, allResults) {
-    const batchSize = 5; // Show 5 fruits per batch
-    const batches = [];
-    
-    // Split results into batches
-    for (let i = 0; i < allResults.length; i += batchSize) {
-        batches.push(allResults.slice(i, i + batchSize));
-    }
-
-    const embeds = [];
-    const totalBatches = batches.length;
-
-    // Create embed for each batch
-    for (let i = 0; i < batches.length; i++) {
-        const batchResults = batches[i];
-        const batchNumber = i + 1;
-        
-        const embed = createEnhancedGachaReveal(batchResults, batchNumber, totalBatches);
-        embeds.push(embed);
-    }
-
-    // Send first batch immediately
-    if (embeds.length > 0) {
-        await interaction.editReply({ embeds: [embeds[0]] });
-        
-        // Send remaining batches with delay
-        for (let i = 1; i < embeds.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
-            await interaction.followUp({ embeds: [embeds[i]] });
-        }
-    }
-
-    return embeds;
-}
-
-/**
- * Create summary embed after all batches
- * @param {Array} allResults - All pull results
- * @param {Object} userStats - User statistics
- * @returns {EmbedBuilder} Summary embed
+ * FIXED: Create summary embed with comprehensive error handling
  */
 function createSummaryEmbed(allResults, userStats) {
-    const rarityCount = {};
-    let totalCP = 0;
-    let newFruits = 0;
-
-    // Count rarities and calculate stats
-    allResults.forEach(result => {
-        const rarity = result.fruit.rarity;
-        rarityCount[rarity] = (rarityCount[rarity] || 0) + 1;
-        
-        const fruitData = DEVIL_FRUITS[result.fruit.id];
-        if (fruitData) {
-            totalCP += Math.floor(fruitData.multiplier * 100); // Estimated CP
+    try {
+        // Validate inputs
+        if (!allResults || !Array.isArray(allResults)) {
+            allResults = [];
         }
-        
-        if (result.isNew) newFruits++;
-    });
+        if (!userStats || typeof userStats !== 'object') {
+            userStats = { berries: 0, totalFruits: 0, uniqueFruits: 0 };
+        }
 
-    // Build rarity summary
-    const raritySummary = Object.entries(rarityCount)
-        .sort(([,a], [,b]) => b - a) // Sort by count descending
-        .map(([rarity, count]) => {
-            const emoji = RARITY_EMOJIS[rarity] || '⚪';
-            const name = rarity.charAt(0).toUpperCase() + rarity.slice(1);
-            return `${emoji} ${name}: ${count}`;
-        })
-        .join('\n');
+        const rarityCount = {};
+        let totalCP = 0;
+        let newFruits = 0;
 
-    const embed = new EmbedBuilder()
-        .setTitle('📊 Summon Session Summary')
-        .setColor(RARITY_COLORS.divine)
-        .addFields(
-            {
-                name: '🎯 Pull Results',
-                value: [
-                    `**Total Pulls:** ${allResults.length}`,
-                    `**New Fruits:** ${newFruits}`,
-                    `**Estimated CP Gained:** ${totalCP.toLocaleString()}`
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: '📈 Rarity Breakdown',
-                value: raritySummary || 'No fruits pulled',
-                inline: true
-            },
-            {
-                name: '💰 Current Stats',
-                value: [
-                    `**Berries:** ${userStats.berries?.toLocaleString() || 0}`,
-                    `**Total Fruits:** ${userStats.totalFruits || 0}`,
-                    `**Collection:** ${userStats.uniqueFruits || 0} unique`
-                ].join('\n'),
-                inline: true
+        // Count rarities and calculate stats with error handling
+        allResults.forEach((result, index) => {
+            try {
+                const fruit = result?.fruit || result || {};
+                const rarity = fruit.fruit_rarity || fruit.rarity || 'common';
+                
+                rarityCount[rarity] = (rarityCount[rarity] || 0) + 1;
+                
+                // Calculate CP
+                const baseCP = fruit.base_cp || (parseFloat(fruit.multiplier) || 1) * 100;
+                totalCP += Math.floor(baseCP);
+                
+                if (result.isNew !== false) newFruits++;
+            } catch (itemError) {
+                console.warn(`Error processing summary item ${index}:`, itemError.message);
+                rarityCount['common'] = (rarityCount['common'] || 0) + 1;
             }
-        )
-        .setFooter({ text: '🏴‍☠️ Keep sailing the Grand Line for more Devil Fruits!' })
-        .setTimestamp();
-
-    return embed;
-}
-
-/**
- * Get skill details for display
- * @param {string} fruitId - Fruit ID
- * @param {string} rarity - Fruit rarity
- * @returns {Object} Skill data object
- */
-function getSkillDisplay(fruitId, rarity) {
-    const skillData = skillsManager.getSkillData(fruitId, rarity);
-    
-    if (!skillData) {
-        // Use smart fallback if no custom skill exists
-        const fruitData = DEVIL_FRUITS[fruitId];
-        return skillsManager.generateFallbackSkill(fruitId, rarity, fruitData);
-    }
-
-    return skillData;
-}
-
-/**
- * Enhanced reveal for single pulls
- * @param {Object} result - Single pull result
- * @returns {EmbedBuilder} Single pull reveal embed
- */
-function createSinglePullReveal(result) {
-    const { fruit, isNew } = result;
-    const fruitData = DEVIL_FRUITS[fruit.id];
-    
-    if (!fruitData) {
-        console.error(`Fruit data not found for ID: ${fruit.id}`);
-        return null;
-    }
-
-    // Get skill data
-    const skillData = getSkillDisplay(fruit.id, fruit.rarity);
-    
-    // Status and rarity info
-    const statusEmoji = isNew ? '🆕' : '🔄';
-    const statusText = isNew ? 'New Addition!' : `Total Owned: ${fruit.count || 1}`;
-    const rarityEmoji = RARITY_EMOJIS[fruit.rarity] || '⚪';
-    const rarityName = fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1);
-
-    const embed = new EmbedBuilder()
-        .setTitle(`🍈 Devil Fruit Summoned!`)
-        .setColor(RARITY_COLORS[fruit.rarity] || RARITY_COLORS.common)
-        .setDescription(`${rarityEmoji} **${fruitData.name}** (${rarityName})`)
-        .addFields(
-            {
-                name: '📊 Fruit Information',
-                value: [
-                    `${statusEmoji} **Status:** ${statusText}`,
-                    `🧬 **Type:** ${fruitData.type}`,
-                    `⚡ **CP Multiplier:** x${fruitData.multiplier}`,
-                    `👤 **User:** ${fruitData.user || "Unknown User"}`
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: '⚔️ Combat Ability',
-                value: [
-                    `**Skill:** ${skillData.name}`,
-                    `**Damage:** ${skillData.damage}`,
-                    `**Cooldown:** ${skillData.cooldown}s`,
-                    `**Type:** ${skillData.type || 'attack'}`,
-                    `**Range:** ${skillData.range || 'single'}`
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: '📝 Description',
-                value: fruitData.description,
-                inline: false
-            }
-        )
-        .setFooter({ text: '🏴‍☠️ Your journey on the Grand Line continues!' })
-        .setTimestamp();
-
-    // Add skill description if available and different from fruit description
-    if (skillData.description && skillData.description !== fruitData.description) {
-        embed.addFields({
-            name: '⚡ Skill Details',
-            value: skillData.description,
-            inline: false
         });
-    }
 
-    // Add special abilities if they exist
-    if (skillData.special && Object.keys(skillData.special).length > 0) {
-        const specialAbilities = Object.keys(skillData.special)
-            .map(ability => `• ${ability.replace(/([A-Z])/g, ' $1').toLowerCase()}`)
-            .join('\n');
-        
-        embed.addFields({
-            name: '✨ Special Abilities',
-            value: specialAbilities,
-            inline: false
-        });
-    }
-
-    return embed;
-}
-
-/**
- * Create a detailed skill breakdown embed
- * @param {string} fruitId - Fruit ID
- * @param {string} rarity - Fruit rarity
- * @returns {EmbedBuilder} Skill details embed
- */
-function createSkillDetailEmbed(fruitId, rarity) {
-    const fruitData = DEVIL_FRUITS[fruitId];
-    const skillData = getSkillDisplay(fruitId, rarity);
-    
-    if (!fruitData || !skillData) {
-        return null;
-    }
-
-    const rarityEmoji = RARITY_EMOJIS[rarity] || '⚪';
-    const rarityName = rarity.charAt(0).toUpperCase() + rarity.slice(1);
-
-    const embed = new EmbedBuilder()
-        .setTitle(`⚔️ ${skillData.name}`)
-        .setColor(RARITY_COLORS[rarity] || RARITY_COLORS.common)
-        .setDescription(`${rarityEmoji} **${fruitData.name}** (${rarityName})`)
-        .addFields(
-            {
-                name: '📊 Combat Stats',
-                value: [
-                    `**Damage:** ${skillData.damage}`,
-                    `**Cooldown:** ${skillData.cooldown} seconds`,
-                    `**Energy Cost:** ${skillData.cost || 0}`,
-                    `**Type:** ${skillData.type || 'attack'}`,
-                    `**Range:** ${skillData.range || 'single'}`
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: '👤 Devil Fruit User',
-                value: [
-                    `**Current User:** ${fruitData.user || 'Unknown'}`,
-                    `**Fruit Type:** ${fruitData.type}`,
-                    `**Element:** ${fruitData.element}`,
-                    `**CP Multiplier:** x${fruitData.multiplier}`
-                ].join('\n'),
-                inline: true
-            }
-        );
-
-    // Add skill description
-    if (skillData.description) {
-        embed.addFields({
-            name: '📖 Skill Description',
-            value: skillData.description,
-            inline: false
-        });
-    }
-
-    // Add special abilities
-    if (skillData.special && Object.keys(skillData.special).length > 0) {
-        const specialAbilities = Object.entries(skillData.special)
-            .map(([ability, value]) => {
-                const displayName = ability.replace(/([A-Z])/g, ' $1').toLowerCase();
-                return typeof value === 'boolean' && value ? `• ${displayName}` : `• ${displayName}: ${value}`;
+        // Build rarity summary with proper sorting
+        const raritySummary =         Object.entries(rarityCount)
+            .sort(([,a], [,b]) => b - a) // Sort by count descending
+            .map(([rarity, count]) => {
+                const emoji = RARITY_EMOJIS[rarity] || '⚪';
+                // FIXED: Use the safe rarity formatter
+                const name = formatRarityName(rarity, `summaryEmbed-rarity-${rarity}`);
+                return `${emoji} ${name}: ${count}`;
             })
             .join('\n');
+
+        const embed = new EmbedBuilder()
+            .setTitle('📊 Summon Session Summary')
+            .setColor(RARITY_COLORS.divine || 0xFF0000)
+            .addFields(
+                {
+                    name: '🎯 Pull Results',
+                    value: [
+                        `**Total Pulls:** ${allResults.length}`,
+                        `**New Fruits:** ${newFruits}`,
+                        `**Estimated CP Gained:** ${totalCP.toLocaleString()}`
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: '📈 Rarity Breakdown',
+                    value: raritySummary || 'No fruits pulled',
+                    inline: true
+                },
+                {
+                    name: '💰 Current Stats',
+                    value: [
+                        `**Berries:** ${(userStats.berries || 0).toLocaleString()}`,
+                        `**Total Fruits:** ${userStats.totalFruits || 0}`,
+                        `**Collection:** ${userStats.uniqueFruits || 0} unique`
+                    ].join('\n'),
+                    inline: true
+                }
+            )
+            .setFooter({ text: '🏴‍☠️ Keep sailing the Grand Line for more Devil Fruits!' })
+            .setTimestamp();
+
+        return embed;
+
+    } catch (error) {
+        console.error('Summary embed creation failed:', error.message);
         
-        embed.addFields({
-            name: '✨ Special Abilities',
-            value: specialAbilities,
-            inline: false
-        });
+        // Return basic fallback embed
+        return new EmbedBuilder()
+            .setTitle('📊 Summon Session Summary')
+            .setColor(RARITY_COLORS.common || 0x808080)
+            .setDescription('✅ Summon completed successfully!')
+            .setFooter({ text: '🏴‍☠️ Keep sailing the Grand Line!' })
+            .setTimestamp();
     }
-
-    // Add effect information
-    if (skillData.effect) {
-        embed.addFields({
-            name: '🌟 Status Effect',
-            value: `**Effect:** ${skillData.effect.replace(/_/g, ' ')}`,
-            inline: false
-        });
-    }
-
-    embed.setFooter({ text: '⚔️ Use this power wisely in battle!' })
-         .setTimestamp();
-
-    return embed;
 }
 
 /**
- * Create a comparison embed between two skills
- * @param {string} fruitId1 - First fruit ID
- * @param {string} fruitId2 - Second fruit ID
- * @returns {EmbedBuilder} Comparison embed
+ * FIXED: Get skill display with comprehensive error handling
  */
-function createSkillComparisonEmbed(fruitId1, fruitId2) {
-    const fruit1Data = DEVIL_FRUITS[fruitId1];
-    const fruit2Data = DEVIL_FRUITS[fruitId2];
-    
-    if (!fruit1Data || !fruit2Data) {
-        return null;
-    }
+function getSkillDisplay(fruitId, rarity) {
+    try {
+        // Validate inputs
+        if (!fruitId || typeof fruitId !== 'string') {
+            console.warn('Invalid fruitId for skill display');
+            return null;
+        }
+        if (!rarity || typeof rarity !== 'string') {
+            rarity = 'common';
+        }
 
-    const skill1 = getSkillDisplay(fruitId1, fruit1Data.rarity);
-    const skill2 = getSkillDisplay(fruitId2, fruit2Data.rarity);
-
-    const comparison = skillsManager.compareSkills(fruitId1, fruitId2);
-
-    const embed = new EmbedBuilder()
-        .setTitle('⚔️ Skill Comparison')
-        .setColor(RARITY_COLORS.legendary)
-        .setDescription('Compare the combat abilities of two Devil Fruits')
-        .addFields(
-            {
-                name: `🔵 ${fruit1Data.name}`,
-                value: [
-                    `**Skill:** ${skill1.name}`,
-                    `**Damage:** ${skill1.damage}`,
-                    `**Cooldown:** ${skill1.cooldown}s`,
-                    `**User:** ${fruit1Data.user || 'Unknown'}`
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: `🔴 ${fruit2Data.name}`,
-                value: [
-                    `**Skill:** ${skill2.name}`,
-                    `**Damage:** ${skill2.damage}`,
-                    `**Cooldown:** ${skill2.cooldown}s`,
-                    `**User:** ${fruit2Data.user || 'Unknown'}`
-                ].join('\n'),
-                inline: true
+        // Try to get skill from skills manager
+        if (skillsManager && typeof skillsManager.getSkillData === 'function') {
+            const skillData = skillsManager.getSkillData(fruitId, rarity);
+            if (skillData && skillData.name) {
+                return skillData;
             }
-        );
+        }
 
-    if (comparison && !comparison.error) {
-        embed.addFields({
-            name: '🏆 Comparison Results',
-            value: [
-                `**Damage Winner:** ${comparison.comparison.damageWinner}`,
-                `**Speed Winner:** ${comparison.comparison.cooldownWinner}`,
-                `**Overall Winner:** ${comparison.comparison.powerRatingWinner}`,
-                `**Power Rating Difference:** ${comparison.comparison.ratingDifference}`
-            ].join('\n'),
-            inline: false
-        });
+        // Try to get from DEVIL_FRUITS
+        if (DEVIL_FRUITS && DEVIL_FRUITS[fruitId]) {
+            const fruitData = DEVIL_FRUITS[fruitId];
+            if (fruitData.skill) {
+                return fruitData.skill;
+            }
+        }
+
+        // Generate fallback skill
+        return generateFallbackSkill(fruitId, rarity);
+
+    } catch (error) {
+        console.warn('Error getting skill display:', error.message);
+        return generateFallbackSkill(fruitId, rarity);
     }
+}
 
-    return embed;
+/**
+ * FIXED: Generate fallback skill with proper defaults
+ */
+function generateFallbackSkill(fruitId, rarity) {
+    const rarityMultipliers = {
+        'common': 1.0,
+        'uncommon': 1.2,
+        'rare': 1.5,
+        'epic': 2.0,
+        'legendary': 2.5,
+        'mythical': 3.0,
+        'divine': 4.0
+    };
+
+    const multiplier = rarityMultipliers[rarity] || 1.0;
+    const baseDamage = Math.floor(50 * multiplier);
+
+    return {
+        name: 'Devil Fruit Power',
+        damage: baseDamage,
+        cooldown: 2,
+        cost: 0,
+        type: 'attack',
+        description: 'A mysterious Devil Fruit ability'
+    };
+}
+
+/**
+ * FIXED: Create single pull reveal with error handling
+ */
+function createSinglePullReveal(result) {
+    try {
+        // Validate input
+        if (!result || typeof result !== 'object') {
+            throw new Error('Invalid result object');
+        }
+
+        const fruit = result.fruit || result;
+        const safeName = fruit.fruit_name || fruit.name || 'Unknown Fruit';
+        const safeRarity = fruit.fruit_rarity || fruit.rarity || 'common';
+        const safeType = fruit.fruit_type || fruit.type || 'Unknown';
+        const safeDescription = fruit.fruit_description || fruit.description || 'A mysterious Devil Fruit power';
+
+        // FIXED: Use the safe rarity formatter
+        const rarityName = formatRarityName(safeRarity, 'singlePullReveal');
+
+        const rarityEmoji = RARITY_EMOJIS[safeRarity] || '⚪';
+        const isNew = result.isNew !== false;
+        const statusEmoji = isNew ? '🆕' : '🔄';
+        const statusText = isNew ? 'New Addition!' : `Total Owned: ${fruit.count || 1}`;
+
+        // Get skill data
+        const skillData = getSkillDisplay(fruit.id || fruit.fruit_id, safeRarity);
+
+        const embed = new EmbedBuilder()
+            .setTitle(`🍈 Devil Fruit Summoned!`)
+            .setColor(RARITY_COLORS[safeRarity] || RARITY_COLORS.common)
+            .setDescription(`${rarityEmoji} **${safeName}** (${rarityName})`)
+            .addFields(
+                {
+                    name: '📊 Fruit Information',
+                    value: [
+                        `${statusEmoji} **Status:** ${statusText}`,
+                        `🔮 **Type:** ${safeType}`,
+                        `⚡ **CP:** ${Math.floor(fruit.total_cp || fruit.base_cp || 100).toLocaleString()}`
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: '⚔️ Combat Ability',
+                    value: [
+                        `**Skill:** ${skillData?.name || 'Unknown Ability'}`,
+                        `**Damage:** ${skillData?.damage || 50}`,
+                        `**Cooldown:** ${skillData?.cooldown || 2}s`
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: '📝 Description',
+                    value: safeDescription,
+                    inline: false
+                }
+            )
+            .setFooter({ text: '🏴‍☠️ Your journey on the Grand Line continues!' })
+            .setTimestamp();
+
+        return embed;
+
+    } catch (error) {
+        console.error('Single pull reveal creation failed:', error.message);
+        
+        // Return basic fallback
+        return new EmbedBuilder()
+            .setTitle('🍈 Devil Fruit Summoned!')
+            .setColor(RARITY_COLORS.common)
+            .setDescription('⚪ **Unknown Fruit** (Common)')
+            .addFields({
+                name: '📊 Result',
+                value: '✅ Fruit added to your collection!',
+                inline: false
+            })
+            .setFooter({ text: '🏴‍☠️ Keep summoning!' })
+            .setTimestamp();
+    }
 }
 
 // Export all functions
 module.exports = {
     createEnhancedGachaReveal,
-    createEnhancedBatchReveal,
     createSummaryEmbed,
     createSinglePullReveal,
     getSkillDisplay,
-    createSkillDetailEmbed,
-    createSkillComparisonEmbed
+    generateFallbackSkill
 };
