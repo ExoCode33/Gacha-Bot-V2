@@ -1,4 +1,4 @@
-// src/commands/slash/gacha/summon.js - ENHANCED with GachaRevealUtils Integration
+// src/commands/slash/gacha/summon.js - COMPLETE FIXED FILE
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
@@ -6,7 +6,7 @@ const DatabaseManager = require('../../../database/DatabaseManager');
 const { PULL_COST, RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 const { getFruitsByRarity, getRandomFruitByRarity } = require('../../../data/DevilFruits');
 
-// ENHANCED: Import GachaRevealUtils for better skill details
+// FIXED: Import GachaRevealUtils with error handling
 const {
     createEnhancedGachaReveal,
     createSinglePullReveal,
@@ -71,6 +71,18 @@ class SummonAnimator {
         const color = this.getRainbowColor(frame);
         const loadingDots = '●'.repeat((frame % 5) + 1) + '○'.repeat(4 - (frame % 5));
         
+        // FIXED: Add safety checks for fruit properties
+        const safeFruit = {
+            name: fruit?.name || 'Unknown Fruit',
+            type: fruit?.type || 'Unknown',
+            rarity: fruit?.rarity || 'common',
+            multiplier: fruit?.multiplier || '1.0',
+            description: fruit?.description || 'A mysterious Devil Fruit power',
+            skillName: fruit?.skillName || 'Unknown Ability',
+            skillDamage: fruit?.skillDamage || 50,
+            skillCooldown: fruit?.skillCooldown || 2
+        };
+        
         const description = `🌊 Scanning the Grand Line...\n\n${pattern}\n\n` +
             `📊 **Status:** ${loadingDots}\n` +
             `🍃 **Name:** ${loadingDots}\n` +
@@ -90,36 +102,52 @@ class SummonAnimator {
             .setFooter({ text: `Summon ${summonNumber} of ${totalSummons} - Searching... | Pity: ${currentPity}/1500` });
     }
 
-    // ENHANCED: Use GachaRevealUtils for better skill details
     static createQuickReveal(fruit, result, summonNumber, totalSummons, currentPity) {
-        const raritySquare = this.getRaritySquare(fruit.rarity);
-        const color = RARITY_COLORS[fruit.rarity];
+        // FIXED: Add comprehensive safety checks for all properties
+        const safeFruit = {
+            name: fruit?.name || 'Unknown Fruit',
+            type: fruit?.type || 'Unknown',
+            rarity: fruit?.rarity || 'common',
+            multiplier: fruit?.multiplier || '1.0',
+            description: fruit?.description || 'A mysterious Devil Fruit power',
+            skillName: fruit?.skillName || 'Unknown Ability',
+            skillDamage: fruit?.skillDamage || 50,
+            skillCooldown: fruit?.skillCooldown || 2
+        };
+
+        const raritySquare = this.getRaritySquare(safeFruit.rarity);
+        const color = RARITY_COLORS[safeFruit.rarity] || RARITY_COLORS.common;
         const pattern = Array(20).fill(raritySquare).join(' ');
         
-        const duplicateCount = result.duplicateCount || 1;
+        const duplicateCount = result?.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
         
-        // ENHANCED: Get detailed skill information using GachaRevealUtils
-        const skillData = getSkillDisplay(result.fruit?.fruit_id || fruit.id, fruit.rarity);
-        const skillInfo = skillData ? 
-            `${skillData.name} (${skillData.damage} DMG, ${skillData.cooldown}s CD)` :
-            `${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)`;
+        // FIXED: Get detailed skill information using GachaRevealUtils with error handling
+        let skillInfo = `${safeFruit.skillName} (${safeFruit.skillDamage} DMG, ${safeFruit.skillCooldown}s CD)`;
+        try {
+            const skillData = getSkillDisplay(result?.fruit?.fruit_id || fruit?.id || 'unknown', safeFruit.rarity);
+            if (skillData) {
+                skillInfo = `${skillData.name} (${skillData.damage} DMG, ${skillData.cooldown}s CD)`;
+            }
+        } catch (error) {
+            console.warn('Failed to get skill display, using fallback:', error.message);
+        }
         
         const description = `✨ **ACQUIRED!**\n\n${pattern}\n\n` +
             `📊 **Status:** ${duplicateText}\n` +
-            `🍃 **Name:** ${fruit.name}\n` +
-            `🔮 **Type:** ${fruit.type}\n` +
-            `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
-            `💪 **CP Multiplier:** x${fruit.multiplier}` +
-            (result.pityUsed ? ' 🎯 **PITY!**' : '') + `\n` +
-            `🎯 **Description:** ${fruit.description}\n` +
+            `🍃 **Name:** ${safeFruit.name}\n` +
+            `🔮 **Type:** ${safeFruit.type}\n` +
+            `⭐ **Rarity:** ${raritySquare} ${safeFruit.rarity.charAt(0).toUpperCase() + safeFruit.rarity.slice(1)}\n` +
+            `💪 **CP Multiplier:** x${safeFruit.multiplier}` +
+            (result?.pityUsed ? ' 🎯 **PITY!**' : '') + `\n` +
+            `🎯 **Description:** ${safeFruit.description}\n` +
             `⚔️ **Ability:** ${skillInfo}\n\n` +
-            `🔥 **Total CP:** ${result.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
+            `🔥 **Total CP:** ${result?.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
             `💰 **Remaining Berries:** Loading...\n\n` +
             `${pattern}`;
         
         let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ Acquired! | Pity: ${currentPity}/1500`;
-        if (result.pityUsed) {
+        if (result?.pityUsed) {
             footerText = `✨ PITY USED! | ${footerText}`;
         }
         
@@ -130,33 +158,40 @@ class SummonAnimator {
             .setFooter({ text: footerText });
     }
 
-    // ENHANCED: Use GachaRevealUtils for detailed 10x summary
+    // FIXED: Enhanced 10x summary with proper error handling
     static create10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
-        // Convert fruits and results to the format expected by GachaRevealUtils with safety checks
-        const enhancedResults = fruits.map((fruit, index) => {
-            const result = results[index] || {};
-            
-            // Ensure all required properties exist with safe defaults - FIXED MAPPING
-            const safeFruit = {
-                id: fruit.id || `fruit_${index}`,                       // FIXED: Use fruit.id directly
-                fruit_name: fruit.name || 'Unknown Fruit',              // FIXED: Map name to fruit_name
-                fruit_type: fruit.type || 'Unknown',                    // FIXED: Map type to fruit_type
-                fruit_rarity: fruit.rarity || 'common',                 // FIXED: Map rarity to fruit_rarity
-                base_cp: Math.floor((fruit.multiplier || 1) * 100),     // FIXED: Calculate from multiplier
-                fruit_description: fruit.description || 'A mysterious Devil Fruit power',
-                total_cp: Math.floor((fruit.multiplier || 1) * 100),    // FIXED: Calculate from multiplier
-                count: result.duplicateCount || 1
-            };
-            
-            return {
-                fruit: safeFruit,
-                isNew: (result.duplicateCount || 1) === 1,
-                pityUsed: result.pityUsed || false
-            };
-        });
-
-        // Use enhanced reveal if available, otherwise fall back to original
+        // FIXED: Enhanced error handling and data validation
         try {
+            // Validate input data
+            if (!fruits || !Array.isArray(fruits) || fruits.length === 0) {
+                console.warn('Invalid fruits data for 10x summary, using fallback');
+                return this.createOriginal10xSummary([], [], balance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
+            }
+
+            // Convert fruits and results to the format expected by GachaRevealUtils with COMPREHENSIVE safety checks
+            const enhancedResults = fruits.map((fruit, index) => {
+                const result = results?.[index] || {};
+                
+                // FIXED: Ensure ALL required properties exist with safe defaults and proper mapping
+                const safeFruit = {
+                    id: fruit?.id || fruit?.fruit_id || `fruit_${index}`,
+                    fruit_name: fruit?.name || fruit?.fruit_name || 'Unknown Fruit',
+                    fruit_type: fruit?.type || fruit?.fruit_type || 'Unknown',
+                    fruit_rarity: fruit?.rarity || fruit?.fruit_rarity || 'common',
+                    base_cp: Math.floor((parseFloat(fruit?.multiplier) || 1) * 100),
+                    fruit_description: fruit?.description || fruit?.fruit_description || fruit?.fruit_power || 'A mysterious Devil Fruit power',
+                    total_cp: Math.floor((parseFloat(fruit?.multiplier) || 1) * 100),
+                    count: result.duplicateCount || 1
+                };
+                
+                return {
+                    fruit: safeFruit,
+                    isNew: (result.duplicateCount || 1) === 1,
+                    pityUsed: result.pityUsed || false
+                };
+            });
+
+            // Use enhanced reveal with comprehensive error handling
             const enhancedEmbed = createEnhancedGachaReveal(enhancedResults, batchNumber, totalBatches);
             
             // Add balance and pity information
@@ -166,7 +201,7 @@ class SummonAnimator {
             const currentDescription = enhancedEmbed.data.description || '';
             enhancedEmbed.setDescription(currentDescription + balanceText + pityDisplay);
             
-            // Determine highest rarity for color with safety checks
+            // Determine highest rarity for color with comprehensive safety checks
             const rarityPriority = {
                 'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4,
                 'legendary': 5, 'mythical': 6, 'divine': 7
@@ -176,7 +211,7 @@ class SummonAnimator {
             let highestPriority = 0;
             
             fruits.forEach(fruit => {
-                const rarity = fruit.rarity || 'common'; // Safety check
+                const rarity = fruit?.rarity || fruit?.fruit_rarity || 'common';
                 const priority = rarityPriority[rarity] || 1;
                 if (priority > highestPriority) {
                     highestPriority = priority;
@@ -197,95 +232,49 @@ class SummonAnimator {
             
         } catch (error) {
             console.warn('Enhanced reveal failed, using fallback:', error.message);
-            console.warn('Fruits data:', fruits.map(f => ({ name: f.name, rarity: f.rarity, type: f.type })));
-            // Fallback to original implementation
-            return this.createOriginal10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
+            console.warn('Fruits data sample:', fruits?.slice(0, 2)?.map(f => ({ 
+                id: f?.id, 
+                name: f?.name, 
+                rarity: f?.rarity, 
+                type: f?.type,
+                hasName: !!f?.name,
+                hasRarity: !!f?.rarity,
+                rarityType: typeof f?.rarity
+            })));
+            
+            // Fallback to original implementation with error handling
+            return this.createOriginal10xSummary(fruits || [], results || [], balance, pityInfo, pityUsedInSession, batchNumber, totalBatches);
         }
     }
 
-    // Original implementation as fallback
-    static createOriginal10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
-        let detailedResults = '';
-        fruits.forEach((fruit, index) => {
-            const result = results[index];
-            const raritySquare = this.getRaritySquare(fruit.rarity);
-            const globalNumber = ((batchNumber - 1) * 10 + index + 1).toString().padStart(2, '0');
-            
-            const duplicateCount = result.duplicateCount || 1;
-            const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
-            const pityIndicator = result.pityUsed ? ' 🎯' : '';
-            
-            detailedResults += `**${globalNumber}.** ${raritySquare} **${fruit.name}**${pityIndicator} (${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)})\n`;
-            detailedResults += `      📊 **Status:** ${duplicateText}\n`;
-            detailedResults += `      🔮 **Type:** ${fruit.type}\n`;
-            detailedResults += `      💪 **CP Multiplier:** x${fruit.multiplier}\n`;
-            detailedResults += `      🎯 **Description:** ${fruit.description}\n`;
-            detailedResults += `      ⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n`;
-        });
-
-        const rarityPriority = {
-            'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4,
-            'legendary': 5, 'mythical': 6, 'divine': 7
-        };
-        
-        let highestRarity = 'common';
-        let highestPriority = 0;
-        
-        fruits.forEach(fruit => {
-            const priority = rarityPriority[fruit.rarity] || 0;
-            if (priority > highestPriority) {
-                highestPriority = priority;
-                highestRarity = fruit.rarity;
-            }
-        });
-
-        const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity];
-
-        let title = '🍈 10x Devil Fruit Summoning Complete!';
-        if (totalBatches > 1) {
-            title = `🍈 Devil Fruit Batch ${batchNumber}/${totalBatches} Complete!`;
-        }
-
-        const pityDisplay = batchNumber === totalBatches ? GachaService.formatPityDisplay(pityInfo, pityUsedInSession) : '';
-        const balanceText = batchNumber === totalBatches ? `💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n` : '';
-
-        const embed = new EmbedBuilder()
-            .setTitle(title)
-            .setDescription(`🎉 **Batch ${batchNumber} Results:** 🎉\n\n${detailedResults}${balanceText}${pityDisplay}${batchNumber === totalBatches ? '\n\n✨ All fruits have been added to your collection!' : ''}`)
-            .setColor(highestColor)
-            .setTimestamp();
-
-        let footerText = totalBatches > 1 ? `Batch ${batchNumber} of ${totalBatches}` : '🏴‍☠️ Your legend grows on the Grand Line!';
-        if (pityUsedInSession && batchNumber === totalBatches) {
-            footerText = '✨ PITY ACTIVATED THIS SESSION! | ' + footerText;
-        }
-        embed.setFooter({ text: footerText });
-
-        return { embed, isDivine: highestRarity === 'divine' };
-    }
-
-    // ENHANCED: Use GachaRevealUtils for mega summary
+    // FIXED: Enhanced mega summary with proper error handling
     static createMegaSummary(allFruits, allResults, balance, pityInfo, pityUsedInSession, totalPulls) {
         try {
-            // Convert to format expected by GachaRevealUtils with safety checks
+            // Validate input data
+            if (!allFruits || !Array.isArray(allFruits) || allFruits.length === 0) {
+                console.warn('Invalid fruits data for mega summary, using fallback');
+                return this.createOriginalMegaSummary([], [], balance, pityInfo, pityUsedInSession, totalPulls);
+            }
+
+            // Convert to format expected by GachaRevealUtils with COMPREHENSIVE safety checks
             const userStats = {
-                berries: balance,
+                berries: balance || 0,
                 totalFruits: allFruits.length,
-                uniqueFruits: new Set(allFruits.map(f => f.name || 'Unknown')).size
+                uniqueFruits: new Set(allFruits.map(f => f?.name || f?.fruit_name || 'Unknown')).size
             };
 
             const enhancedResults = allFruits.map((fruit, index) => {
-                const result = allResults[index] || {};
+                const result = allResults?.[index] || {};
                 
-                // Ensure all required properties exist with safe defaults - FIXED MAPPING
+                // FIXED: Ensure ALL required properties exist with safe defaults and proper mapping
                 const safeFruit = {
-                    id: fruit.id || `fruit_${index}`,                       // FIXED: Use fruit.id directly
-                    fruit_name: fruit.name || 'Unknown Fruit',              // FIXED: Map name to fruit_name
-                    fruit_type: fruit.type || 'Unknown',                    // FIXED: Map type to fruit_type
-                    fruit_rarity: fruit.rarity || 'common',                 // FIXED: Map rarity to fruit_rarity
-                    base_cp: Math.floor((fruit.multiplier || 1) * 100),     // FIXED: Calculate from multiplier
-                    fruit_description: fruit.description || 'A mysterious Devil Fruit power',
-                    total_cp: Math.floor((fruit.multiplier || 1) * 100),    // FIXED: Calculate from multiplier
+                    id: fruit?.id || fruit?.fruit_id || `fruit_${index}`,
+                    fruit_name: fruit?.name || fruit?.fruit_name || 'Unknown Fruit',
+                    fruit_type: fruit?.type || fruit?.fruit_type || 'Unknown',
+                    fruit_rarity: fruit?.rarity || fruit?.fruit_rarity || 'common',
+                    base_cp: Math.floor((parseFloat(fruit?.multiplier) || 1) * 100),
+                    fruit_description: fruit?.description || fruit?.fruit_description || fruit?.fruit_power || 'A mysterious Devil Fruit power',
+                    total_cp: Math.floor((parseFloat(fruit?.multiplier) || 1) * 100),
                     count: result.duplicateCount || 1
                 };
                 
@@ -309,8 +298,8 @@ class SummonAnimator {
             const bestRarity = allFruits.length > 0 ? 
                 allFruits.reduce((best, fruit) => {
                     const rarityPriority = { 'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4, 'legendary': 5, 'mythical': 6, 'divine': 7 };
-                    const currentRarity = fruit.rarity || 'common'; // Safety check
-                    const bestRarity = best || 'common'; // Safety check
+                    const currentRarity = fruit?.rarity || fruit?.fruit_rarity || 'common';
+                    const bestRarity = best || 'common';
                     return (rarityPriority[currentRarity] || 1) > (rarityPriority[bestRarity] || 1) ? currentRarity : bestRarity;
                 }, 'common') : 'legendary';
             
@@ -327,27 +316,116 @@ class SummonAnimator {
             
         } catch (error) {
             console.warn('Enhanced mega summary failed, using fallback:', error.message);
-            console.warn('Fruits data sample:', allFruits.slice(0, 3).map(f => ({ name: f.name, rarity: f.rarity, type: f.type })));
+            console.warn('Fruits data sample:', allFruits?.slice(0, 3)?.map(f => ({ 
+                id: f?.id, 
+                name: f?.name, 
+                rarity: f?.rarity, 
+                type: f?.type,
+                hasName: !!f?.name,
+                hasRarity: !!f?.rarity 
+            })));
+            
             // Fallback to original implementation
-            return this.createOriginalMegaSummary(allFruits, allResults, balance, pityInfo, pityUsedInSession, totalPulls);
+            return this.createOriginalMegaSummary(allFruits || [], allResults || [], balance, pityInfo, pityUsedInSession, totalPulls);
         }
+    }
+
+    // Original implementation as fallback
+    static createOriginal10xSummary(fruits, results, balance, pityInfo, pityUsedInSession, batchNumber = 1, totalBatches = 1) {
+        let detailedResults = '';
+        
+        if (fruits && fruits.length > 0) {
+            fruits.forEach((fruit, index) => {
+                const result = results?.[index] || {};
+                const safeFruit = {
+                    name: fruit?.name || 'Unknown Fruit',
+                    rarity: fruit?.rarity || 'common',
+                    type: fruit?.type || 'Unknown',
+                    multiplier: fruit?.multiplier || '1.0',
+                    description: fruit?.description || 'A mysterious Devil Fruit power',
+                    skillName: fruit?.skillName || 'Unknown Ability',
+                    skillDamage: fruit?.skillDamage || 50,
+                    skillCooldown: fruit?.skillCooldown || 2
+                };
+                
+                const raritySquare = this.getRaritySquare(safeFruit.rarity);
+                const globalNumber = ((batchNumber - 1) * 10 + index + 1).toString().padStart(2, '0');
+                
+                const duplicateCount = result.duplicateCount || 1;
+                const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
+                const pityIndicator = result.pityUsed ? ' 🎯' : '';
+                
+                detailedResults += `**${globalNumber}.** ${raritySquare} **${safeFruit.name}**${pityIndicator} (${safeFruit.rarity.charAt(0).toUpperCase() + safeFruit.rarity.slice(1)})\n`;
+                detailedResults += `      📊 **Status:** ${duplicateText}\n`;
+                detailedResults += `      🔮 **Type:** ${safeFruit.type}\n`;
+                detailedResults += `      💪 **CP Multiplier:** x${safeFruit.multiplier}\n`;
+                detailedResults += `      🎯 **Description:** ${safeFruit.description}\n`;
+                detailedResults += `      ⚔️ **Ability:** ${safeFruit.skillName} (${safeFruit.skillDamage} DMG, ${safeFruit.skillCooldown}s CD)\n\n`;
+            });
+        }
+
+        const rarityPriority = {
+            'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4,
+            'legendary': 5, 'mythical': 6, 'divine': 7
+        };
+        
+        let highestRarity = 'common';
+        let highestPriority = 0;
+        
+        if (fruits && fruits.length > 0) {
+            fruits.forEach(fruit => {
+                const rarity = fruit?.rarity || 'common';
+                const priority = rarityPriority[rarity] || 0;
+                if (priority > highestPriority) {
+                    highestPriority = priority;
+                    highestRarity = rarity;
+                }
+            });
+        }
+
+        const highestColor = highestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[highestRarity] || RARITY_COLORS.common;
+
+        let title = '🍈 10x Devil Fruit Summoning Complete!';
+        if (totalBatches > 1) {
+            title = `🍈 Devil Fruit Batch ${batchNumber}/${totalBatches} Complete!`;
+        }
+
+        const pityDisplay = batchNumber === totalBatches ? GachaService.formatPityDisplay(pityInfo, pityUsedInSession) : '';
+        const balanceText = batchNumber === totalBatches ? `💰 **Remaining Berries:** ${balance?.toLocaleString() || 0}\n\n` : '';
+
+        const embed = new EmbedBuilder()
+            .setTitle(title)
+            .setDescription(`🎉 **Batch ${batchNumber} Results:** 🎉\n\n${detailedResults}${balanceText}${pityDisplay}${batchNumber === totalBatches ? '\n\n✨ All fruits have been added to your collection!' : ''}`)
+            .setColor(highestColor)
+            .setTimestamp();
+
+        let footerText = totalBatches > 1 ? `Batch ${batchNumber} of ${totalBatches}` : '🏴‍☠️ Your legend grows on the Grand Line!';
+        if (pityUsedInSession && batchNumber === totalBatches) {
+            footerText = '✨ PITY ACTIVATED THIS SESSION! | ' + footerText;
+        }
+        embed.setFooter({ text: footerText });
+
+        return { embed, isDivine: highestRarity === 'divine' };
     }
 
     // Original mega summary as fallback
     static createOriginalMegaSummary(allFruits, allResults, balance, pityInfo, pityUsedInSession, totalPulls) {
-        // Count rarities
+        // Count rarities with safety checks
         const rarityCounts = {};
-        const pityUsedCount = allResults.filter(r => r.pityUsed).length;
+        const pityUsedCount = allResults?.filter(r => r?.pityUsed)?.length || 0;
         
-        allFruits.forEach(fruit => {
-            rarityCounts[fruit.rarity] = (rarityCounts[fruit.rarity] || 0) + 1;
-        });
+        if (allFruits && allFruits.length > 0) {
+            allFruits.forEach(fruit => {
+                const rarity = fruit?.rarity || 'common';
+                rarityCounts[rarity] = (rarityCounts[rarity] || 0) + 1;
+            });
+        }
 
-        // Find best fruits
+        // Find best fruits with safety checks
         const rarityPriority = { 'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4, 'legendary': 5, 'mythical': 6, 'divine': 7 };
-        const bestFruits = allFruits
-            .filter(fruit => rarityPriority[fruit.rarity] >= 5) // Legendary+
-            .sort((a, b) => rarityPriority[b.rarity] - rarityPriority[a.rarity])
+        const bestFruits = (allFruits || [])
+            .filter(fruit => rarityPriority[fruit?.rarity || 'common'] >= 5) // Legendary+
+            .sort((a, b) => rarityPriority[b?.rarity || 'common'] - rarityPriority[a?.rarity || 'common'])
             .slice(0, 10);
 
         let summaryText = `🎉 **${totalPulls}x MEGA SUMMONING COMPLETE!** 🎉\n\n`;
@@ -364,8 +442,8 @@ class SummonAnimator {
         if (bestFruits.length > 0) {
             summaryText += `\n🌟 **Best Pulls:**\n`;
             bestFruits.forEach((fruit, index) => {
-                const emoji = this.getRaritySquare(fruit.rarity);
-                summaryText += `${emoji} **${fruit.name}** (${fruit.rarity})\n`;
+                const emoji = this.getRaritySquare(fruit?.rarity || 'common');
+                summaryText += `${emoji} **${fruit?.name || 'Unknown Fruit'}** (${fruit?.rarity || 'common'})\n`;
             });
         }
 
@@ -373,11 +451,11 @@ class SummonAnimator {
             summaryText += `\n🎯 **Pity Activations:** ${pityUsedCount} times\n`;
         }
 
-        summaryText += `\n💰 **Remaining Berries:** ${balance.toLocaleString()}\n\n`;
+        summaryText += `\n💰 **Remaining Berries:** ${balance?.toLocaleString() || 0}\n\n`;
         summaryText += GachaService.formatPityDisplay(pityInfo, pityUsedInSession);
 
-        const bestRarity = bestFruits.length > 0 ? bestFruits[0].rarity : 'legendary';
-        const color = bestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[bestRarity];
+        const bestRarity = bestFruits.length > 0 ? (bestFruits[0]?.rarity || 'legendary') : 'legendary';
+        const color = bestRarity === 'divine' ? 0xFF0000 : RARITY_COLORS[bestRarity] || RARITY_COLORS.common;
 
         const embed = new EmbedBuilder()
             .setTitle(`🏆 ${totalPulls}x MEGA SUMMONING RESULTS!`)
@@ -500,19 +578,24 @@ module.exports = {
             allResults.push(result);
             
             const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
-                f.name === fruit.name || f.id === fruit.id  // FIXED: Use correct property names
+                f.name === fruit.name || f.id === fruit.id
             );
             
-            // ENHANCED: Get detailed skill information with FIXED property mapping
-            const skillData = getSkillDisplay(fruit.id, fruit.rarity);
+            // FIXED: Get detailed skill information with COMPREHENSIVE safety checks
+            let skillData = null;
+            try {
+                skillData = getSkillDisplay(fruit.id, fruit.rarity);
+            } catch (error) {
+                console.warn('Failed to get skill display for fruit:', fruit.id, error.message);
+            }
             
             const displayFruit = {
-                id: fruit.id,
-                name: fruit.name || 'Unknown Fruit',                    // FIXED: fruit.name not fruit.fruit_name
-                type: fruit.type || 'Unknown',                          // FIXED: fruit.type not fruit.fruit_type
-                rarity: fruit.rarity || 'common',                       // FIXED: fruit.rarity not fruit.fruit_rarity
-                multiplier: ((fruit.multiplier * 100 || 100) / 100).toFixed(1),  // FIXED: Use fruit.multiplier
-                description: fruit.description || fruit.power || 'A mysterious Devil Fruit power',
+                id: fruit.id || fruit.fruit_id || `fruit_${i}`,
+                name: fruit.name || fruit.fruit_name || 'Unknown Fruit',
+                type: fruit.type || fruit.fruit_type || 'Unknown',
+                rarity: fruit.rarity || fruit.fruit_rarity || 'common',
+                multiplier: ((parseFloat(fruit.multiplier) || parseFloat(fruit.base_cp) / 100 || 1)).toFixed(1),
+                description: fruit.description || fruit.fruit_description || fruit.power || 'A mysterious Devil Fruit power',
                 skillName: skillData?.name || actualFruit?.skill?.name || 'Unknown Ability',
                 skillDamage: skillData?.damage || actualFruit?.skill?.damage || 50,
                 skillCooldown: skillData?.cooldown || actualFruit?.skill?.cooldown || 2
@@ -566,16 +649,21 @@ module.exports = {
                 f.name === fruit.fruit_name || f.id === fruit.fruit_id
             );
             
-            // ENHANCED: Get detailed skill information with safety checks
-            const skillData = getSkillDisplay(fruit.fruit_id, fruit.fruit_rarity);
+            // FIXED: Get detailed skill information with COMPREHENSIVE safety checks
+            let skillData = null;
+            try {
+                skillData = getSkillDisplay(fruit.fruit_id, fruit.fruit_rarity);
+            } catch (error) {
+                console.warn('Failed to get skill display for fruit:', fruit.fruit_id, error.message);
+            }
             
             const displayFruit = {
-                id: fruit.fruit_id,
-                name: fruit.fruit_name || 'Unknown Fruit',
-                type: fruit.fruit_type || 'Unknown', 
-                rarity: fruit.fruit_rarity || 'common', // CRITICAL: Ensure rarity is never undefined
-                multiplier: ((fruit.base_cp || 100) / 100).toFixed(1),
-                description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power',
+                id: fruit.fruit_id || fruit.id || `fruit_${i}`,
+                name: fruit.fruit_name || fruit.name || 'Unknown Fruit',
+                type: fruit.fruit_type || fruit.type || 'Unknown',
+                rarity: fruit.fruit_rarity || fruit.rarity || 'common', // CRITICAL: Always fallback to 'common'
+                multiplier: ((parseFloat(fruit.base_cp) || 100) / 100).toFixed(1),
+                description: fruit.fruit_description || fruit.description || fruit.fruit_power || 'A mysterious Devil Fruit power',
                 skillName: skillData?.name || actualFruit?.skill?.name || 'Unknown Ability',
                 skillDamage: skillData?.damage || actualFruit?.skill?.damage || 50,
                 skillCooldown: skillData?.cooldown || actualFruit?.skill?.cooldown || 2
@@ -675,16 +763,21 @@ module.exports = {
                 f.name === fruit.fruit_name || f.id === fruit.fruit_id
             );
             
-            // ENHANCED: Get detailed skill information with safety checks
-            const skillData = getSkillDisplay(fruit.fruit_id, fruit.fruit_rarity);
+            // FIXED: Get detailed skill information with COMPREHENSIVE safety checks
+            let skillData = null;
+            try {
+                skillData = getSkillDisplay(fruit.fruit_id, fruit.fruit_rarity);
+            } catch (error) {
+                console.warn('Failed to get skill display for fruit:', fruit.fruit_id, error.message);
+            }
             
             const displayFruit = {
-                id: fruit.fruit_id,
-                name: fruit.fruit_name || 'Unknown Fruit',
-                type: fruit.fruit_type || 'Unknown',
-                rarity: fruit.fruit_rarity || 'common', // CRITICAL: Ensure rarity is never undefined
-                multiplier: ((fruit.base_cp || 100) / 100).toFixed(1),
-                description: fruit.fruit_description || fruit.fruit_power || 'A mysterious Devil Fruit power',
+                id: fruit.fruit_id || fruit.id || `fruit_${i}`,
+                name: fruit.fruit_name || fruit.name || 'Unknown Fruit',
+                type: fruit.fruit_type || fruit.type || 'Unknown',
+                rarity: fruit.fruit_rarity || fruit.rarity || 'common', // CRITICAL: Always fallback to 'common'
+                multiplier: ((parseFloat(fruit.base_cp) || 100) / 100).toFixed(1),
+                description: fruit.fruit_description || fruit.description || fruit.fruit_power || 'A mysterious Devil Fruit power',
                 skillName: skillData?.name || actualFruit?.skill?.name || 'Unknown Ability',
                 skillDamage: skillData?.damage || actualFruit?.skill?.damage || 50,
                 skillCooldown: skillData?.cooldown || actualFruit?.skill?.cooldown || 2
@@ -853,8 +946,20 @@ module.exports = {
     },
 
     createRarityStoppedReveal(fruit, result, summonNumber, totalSummons, currentPity, rainbowPosition, phase) {
-        const raritySquare = SummonAnimator.getRaritySquare(fruit.rarity);
-        const color = RARITY_COLORS[fruit.rarity];
+        // FIXED: Add comprehensive safety checks
+        const safeFruit = {
+            name: fruit?.name || 'Unknown Fruit',
+            rarity: fruit?.rarity || 'common',
+            type: fruit?.type || 'Unknown',
+            multiplier: fruit?.multiplier || '1.0',
+            description: fruit?.description || 'A mysterious Devil Fruit power',
+            skillName: fruit?.skillName || 'Unknown Ability',
+            skillDamage: fruit?.skillDamage || 50,
+            skillCooldown: fruit?.skillCooldown || 2
+        };
+
+        const raritySquare = SummonAnimator.getRaritySquare(safeFruit.rarity);
+        const color = RARITY_COLORS[safeFruit.rarity] || RARITY_COLORS.common;
         const colors = ['🟧', '🟨', '🟩', '🟦', '🟪', '⬜', '🟥'];
         
         let pattern = [];
@@ -885,24 +990,24 @@ module.exports = {
         
         const rainbowPattern = pattern.join(' ');
         
-        const duplicateCount = result.duplicateCount || 1;
+        const duplicateCount = result?.duplicateCount || 1;
         const duplicateText = duplicateCount === 1 ? '✨ New Discovery!' : `Total Owned: ${duplicateCount}`;
         
         const description = `✨ **ACQUIRED!**\n\n${rainbowPattern}\n\n` +
             `📊 **Status:** ${duplicateText}\n` +
-            `🍃 **Name:** ${fruit.name}\n` +
-            `🔮 **Type:** ${fruit.type}\n` +
-            `⭐ **Rarity:** ${raritySquare} ${fruit.rarity.charAt(0).toUpperCase() + fruit.rarity.slice(1)}\n` +
-            `💪 **CP Multiplier:** x${fruit.multiplier}` +
-            (result.pityUsed ? ' 🎯 **PITY!**' : '') + `\n` +
-            `🎯 **Description:** ${fruit.description}\n` +
-            `⚔️ **Ability:** ${fruit.skillName} (${fruit.skillDamage} DMG, ${fruit.skillCooldown}s CD)\n\n` +
-            `🔥 **Total CP:** ${result.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
+            `🍃 **Name:** ${safeFruit.name}\n` +
+            `🔮 **Type:** ${safeFruit.type}\n` +
+            `⭐ **Rarity:** ${raritySquare} ${safeFruit.rarity.charAt(0).toUpperCase() + safeFruit.rarity.slice(1)}\n` +
+            `💪 **CP Multiplier:** x${safeFruit.multiplier}` +
+            (result?.pityUsed ? ' 🎯 **PITY!**' : '') + `\n` +
+            `🎯 **Description:** ${safeFruit.description}\n` +
+            `⚔️ **Ability:** ${safeFruit.skillName} (${safeFruit.skillDamage} DMG, ${safeFruit.skillCooldown}s CD)\n\n` +
+            `🔥 **Total CP:** ${result?.fruit?.total_cp?.toLocaleString() || '250'} CP\n` +
             `💰 **Remaining Berries:** Loading...\n\n` +
             `${rainbowPattern}`;
         
         let footerText = `Summon ${summonNumber} of ${totalSummons} - ✨ Acquired! | Pity: ${currentPity}/1500`;
-        if (result.pityUsed) {
+        if (result?.pityUsed) {
             footerText = `✨ PITY USED! | ${footerText}`;
         }
         
@@ -911,53 +1016,6 @@ module.exports = {
             .setDescription(description)
             .setColor(color)
             .setFooter({ text: footerText });
-    },
-
-    async showProgressAnimation(interaction, frame, maxFrames, currentPulls, totalPulls) {
-        const pattern = SummonAnimator.getRainbowPattern(frame, 20);
-        const color = SummonAnimator.getRainbowColor(frame);
-        const progressPercent = Math.floor((currentPulls / totalPulls) * 100);
-        
-        const currentPity = await GachaService.getPityCount(interaction.user.id);
-        
-        const embed = new EmbedBuilder()
-            .setTitle(`🍈 ${totalPulls}x Mega Summoning in Progress...`)
-            .setDescription(
-                `🌊 **Scanning the Grand Line for Devil Fruits...**\n\n` +
-                `${pattern}\n\n` +
-                `📊 **Progress:** ${currentPulls}/${totalPulls} (${progressPercent}%)\n` +
-                `🎯 **Current Pity:** ${currentPity}/1500\n` +
-                `⚡ **Status:** Searching for legendary powers...\n\n` +
-                `${pattern}`
-            )
-            .setColor(color)
-            .setFooter({ text: `Processing... ${currentPulls}/${totalPulls} completed | Pity: ${currentPity}/1500` })
-            .setTimestamp();
-        
-        try {
-            await interaction.editReply({ embeds: [embed] });
-        } catch (error) {
-            // Ignore rate limit errors during animation
-            if (error.code !== 10062 && error.code !== 50013) {
-                console.log('Animation update error:', error.message);
-            }
-        }
-    },
-
-    async runQuickAnimation(interaction, fruit, result, summonNumber, totalSummons, currentPity) {
-        for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
-            const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity);
-            
-            await interaction.editReply({ embeds: [embed] });
-            await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        const revealEmbed = SummonAnimator.createQuickReveal(fruit, result, summonNumber, totalSummons, currentPity);
-        await interaction.editReply({ embeds: [revealEmbed] });
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
     },
 
     async showBatchNavigation(interaction, batchEmbeds, summaryEmbed, currentPage) {
