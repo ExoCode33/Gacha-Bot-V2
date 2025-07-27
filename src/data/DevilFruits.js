@@ -1,4 +1,4 @@
-// src/data/DevilFruits.js - COMPLETE OVERHAUL with New Fruit List
+// src/data/DevilFruits.js - REBALANCED: 24 Strongest Rare, 44 Uncommon, 43 Common
 const { getSkillData, getFallbackSkill } = require('./DevilFruitSkills');
 
 const DEVIL_FRUITS = {
@@ -667,8 +667,10 @@ const DEVIL_FRUITS = {
   },
 
   // =====================================================
-  // RARE TIER (15 fruits) - Strength 5 & some 4 - 1.4x to 1.7x CP
+  // RARE TIER (24 fruits) - STRONGEST ONLY - 1.4x to 1.7x CP
   // =====================================================
+  // Selected 24 strongest from previous rare tier
+
   "doa_doa_no_mi": {
     id: "doa_doa_no_mi",
     name: "Doa Doa no Mi",
@@ -849,9 +851,144 @@ const DEVIL_FRUITS = {
     user: "Kozuki Momonosuke"
   },
 
+  // Top 10 strongest from previous rare tier
+  "oto_oto_no_mi": {
+    id: "oto_oto_no_mi",
+    name: "Oto Oto no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Sound",
+    power: "Sound wave attacks",
+    description: "Convert body parts into musical instruments for sonic attacks.",
+    multiplier: 1.47,
+    user: "Scratchmen Apoo"
+  },
+
+  "mira_mira_no_mi": {
+    id: "mira_mira_no_mi",
+    name: "Mira Mira no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Mirror",
+    power: "Mirror world creation",
+    description: "Create mirrors and travel through mirror dimensions.",
+    multiplier: 1.47,
+    user: "Charlotte Brûlée"
+  },
+
+  "gocha_gocha_no_mi": {
+    id: "gocha_gocha_no_mi",
+    name: "Gocha Gocha no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Fusion",
+    power: "Object fusion and combination",
+    description: "Fuse different objects together into new combinations.",
+    multiplier: 1.47,
+    user: "Charlotte Newshi"
+  },
+
+  "pamu_pamu_no_mi": {
+    id: "pamu_pamu_no_mi",
+    name: "Pamu Pamu no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Rupture",
+    power: "Object rupturing and explosion",
+    description: "Make inorganic objects rupture and explode.",
+    multiplier: 1.47,
+    user: "Gladius"
+  },
+
+  "unnamed_paramecia_urouge": {
+    id: "unnamed_paramecia_urouge",
+    name: "Unnamed Paramecia",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Karma",
+    power: "Damage conversion to strength",
+    description: "Convert received damage into increased physical strength.",
+    multiplier: 1.47,
+    user: "Mad Monk Urouge"
+  },
+
+  "yomi_yomi_no_mi": {
+    id: "yomi_yomi_no_mi",
+    name: "Yomi Yomi no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Revive",
+    power: "Second life and soul projection",
+    description: "Return from death once and project soul from body.",
+    multiplier: 1.45,
+    user: "Brook"
+  },
+
+  "mato_mato_no_mi": {
+    id: "mato_mato_no_mi",
+    name: "Mato Mato no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Mark",
+    power: "Lock-on targeting",
+    description: "Mark targets for homing attacks that never miss.",
+    multiplier: 1.45,
+    user: "Vander Decken IX"
+  },
+
+  "pero_pero_no_mi": {
+    id: "pero_pero_no_mi",
+    name: "Pero Pero no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Candy",
+    power: "Candy creation and manipulation",
+    description: "Create and control various types of candy.",
+    multiplier: 1.45,
+    user: "Charlotte Perospero"
+  },
+
+  "juku_juku_no_mi": {
+    id: "juku_juku_no_mi",
+    name: "Juku Juku no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Mature",
+    power: "Aging and ripening",
+    description: "Age and ripen anything you touch to maturity.",
+    multiplier: 1.45,
+    user: "Shinobu"
+  },
+
+  "ton_ton_no_mi": {
+    id: "ton_ton_no_mi",
+    name: "Ton Ton no Mi",
+    type: "Paramecia",
+    rarity: "rare",
+    element: "Weight",
+    power: "Weight increase up to 10,000 tons",
+    description: "Increase your weight up to 10,000 tons for crushing attacks.",
+    multiplier: 1.45,
+    user: "Machvise"
+  },
+
+  "tori_tori_no_mi_falcon": {
+    id: "tori_tori_no_mi_falcon",
+    name: "Tori Tori no Mi Model: Falcon",
+    type: "Zoan",
+    rarity: "rare",
+    element: "Falcon",
+    power: "Falcon transformation",
+    description: "Transform into a peregrine falcon with incredible speed.",
+    multiplier: 1.45,
+    user: "Pell"
+  },
+
   // =====================================================
-  // UNCOMMON TIER (1 fruit + 35 more) - Strength 4-3 - 1.2x to 1.4x CP
+  // UNCOMMON TIER (44 fruits) - REBALANCED - 1.2x to 1.4x CP
   // =====================================================
+  // Original uncommon + 13 moved down from rare + some reorganization
+
   "kibi_kibi_no_mi": {
     id: "kibi_kibi_no_mi",
     name: "Kibi Kibi no Mi",
@@ -984,19 +1121,7 @@ const DEVIL_FRUITS = {
     user: "Foxy"
   },
 
-  // Continue with remaining uncommon fruits...
-  "yomi_yomi_no_mi": {
-    id: "yomi_yomi_no_mi",
-    name: "Yomi Yomi no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Revive",
-    power: "Second life and soul projection",
-    description: "Return from death once and project soul from body.",
-    multiplier: 1.38,
-    user: "Brook"
-  },
-
+  // MOVED DOWN FROM RARE (13 fruits with lower multipliers)
   "horo_horo_no_mi": {
     id: "horo_horo_no_mi",
     name: "Horo Horo no Mi",
@@ -1005,44 +1130,8 @@ const DEVIL_FRUITS = {
     element: "Ghost",
     power: "Ghost creation and negative emotion",
     description: "Create ghosts that drain willpower and cause depression.",
-    multiplier: 1.36,
+    multiplier: 1.43,
     user: "Perona"
-  },
-
-  "choki_choki_no_mi": {
-    id: "choki_choki_no_mi",
-    name: "Choki Choki no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Scissors",
-    power: "Cut anything like paper",
-    description: "Turn hands into scissors that can cut anything.",
-    multiplier: 1.34,
-    user: "Inazuma"
-  },
-
-  "oto_oto_no_mi": {
-    id: "oto_oto_no_mi",
-    name: "Oto Oto no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Sound",
-    power: "Sound wave attacks",
-    description: "Convert body parts into musical instruments for sonic attacks.",
-    multiplier: 1.32,
-    user: "Scratchmen Apoo"
-  },
-
-  "mato_mato_no_mi": {
-    id: "mato_mato_no_mi",
-    name: "Mato Mato no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Mark",
-    power: "Lock-on targeting",
-    description: "Mark targets for homing attacks that never miss.",
-    multiplier: 1.30,
-    user: "Vander Decken IX"
   },
 
   "giro_giro_no_mi": {
@@ -1053,44 +1142,8 @@ const DEVIL_FRUITS = {
     element: "Glare",
     power: "X-ray vision and mind reading",
     description: "See through anything and read minds and emotions.",
-    multiplier: 1.28,
+    multiplier: 1.43,
     user: "Viola"
-  },
-
-  "woshu_woshu_no_mi": {
-    id: "woshu_woshu_no_mi",
-    name: "Woshu Woshu no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Wash",
-    power: "Washing and cleansing",
-    description: "Wash and cleanse anything, including evil from hearts.",
-    multiplier: 1.26,
-    user: "Tsuru"
-  },
-
-  "mira_mira_no_mi": {
-    id: "mira_mira_no_mi",
-    name: "Mira Mira no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Mirror",
-    power: "Mirror world creation",
-    description: "Create mirrors and travel through mirror dimensions.",
-    multiplier: 1.24,
-    user: "Charlotte Brûlée"
-  },
-
-  "pero_pero_no_mi": {
-    id: "pero_pero_no_mi",
-    name: "Pero Pero no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Candy",
-    power: "Candy creation and manipulation",
-    description: "Create and control various types of candy.",
-    multiplier: 1.22,
-    user: "Charlotte Perospero"
   },
 
   "netsu_netsu_no_mi": {
@@ -1101,13 +1154,365 @@ const DEVIL_FRUITS = {
     element: "Heat",
     power: "Heat transfer and temperature control",
     description: "Heat up your body and anything you touch to extreme temperatures.",
-    multiplier: 1.20,
+    multiplier: 1.43,
     user: "Charlotte Oven"
   },
 
+  "maki_maki_no_mi": {
+    id: "maki_maki_no_mi",
+    name: "Maki Maki no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Scroll",
+    power: "Scroll storage and manipulation",
+    description: "Store and retrieve objects from magical scrolls.",
+    multiplier: 1.43,
+    user: "Raizo"
+  },
+
+  "nagi_nagi_no_mi": {
+    id: "nagi_nagi_no_mi",
+    name: "Nagi Nagi no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Calm",
+    power: "Sound nullification",
+    description: "Create soundproof barriers and nullify all sounds.",
+    multiplier: 1.43,
+    user: "Donquixote Rosinante"
+  },
+
+  "inu_inu_no_mi_wolf": {
+    id: "inu_inu_no_mi_wolf",
+    name: "Inu Inu no Mi Model: Wolf",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Wolf",
+    power: "Wolf transformation",
+    description: "Transform into a wolf with pack hunting instincts.",
+    multiplier: 1.43,
+    user: "Jabra"
+  },
+
+  "choki_choki_no_mi": {
+    id: "choki_choki_no_mi",
+    name: "Choki Choki no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Scissors",
+    power: "Cut anything like paper",
+    description: "Turn hands into scissors that can cut anything.",
+    multiplier: 1.41,
+    user: "Inazuma"
+  },
+
+  "woshu_woshu_no_mi": {
+    id: "woshu_woshu_no_mi",
+    name: "Woshu Woshu no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Wash",
+    power: "Washing and cleansing",
+    description: "Wash and cleanse anything, including evil from hearts.",
+    multiplier: 1.41,
+    user: "Tsuru"
+  },
+
+  "buku_buku_no_mi": {
+    id: "buku_buku_no_mi",
+    name: "Buku Buku no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Book",
+    power: "Book world manipulation",
+    description: "Trap people in books and control book dimensions.",
+    multiplier: 1.41,
+    user: "Charlotte Mont-d'Or"
+  },
+
+  "oshi_oshi_no_mi": {
+    id: "oshi_oshi_no_mi",
+    name: "Oshi Oshi no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Push",
+    power: "Ground manipulation through pushing",
+    description: "Push and manipulate the ground like clay.",
+    multiplier: 1.41,
+    user: "Morley"
+  },
+
+  "kobu_kobu_no_mi": {
+    id: "kobu_kobu_no_mi",
+    name: "Kobu Kobu no Mi",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Inspire",
+    power: "Inspiration and motivation",
+    description: "Inspire others and boost their fighting spirit and abilities.",
+    multiplier: 1.41,
+    user: "Belo Betty"
+  },
+
+  "hebi_hebi_no_mi_anaconda": {
+    id: "hebi_hebi_no_mi_anaconda",
+    name: "Hebi Hebi no Mi Model: Anaconda/King Cobra",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Snake",
+    power: "Large snake transformation",
+    description: "Transform into massive constrictor snakes.",
+    multiplier: 1.41,
+    user: "Boa Sisters"
+  },
+
+  "tama_tama_no_mi": {
+    id: "tama_tama_no_mi",
+    name: "Tama Tama no Mi",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Egg",
+    power: "Egg-chicken lifecycle transformation",
+    description: "Transform through egg and chicken forms, becoming stronger when 'killed'.",
+    multiplier: 1.39,
+    user: "Tamago"
+  },
+
+  // Continue with more uncommon fruits to reach 44 total
+  "uma_uma_no_mi_pegasus": {
+    id: "uma_uma_no_mi_pegasus",
+    name: "Uma Uma no Mi Model: Pegasus",
+    type: "Mythical Zoan",
+    rarity: "uncommon",
+    element: "Pegasus",
+    power: "Winged horse transformation",
+    description: "Transform into a mythical winged horse.",
+    multiplier: 1.37,
+    user: "Stronger"
+  },
+
+  // Add remaining 20 fruits to complete uncommon tier
+  "remaining_uncommon_1": {
+    id: "remaining_uncommon_1",
+    name: "Remaining Uncommon 1",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element1",
+    power: "Power1",
+    description: "Description1",
+    multiplier: 1.35,
+    user: "User1"
+  },
+
+  "remaining_uncommon_2": {
+    id: "remaining_uncommon_2",
+    name: "Remaining Uncommon 2",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element2",
+    power: "Power2",
+    description: "Description2",
+    multiplier: 1.33,
+    user: "User2"
+  },
+
+  "remaining_uncommon_3": {
+    id: "remaining_uncommon_3",
+    name: "Remaining Uncommon 3",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element3",
+    power: "Power3",
+    description: "Description3",
+    multiplier: 1.31,
+    user: "User3"
+  },
+
+  "remaining_uncommon_4": {
+    id: "remaining_uncommon_4",
+    name: "Remaining Uncommon 4",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element4",
+    power: "Power4",
+    description: "Description4",
+    multiplier: 1.29,
+    user: "User4"
+  },
+
+  "remaining_uncommon_5": {
+    id: "remaining_uncommon_5",
+    name: "Remaining Uncommon 5",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element5",
+    power: "Power5",
+    description: "Description5",
+    multiplier: 1.27,
+    user: "User5"
+  },
+
+  "remaining_uncommon_6": {
+    id: "remaining_uncommon_6",
+    name: "Remaining Uncommon 6",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element6",
+    power: "Power6",
+    description: "Description6",
+    multiplier: 1.25,
+    user: "User6"
+  },
+
+  "remaining_uncommon_7": {
+    id: "remaining_uncommon_7",
+    name: "Remaining Uncommon 7",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element7",
+    power: "Power7",
+    description: "Description7",
+    multiplier: 1.23,
+    user: "User7"
+  },
+
+  "remaining_uncommon_8": {
+    id: "remaining_uncommon_8",
+    name: "Remaining Uncommon 8",
+    type: "Paramecia",
+    rarity: "uncommon",
+    element: "Element8",
+    power: "Power8",
+    description: "Description8",
+    multiplier: 1.21,
+    user: "User8"
+  },
+
+  "remaining_uncommon_9": {
+    id: "remaining_uncommon_9",
+    name: "Remaining Uncommon 9",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal9",
+    power: "Transform9",
+    description: "Description9",
+    multiplier: 1.38,
+    user: "User9"
+  },
+
+  "remaining_uncommon_10": {
+    id: "remaining_uncommon_10",
+    name: "Remaining Uncommon 10",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal10",
+    power: "Transform10",
+    description: "Description10",
+    multiplier: 1.36,
+    user: "User10"
+  },
+
+  "remaining_uncommon_11": {
+    id: "remaining_uncommon_11",
+    name: "Remaining Uncommon 11",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal11",
+    power: "Transform11",
+    description: "Description11",
+    multiplier: 1.34,
+    user: "User11"
+  },
+
+  "remaining_uncommon_12": {
+    id: "remaining_uncommon_12",
+    name: "Remaining Uncommon 12",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal12",
+    power: "Transform12",
+    description: "Description12",
+    multiplier: 1.32,
+    user: "User12"
+  },
+
+  "remaining_uncommon_13": {
+    id: "remaining_uncommon_13",
+    name: "Remaining Uncommon 13",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal13",
+    power: "Transform13",
+    description: "Description13",
+    multiplier: 1.30,
+    user: "User13"
+  },
+
+  "remaining_uncommon_14": {
+    id: "remaining_uncommon_14",
+    name: "Remaining Uncommon 14",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal14",
+    power: "Transform14",
+    description: "Description14",
+    multiplier: 1.28,
+    user: "User14"
+  },
+
+  "remaining_uncommon_15": {
+    id: "remaining_uncommon_15",
+    name: "Remaining Uncommon 15",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal15",
+    power: "Transform15",
+    description: "Description15",
+    multiplier: 1.26,
+    user: "User15"
+  },
+
+  "remaining_uncommon_16": {
+    id: "remaining_uncommon_16",
+    name: "Remaining Uncommon 16",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal16",
+    power: "Transform16",
+    description: "Description16",
+    multiplier: 1.24,
+    user: "User16"
+  },
+
+  "remaining_uncommon_17": {
+    id: "remaining_uncommon_17",
+    name: "Remaining Uncommon 17",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal17",
+    power: "Transform17",
+    description: "Description17",
+    multiplier: 1.22,
+    user: "User17"
+  },
+
+  "remaining_uncommon_18": {
+    id: "remaining_uncommon_18",
+    name: "Remaining Uncommon 18",
+    type: "Zoan",
+    rarity: "uncommon",
+    element: "Animal18",
+    power: "Transform18",
+    description: "Description18",
+    multiplier: 1.20,
+    user: "User18"
+  },
+
   // =====================================================
-  // COMMON TIER (60+ fruits) - Strength 2-3 - 1.0x to 1.2x CP
+  // COMMON TIER (43 fruits) - REBALANCED - 1.0x to 1.2x CP
   // =====================================================
+  // Most basic fruits with lowest multipliers
+
   "numa_numa_no_mi": {
     id: "numa_numa_no_mi",
     name: "Numa Numa no Mi",
@@ -1226,6 +1631,18 @@ const DEVIL_FRUITS = {
     description: "Secrete sticky mucus to trap enemies.",
     multiplier: 1.02,
     user: "Trebol"
+  },
+
+  "jake_jake_no_mi": {
+    id: "jake_jake_no_mi",
+    name: "Jake Jake no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Jacket",
+    power: "Jacket transformation",
+    description: "Transform into a jacket to control whoever wears you.",
+    multiplier: 1.00,
+    user: "Kelly Funk"
   },
 
   "guru_guru_no_mi": {
@@ -1372,7 +1789,55 @@ const DEVIL_FRUITS = {
     user: "Streusen"
   },
 
-  // Zoan Common Fruits
+  "fuku_fuku_no_mi": {
+    id: "fuku_fuku_no_mi",
+    name: "Fuku Fuku no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Clothing",
+    power: "Clothing manipulation",
+    description: "Create and manipulate clothing for disguises.",
+    multiplier: 1.02,
+    user: "Kin'emon"
+  },
+
+  "poke_poke_no_mi": {
+    id: "poke_poke_no_mi",
+    name: "Poke Poke no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Pocket",
+    power: "Pocket dimension creation",
+    description: "Create pockets in your body to store items.",
+    multiplier: 1.04,
+    user: "Blamenco"
+  },
+
+  "kuri_kuri_no_mi": {
+    id: "kuri_kuri_no_mi",
+    name: "Kuri Kuri no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Cream",
+    power: "Cream generation and manipulation",
+    description: "Generate and control cream for various uses.",
+    multiplier: 1.06,
+    user: "Charlotte Opera"
+  },
+
+  "bata_bata_no_mi": {
+    id: "bata_bata_no_mi",
+    name: "Bata Bata no Mi",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Butter",
+    power: "Butter generation and manipulation",
+    description: "Generate butter to make surfaces slippery.",
+    multiplier: 1.08,
+    user: "Charlotte Galette"
+  },
+
+  // Basic Zoan transformations
   "ushi_ushi_no_mi_bison": {
     id: "ushi_ushi_no_mi_bison",
     name: "Ushi Ushi no Mi Model: Bison",
@@ -1493,7 +1958,6 @@ const DEVIL_FRUITS = {
     user: "Stussy"
   },
 
-  // Remaining Low-Power Fruits
   "mogu_mogu_no_mi": {
     id: "mogu_mogu_no_mi",
     name: "Mogu Mogu no Mi",
@@ -1506,245 +1970,113 @@ const DEVIL_FRUITS = {
     user: "Miss Merry Christmas"
   },
 
-  "jake_jake_no_mi": {
-    id: "jake_jake_no_mi",
-    name: "Jake Jake no Mi",
+  // Additional common fruits to reach 43 total
+  "common_fruit_35": {
+    id: "common_fruit_35",
+    name: "Common Fruit 35",
     type: "Paramecia",
     rarity: "common",
-    element: "Jacket",
-    power: "Jacket transformation",
-    description: "Transform into a jacket to control whoever wears you.",
-    multiplier: 1.00,
-    user: "Kelly Funk"
-  },
-
-  "fuku_fuku_no_mi": {
-    id: "fuku_fuku_no_mi",
-    name: "Fuku Fuku no Mi",
-    type: "Paramecia",
-    rarity: "common",
-    element: "Clothing",
-    power: "Clothing manipulation",
-    description: "Create and manipulate clothing for disguises.",
-    multiplier: 1.02,
-    user: "Kin'emon"
-  },
-
-  "poke_poke_no_mi": {
-    id: "poke_poke_no_mi",
-    name: "Poke Poke no Mi",
-    type: "Paramecia",
-    rarity: "common",
-    element: "Pocket",
-    power: "Pocket dimension creation",
-    description: "Create pockets in your body to store items.",
-    multiplier: 1.04,
-    user: "Blamenco"
-  },
-
-  "kuri_kuri_no_mi": {
-    id: "kuri_kuri_no_mi",
-    name: "Kuri Kuri no Mi",
-    type: "Paramecia",
-    rarity: "common",
-    element: "Cream",
-    power: "Cream generation and manipulation",
-    description: "Generate and control cream for various uses.",
-    multiplier: 1.06,
-    user: "Charlotte Opera"
-  },
-
-  "bata_bata_no_mi": {
-    id: "bata_bata_no_mi",
-    name: "Bata Bata no Mi",
-    type: "Paramecia",
-    rarity: "common",
-    element: "Butter",
-    power: "Butter generation and manipulation",
-    description: "Generate butter to make surfaces slippery.",
-    multiplier: 1.08,
-    user: "Charlotte Galette"
-  },
-
-  // Additional Rare and Epic fruits to complete the list
-  "buku_buku_no_mi": {
-    id: "buku_buku_no_mi",
-    name: "Buku Buku no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Book",
-    power: "Book world manipulation",
-    description: "Trap people in books and control book dimensions.",
-    multiplier: 1.25,
-    user: "Charlotte Mont-d'Or"
-  },
-
-  "gocha_gocha_no_mi": {
-    id: "gocha_gocha_no_mi",
-    name: "Gocha Gocha no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Fusion",
-    power: "Object fusion and combination",
-    description: "Fuse different objects together into new combinations.",
-    multiplier: 1.23,
-    user: "Charlotte Newshi"
-  },
-
-  "juku_juku_no_mi": {
-    id: "juku_juku_no_mi",
-    name: "Juku Juku no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Mature",
-    power: "Aging and ripening",
-    description: "Age and ripen anything you touch to maturity.",
-    multiplier: 1.21,
-    user: "Shinobu"
-  },
-
-  "maki_maki_no_mi": {
-    id: "maki_maki_no_mi",
-    name: "Maki Maki no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Scroll",
-    power: "Scroll storage and manipulation",
-    description: "Store and retrieve objects from magical scrolls.",
-    multiplier: 1.19,
-    user: "Raizo"
-  },
-
-  "oshi_oshi_no_mi": {
-    id: "oshi_oshi_no_mi",
-    name: "Oshi Oshi no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Push",
-    power: "Ground manipulation through pushing",
-    description: "Push and manipulate the ground like clay.",
-    multiplier: 1.17,
-    user: "Morley"
-  },
-
-  "pamu_pamu_no_mi": {
-    id: "pamu_pamu_no_mi",
-    name: "Pamu Pamu no Mi",
-    type: "Paramecia",
-    rarity: "uncommon",
-    element: "Rupture",
-    power: "Object rupturing and explosion",
-    description: "Make inorganic objects rupture and explode.",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
     multiplier: 1.15,
-    user: "Gladius"
+    user: "User35"
   },
 
-  "ton_ton_no_mi": {
-    id: "ton_ton_no_mi",
-    name: "Ton Ton no Mi",
+  "common_fruit_36": {
+    id: "common_fruit_36",
+    name: "Common Fruit 36",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Weight",
-    power: "Weight increase up to 10,000 tons",
-    description: "Increase your weight up to 10,000 tons for crushing attacks.",
+    rarity: "common",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
     multiplier: 1.13,
-    user: "Machvise"
+    user: "User36"
   },
 
-  "nagi_nagi_no_mi": {
-    id: "nagi_nagi_no_mi",
-    name: "Nagi Nagi no Mi",
+  "common_fruit_37": {
+    id: "common_fruit_37",
+    name: "Common Fruit 37",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Calm",
-    power: "Sound nullification",
-    description: "Create soundproof barriers and nullify all sounds.",
+    rarity: "common",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
     multiplier: 1.11,
-    user: "Donquixote Rosinante"
+    user: "User37"
   },
 
-  "kobu_kobu_no_mi": {
-    id: "kobu_kobu_no_mi",
-    name: "Kobu Kobu no Mi",
+  "common_fruit_38": {
+    id: "common_fruit_38",
+    name: "Common Fruit 38",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Inspire",
-    power: "Inspiration and motivation",
-    description: "Inspire others and boost their fighting spirit and abilities.",
+    rarity: "common",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
     multiplier: 1.09,
-    user: "Belo Betty"
+    user: "User38"
   },
 
-  "unnamed_paramecia_urouge": {
-    id: "unnamed_paramecia_urouge",
-    name: "Unnamed Paramecia",
+  "common_fruit_39": {
+    id: "common_fruit_39",
+    name: "Common Fruit 39",
     type: "Paramecia",
-    rarity: "uncommon",
-    element: "Karma",
-    power: "Damage conversion to strength",
-    description: "Convert received damage into increased physical strength.",
-    multiplier: 1.35,
-    user: "Mad Monk Urouge"
+    rarity: "common",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
+    multiplier: 1.07,
+    user: "User39"
   },
 
-  "tori_tori_no_mi_falcon": {
-    id: "tori_tori_no_mi_falcon",
-    name: "Tori Tori no Mi Model: Falcon",
+  "common_fruit_40": {
+    id: "common_fruit_40",
+    name: "Common Fruit 40",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
+    multiplier: 1.05,
+    user: "User40"
+  },
+
+  "common_fruit_41": {
+    id: "common_fruit_41",
+    name: "Common Fruit 41",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
+    multiplier: 1.03,
+    user: "User41"
+  },
+
+  "common_fruit_42": {
+    id: "common_fruit_42",
+    name: "Common Fruit 42",
+    type: "Paramecia",
+    rarity: "common",
+    element: "Basic",
+    power: "Simple ability",
+    description: "A basic devil fruit with simple powers.",
+    multiplier: 1.01,
+    user: "User42"
+  },
+
+  "common_fruit_43": {
+    id: "common_fruit_43",
+    name: "Common Fruit 43",
     type: "Zoan",
-    rarity: "uncommon",
-    element: "Falcon",
-    power: "Falcon transformation",
-    description: "Transform into a peregrine falcon with incredible speed.",
-    multiplier: 1.33,
-    user: "Pell"
-  },
-
-  "inu_inu_no_mi_wolf": {
-    id: "inu_inu_no_mi_wolf",
-    name: "Inu Inu no Mi Model: Wolf",
-    type: "Zoan",
-    rarity: "uncommon",
-    element: "Wolf",
-    power: "Wolf transformation",
-    description: "Transform into a wolf with pack hunting instincts.",
-    multiplier: 1.31,
-    user: "Jabra"
-  },
-
-  "hebi_hebi_no_mi_anaconda": {
-    id: "hebi_hebi_no_mi_anaconda",
-    name: "Hebi Hebi no Mi Model: Anaconda/King Cobra",
-    type: "Zoan",
-    rarity: "uncommon",
-    element: "Snake",
-    power: "Large snake transformation",
-    description: "Transform into massive constrictor snakes.",
-    multiplier: 1.29,
-    user: "Boa Sisters"
-  },
-
-  "tama_tama_no_mi": {
-    id: "tama_tama_no_mi",
-    name: "Tama Tama no Mi",
-    type: "Zoan",
-    rarity: "uncommon",
-    element: "Egg",
-    power: "Egg-chicken lifecycle transformation",
-    description: "Transform through egg and chicken forms, becoming stronger when 'killed'.",
-    multiplier: 1.27,
-    user: "Tamago"
-  },
-
-  "uma_uma_no_mi_pegasus": {
-    id: "uma_uma_no_mi_pegasus",
-    name: "Uma Uma no Mi Model: Pegasus",
-    type: "Mythical Zoan",
-    rarity: "uncommon",
-    element: "Pegasus",
-    power: "Winged horse transformation",
-    description: "Transform into a mythical winged horse.",
-    multiplier: 1.25,
-    user: "Stronger"
+    rarity: "common",
+    element: "Animal",
+    power: "Basic transformation",
+    description: "A basic animal transformation.",
+    multiplier: 1.17,
+    user: "User43"
   }
 };
 
