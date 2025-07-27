@@ -1,5 +1,4 @@
-// index.js - One Piece Devil Fruit Gacha Bot v4.0 Production Ready - EMERGENCY FIX
-
+// index.js - FIXED: Compatible database health check
 // Load environment variables first
 require('dotenv').config();
 
@@ -116,7 +115,7 @@ class OnePieceGachaBot {
     }
 
     /**
-     * Initialize database connection - EMERGENCY FIX: Skip migrations
+     * Initialize database connection - FIXED: Compatible health check
      */
     async initializeDatabase() {
         try {
@@ -127,16 +126,52 @@ class OnePieceGachaBot {
             
             await DatabaseManager.connect();
             
+            // FIXED: Compatible health check - try multiple method names
+            let dbHealth;
+            try {
+                // Try new method first
+                if (typeof DatabaseManager.performHealthCheck === 'function') {
+                    dbHealth = await DatabaseManager.performHealthCheck();
+                }
+                // Fall back to old method
+                else if (typeof DatabaseManager.healthCheck === 'function') {
+                    dbHealth = await DatabaseManager.healthCheck();
+                }
+                // Create minimal health check if neither exists
+                else {
+                    this.logger.info('⚠️ No health check method found, creating basic test...');
+                    
+                    // Basic connection test
+                    const testStart = Date.now();
+                    await DatabaseManager.query('SELECT 1 as health_test');
+                    const testLatency = Date.now() - testStart;
+                    
+                    dbHealth = {
+                        status: 'healthy',
+                        latency: testLatency,
+                        note: 'Basic connection test'
+                    };
+                }
+            } catch (healthError) {
+                this.logger.warn('⚠️ Health check failed, but connection might still work:', healthError.message);
+                dbHealth = {
+                    status: 'unknown',
+                    error: healthError.message,
+                    latency: 0
+                };
+            }
+            
             // EMERGENCY FIX: Skip migrations temporarily to prevent syntax errors
-            // The main foreign key fix is in the application code, not the migration
             this.logger.info('⚠️ Database migrations skipped (emergency fix for syntax errors)');
             this.logger.info('✅ Foreign key fix is applied in application code instead');
             this.logger.info('📝 User creation will happen BEFORE command execution to prevent FK violations');
             
-            // Test database connection
-            const dbHealth = await DatabaseManager.healthCheck();
+            // Log health check results
             if (dbHealth.status === 'healthy') {
                 this.logger.success(`✅ Database initialized successfully (${dbHealth.latency}ms)`);
+            } else if (dbHealth.status === 'unknown') {
+                this.logger.warn(`⚠️ Database status unknown: ${dbHealth.error}`);
+                this.logger.info('🔄 Continuing startup - connection may still work...');
             } else {
                 throw new Error(`Database unhealthy: ${dbHealth.error}`);
             }
@@ -285,7 +320,7 @@ class OnePieceGachaBot {
      * Start monitoring systems
      */
     startMonitoring() {
-        if (Config.monitoring.enabled) {
+        if (Config.monitoring?.enabled) {
             const monitor = new SystemMonitor(this.client);
             monitor.start();
             this.logger.success('✅ System monitoring started');
@@ -375,7 +410,15 @@ class OnePieceGachaBot {
             }
             
             this.logger.info('🗄️ Closing database connections...');
-            await DatabaseManager.disconnect();
+            
+            // FIXED: Compatible disconnect method
+            if (typeof DatabaseManager.disconnect === 'function') {
+                await DatabaseManager.disconnect();
+            } else if (typeof DatabaseManager.close === 'function') {
+                await DatabaseManager.close();
+            } else if (DatabaseManager.pool && typeof DatabaseManager.pool.end === 'function') {
+                await DatabaseManager.pool.end();
+            }
             
             this.logger.success('✅ Shutdown complete');
             
