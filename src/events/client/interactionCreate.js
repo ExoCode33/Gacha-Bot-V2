@@ -1,4 +1,4 @@
-// src/events/client/interactionCreate.js
+// src/events/client/interactionCreate.js - FIXED: Ensure user exists BEFORE command execution
 const Logger = require('../../utils/Logger');
 const ErrorHandler = require('../../utils/ErrorHandler');
 
@@ -9,6 +9,9 @@ module.exports = {
         const logger = new Logger('INTERACTION');
         
         try {
+            // CRITICAL FIX: Ensure user exists BEFORE any command processing
+            await ensureUserExists(interaction);
+            
             // Handle slash commands
             if (interaction.isChatInputCommand()) {
                 await handleSlashCommand(interaction, logger);
@@ -47,8 +50,7 @@ async function handleSlashCommand(interaction, logger) {
     }
     
     try {
-        // Ensure user exists in database
-        await ensureUserExists(interaction);
+        // User is already ensured to exist at this point
         
         // Use CommandManager to execute command
         const commandManager = interaction.client.commandManager;
@@ -100,21 +102,36 @@ async function handleSelectMenuInteraction(interaction, logger) {
 }
 
 /**
- * Ensure user exists in database
+ * CRITICAL FIX: Ensure user exists in database BEFORE any command processing
+ * This prevents foreign key constraint violations in command_usage table
  */
 async function ensureUserExists(interaction) {
     try {
         const DatabaseManager = require('../../database/DatabaseManager');
         
+        // Create user if they don't exist
         await DatabaseManager.ensureUser(
             interaction.user.id,
             interaction.user.username,
             interaction.guildId
         );
         
-    } catch (error) {
-        // Log but don't fail the interaction
+        // Log successful user creation/verification for debugging
         const logger = new Logger('USER_CREATION');
-        logger.error('Failed to ensure user exists:', error);
+        logger.debug(`User verified/created: ${interaction.user.id} (${interaction.user.username})`);
+        
+    } catch (error) {
+        // Log error but don't fail the interaction completely
+        const logger = new Logger('USER_CREATION');
+        logger.error('Failed to ensure user exists:', {
+            userId: interaction.user.id,
+            username: interaction.user.username,
+            guildId: interaction.guildId,
+            error: error.message,
+            stack: error.stack
+        });
+        
+        // Still throw the error to prevent command execution with incomplete user data
+        throw new Error(`Failed to create/verify user: ${error.message}`);
     }
 }
