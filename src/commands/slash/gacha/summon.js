@@ -8,7 +8,6 @@ const {
 
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
-const AchievementService = require('../../../services/AchievementService');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { PULL_COST, RARITY_COLORS, BERRY_EMOJI, FRUIT_EMOJI } = require('../../../data/Constants');
 const Logger = require('../../../utils/Logger');
@@ -169,15 +168,6 @@ module.exports = {
 
             // Get updated user stats for summary
             const userStats = await GachaService.getUserStats(userId);
-
-            // Process achievements
-            try {
-                await AchievementService.checkPullAchievements(userId, pullResults);
-                await AchievementService.checkCollectionAchievements(userId, userStats);
-            } catch (achievementError) {
-                logger.error('Achievement processing failed:', achievementError);
-                // Don't fail the entire command for achievement errors
-            }
 
             // Log the summon for analytics
             logger.info(`${username} summoned ${amount} fruit(s) for ${totalCost} berries`);
@@ -585,10 +575,6 @@ Your services need these methods:
    - updateLastSummonTime(userId) -> void
    - performPulls(userId, amount) -> Array<{fruit: {id, rarity, count}, isNew: boolean}>
    - getUserStats(userId) -> {berries, totalFruits, uniqueFruits}
-
-3. AchievementService (optional):
-   - checkPullAchievements(userId, pullResults) -> void
-   - checkCollectionAchievements(userId, userStats) -> void
 
 PULL RESULT FORMAT:
 [
