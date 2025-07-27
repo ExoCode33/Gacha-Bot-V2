@@ -1,8 +1,7 @@
-// src/utils/GachaRevealUtils.js - FIXED: Safe charAt implementation with Special Effects
+// src/utils/GachaRevealUtils.js - FIXED: Safe charAt implementation
 const { EmbedBuilder } = require('discord.js');
 const { skillsManager } = require('../data/DevilFruitSkills');
 const { DEVIL_FRUITS } = require('../data/DevilFruits');
-const { DevilFruitEffectManager } = require('../data/DevilFruitEffects');
 const { RARITY_EMOJIS, RARITY_COLORS } = require('../data/Constants');
 
 /**
@@ -84,10 +83,6 @@ function createEnhancedGachaReveal(results, batchNumber, totalBatches) {
 
         // Get user from fruit data with safety
         const user = fruitData?.user || "Unknown User";
-        
-        // Get special effects
-        const specialEffects = DevilFruitEffectManager.getEffects(fruitId);
-        const hasSpecialEffects = !!specialEffects;
 
         // Status emoji and text
         const statusEmoji = isNew ? '🆕' : '🔄';
@@ -100,36 +95,20 @@ function createEnhancedGachaReveal(results, batchNumber, totalBatches) {
         // SAFE: Get multiplier with fallback
         const multiplier = fruitData?.multiplier || fruit?.multiplier || 1.0;
 
-        // Build field value with enhanced formatting including special effects
-        let fieldValue = [
+        // Build field value with enhanced formatting
+        const fieldValue = [
             `${statusEmoji} **Status:** ${statusText}`,
             `🧬 **Type:** ${fruitType}`,
             `⚡ **CP Multiplier:** x${multiplier}`,
             `👤 **User:** ${user}`,
             `📝 **Description:** ${fruitDescription}`,
             `⚔️ **Ability:** ${skillInfo}`
-        ];
-        
-        // Add special effects if available
-        if (hasSpecialEffects && specialEffects.primary_effects?.length) {
-            const primaryEffect = specialEffects.primary_effects[0]; // Show first primary effect
-            const powerStars = '★'.repeat(Math.min(primaryEffect.power_level || 1, 3)); // Max 3 stars for summary
-            fieldValue.push(`✨ **Special:** ${primaryEffect.name} ${powerStars}`);
-            
-            // Add count if there are more effects
-            const totalEffects = (specialEffects.primary_effects?.length || 0) + 
-                               (specialEffects.passive_effects?.length || 0);
-            if (totalEffects > 1) {
-                fieldValue.push(`🌟 **Total Effects:** ${totalEffects} documented`);
-            }
-        }
-        
-        const finalFieldValue = fieldValue.join('\n');
+        ].join('\n');
 
         // Add field to embed
         embed.addFields({
             name: `${String(index + 1).padStart(2, '0')}. ${rarityEmoji} ${fruitName} (${rarityName})`,
-            value: finalFieldValue,
+            value: fieldValue,
             inline: false
         });
     });
