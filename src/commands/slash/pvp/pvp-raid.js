@@ -386,7 +386,7 @@ async function executeRaid(interaction, attackerData, targetData) {
         currentPlayer: 'attacker',
         battleLog: [],
         startTime: Date.now(),
-        lastActionUser: null // Track who performed the last action
+        lastActionUser: null
     };
     
     activeRaids.set(raidId, raidState);
@@ -411,7 +411,7 @@ async function startInteractiveBattle(interaction, raidState) {
 }
 
 /**
- * Create battle embed like in screenshot
+ * Create battle embed
  */
 function createBattleEmbed(raidState, lastAction = null) {
     const { attacker, target, turn } = raidState;
@@ -473,7 +473,6 @@ function createBattleEmbed(raidState, lastAction = null) {
     
     return embed;
 }
-}
 
 /**
  * Create interactive battle components
@@ -526,7 +525,7 @@ function createBattleComponents(raidState) {
 }
 
 /**
- * Setup battle interaction collector with proper error handling
+ * Setup battle interaction collector
  */
 function setupBattleCollector(interaction, raidState) {
     const filter = (i) => {
@@ -541,7 +540,6 @@ function setupBattleCollector(interaction, raidState) {
     
     collector.on('collect', async (buttonInteraction) => {
         try {
-            // Check if interaction is still valid
             if (!buttonInteraction.isRepliable()) {
                 console.log('Interaction is no longer repliable, skipping...');
                 return;
@@ -564,12 +562,11 @@ function setupBattleCollector(interaction, raidState) {
         } catch (error) {
             console.error('Battle interaction error:', error);
             
-            // Only try to respond if the interaction hasn't been responded to
             try {
                 if (buttonInteraction.isRepliable() && !buttonInteraction.replied && !buttonInteraction.deferred) {
                     await buttonInteraction.reply({
                         content: '❌ An error occurred during battle!',
-                        flags: [64] // MessageFlags.Ephemeral
+                        flags: [64]
                     });
                 }
             } catch (replyError) {
@@ -582,7 +579,6 @@ function setupBattleCollector(interaction, raidState) {
         if (activeRaids.has(raidState.id)) {
             console.log(`Battle collector ended: ${reason}`);
             
-            // If it's a timeout, end the battle
             if (reason === 'time') {
                 const timeoutResult = {
                     ended: true,
@@ -596,7 +592,7 @@ function setupBattleCollector(interaction, raidState) {
 }
 
 /**
- * Handle attack action with proper interaction management
+ * Handle attack action
  */
 async function handleAttack(buttonInteraction, raidState, originalInteraction) {
     const attacker = raidState.attacker;
@@ -618,18 +614,16 @@ async function handleAttack(buttonInteraction, raidState, originalInteraction) {
     const actionText = `${attacker.username} attacks with ${activeFruit.name} for ${actualDamage} damage${isCritical ? ' (CRITICAL!)' : ''}!`;
     raidState.battleLog.push(actionText);
     
-    // Acknowledge the action
     await buttonInteraction.reply({
         content: `⚔️ ${actionText}`,
-        flags: [64] // MessageFlags.Ephemeral
+        flags: [64]
     });
     
-    // Continue the battle
     await continueBattle(originalInteraction, raidState);
 }
 
 /**
- * Handle skill use with proper interaction management
+ * Handle skill use
  */
 async function handleSkillUse(buttonInteraction, raidState, originalInteraction) {
     const attacker = raidState.attacker;
@@ -648,7 +642,7 @@ async function handleSkillUse(buttonInteraction, raidState, originalInteraction)
     if (attacker.skillCooldowns[cooldownKey] > 0) {
         return buttonInteraction.reply({
             content: `❌ ${skillData.name} is on cooldown for ${attacker.skillCooldowns[cooldownKey]} more turns!`,
-            flags: [64] // MessageFlags.Ephemeral
+            flags: [64]
         });
     }
     
@@ -674,13 +668,11 @@ async function handleSkillUse(buttonInteraction, raidState, originalInteraction)
     const actionText = `${attacker.username} uses ${skillData.name} for ${actualDamage} damage${isCritical ? ' (CRITICAL!)' : ''}!${effectText}`;
     raidState.battleLog.push(actionText);
     
-    // Acknowledge the action
     await buttonInteraction.reply({
         content: `✨ ${actionText}`,
-        flags: [64] // MessageFlags.Ephemeral
+        flags: [64]
     });
     
-    // Continue the battle
     await continueBattle(originalInteraction, raidState);
 }
 
@@ -690,12 +682,12 @@ async function handleSkillUse(buttonInteraction, raidState, originalInteraction)
 async function handleFruitSwitch(buttonInteraction, raidState) {
     await buttonInteraction.reply({
         content: '🔄 Use the dropdown menu below to select which Devil Fruit to switch to!',
-        flags: [64] // MessageFlags.Ephemeral
+        flags: [64]
     });
 }
 
 /**
- * Handle fruit menu switching with proper interaction management
+ * Handle fruit menu switching
  */
 async function handleFruitMenuSwitch(buttonInteraction, raidState, originalInteraction) {
     const fruitIndex = parseInt(buttonInteraction.values[0].split('_')[1]);
@@ -704,7 +696,7 @@ async function handleFruitMenuSwitch(buttonInteraction, raidState, originalInter
     if (fruitIndex === raidState.attacker.activeFruitIndex) {
         return buttonInteraction.reply({
             content: `❌ ${newFruit.name} is already your active fruit!`,
-            flags: [64] // MessageFlags.Ephemeral
+            flags: [64]
         });
     }
     
@@ -713,13 +705,11 @@ async function handleFruitMenuSwitch(buttonInteraction, raidState, originalInter
     const actionText = `${raidState.attacker.username} switches to ${newFruit.emoji} ${newFruit.name}!`;
     raidState.battleLog.push(actionText);
     
-    // Acknowledge the action
     await buttonInteraction.reply({
         content: `🔄 ${actionText}`,
-        flags: [64] // MessageFlags.Ephemeral
+        flags: [64]
     });
     
-    // Continue the battle
     await continueBattle(originalInteraction, raidState);
 }
 
@@ -786,7 +776,7 @@ async function handleSkillInfo(buttonInteraction, raidState) {
     
     await buttonInteraction.reply({
         embeds: [skillEmbed],
-        flags: [64] // MessageFlags.Ephemeral
+        flags: [64]
     });
 }
 
@@ -794,27 +784,22 @@ async function handleSkillInfo(buttonInteraction, raidState) {
  * Continue the battle after an action
  */
 async function continueBattle(originalInteraction, raidState) {
-    // Check if battle ended
     const battleResult = checkBattleEnd(raidState);
     if (battleResult.ended) {
         await endBattle(originalInteraction, raidState, battleResult);
         return;
     }
     
-    // Process AI turn
     await processAITurn(raidState);
     
-    // Reduce cooldowns and process effects
     reduceCooldowns(raidState.attacker);
     reduceCooldowns(raidState.target);
     processStatusEffects(raidState.attacker);
     processStatusEffects(raidState.target);
     
-    // Next turn
     raidState.turn++;
     raidState.currentPlayer = 'attacker';
     
-    // Update battle display
     const embed = createBattleEmbed(raidState);
     const components = createBattleComponents(raidState);
     
@@ -985,7 +970,7 @@ async function endBattle(interaction, raidState, battleResult) {
 }
 
 /**
- * Create final result embed matching screenshot
+ * Create final result embed
  */
 function createFinalResultEmbed(raidState, battleResult, rewards) {
     const { attacker, target } = raidState;
@@ -1067,3 +1052,4 @@ function createFinalResultEmbed(raidState, battleResult, rewards) {
     .setTimestamp();
     
     return embed;
+}
