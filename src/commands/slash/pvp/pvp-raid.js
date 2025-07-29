@@ -5,9 +5,9 @@ const EconomyService = require('../../../services/EconomyService');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 
-// Enhanced raid configuration
+// PvP raid configuration
 const RAID_CONFIG = {
-    COOLDOWN_TIME: 180000, // 3 minutes between raids (reduced from 5)
+    COOLDOWN_TIME: 180000, // 3 minutes between raids
     MIN_CP_REQUIRED: 500, // Minimum CP to participate
     BERRY_STEAL_PERCENTAGE: 0.15, // 15% of opponent's berries
     FRUIT_DROP_CHANCES: {
@@ -15,9 +15,9 @@ const RAID_CONFIG = {
         'epic': 0.08, 'rare': 0.12, 'uncommon': 0.18, 'common': 0.25
     },
     MAX_FRUIT_DROPS: 3,
-    MAX_BATTLE_TURNS: 50, // Increased from 20 to 50
-    TURN_DELAY: 1500, // 1.5 seconds between turns (reduced from 3 seconds)
-    HP_BAR_LENGTH: 15 // Horizontal HP bar length
+    MAX_BATTLE_TURNS: 50,
+    TURN_DELAY: 1500, // 1.5 seconds between turns
+    HP_BAR_LENGTH: 12 // Compact horizontal HP bar
 };
 
 // Active raid cooldowns and battles
@@ -27,7 +27,7 @@ const activeBattles = new Map();
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('pvp-raid')
-        .setDescription('⚔️ Launch an enhanced raid with turn-based combat against another pirate!')
+        .setDescription('⚔️ Launch a raid with turn-based combat against another pirate!')
         .addUserOption(option =>
             option.setName('target')
                 .setDescription('The pirate you want to raid')
@@ -53,14 +53,14 @@ module.exports = {
             
             await interaction.deferReply();
             
-            // Get enhanced participant data with skills
+            // Get participant data with skills
             const [attackerData, targetData] = await Promise.all([
-                getEnhancedParticipantData(attacker.id),
-                getEnhancedParticipantData(target.id)
+                getParticipantData(attacker.id),
+                getParticipantData(target.id)
             ]);
             
-            // Start the enhanced turn-based battle
-            const battleResult = await executeEnhancedBattle(interaction, attackerData, targetData);
+            // Start the turn-based battle
+            const battleResult = await executeBattle(interaction, attackerData, targetData);
             
             // Process rewards and penalties
             const rewards = await processRaidRewards(battleResult, attackerData, targetData);
@@ -89,7 +89,7 @@ module.exports = {
             interaction.client.logger.error('Enhanced PvP Raid error:', error);
             
             const errorResponse = {
-                embeds: [createErrorEmbed('An error occurred during the enhanced raid!')],
+                embeds: [createErrorEmbed('An error occurred during the raid!')],
                 ephemeral: true
             };
             
@@ -103,9 +103,9 @@ module.exports = {
 };
 
 /**
- * Get enhanced participant data with devil fruit skills
+ * Get participant data with devil fruit skills
  */
-async function getEnhancedParticipantData(userId) {
+async function getParticipantData(userId) {
     const user = await DatabaseManager.getUser(userId);
     const fruits = await DatabaseManager.getUserDevilFruits(userId);
     
@@ -170,9 +170,9 @@ function calculateMaxHP(totalCP, level) {
 }
 
 /**
- * Execute enhanced turn-based battle with animations
+ * Execute turn-based battle with animations
  */
-async function executeEnhancedBattle(interaction, attackerData, targetData) {
+async function executeBattle(interaction, attackerData, targetData) {
     // Initialize battle state
     const battleId = `raid_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
     
@@ -248,7 +248,7 @@ async function executeEnhancedBattle(interaction, attackerData, targetData) {
 async function sendBattleStartMessage(interaction, battleState) {
     const embed = createBattleEmbed(battleState, {
         type: 'battle_start',
-        message: '⚔️ **Enhanced Raid Battle Begins!**',
+        message: '⚔️ **PvP Raid Battle Begins!**',
         details: 'Turn-based combat with devil fruit skills!'
     });
     
@@ -506,13 +506,13 @@ function reduceCooldowns(player) {
 }
 
 /**
- * Create enhanced battle embed with detailed battle log
+ * Create professional battle embed
  */
 function createBattleEmbed(battleState, turnResult = null) {
     const { attacker, target, turn } = battleState;
     
     const embed = new EmbedBuilder()
-        .setTitle('⚔️ Enhanced PvP Raid Battle')
+        .setTitle('⚔️ PvP Raid Battle')
         .setColor(RARITY_COLORS.legendary)
         .setDescription(createBattleDescription(battleState, turnResult))
         .addFields(
@@ -527,113 +527,98 @@ function createBattleEmbed(battleState, turnResult = null) {
                 inline: true
             },
             {
-                name: '📊 Battle Information',
+                name: '📊 Battle Status',
                 value: [
                     `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}`,
-                    `**Active Player:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}`,
-                    `**Battle Speed:** Enhanced (${RAID_CONFIG.TURN_DELAY/1000}s/turn)`,
-                    `**Combat Type:** Devil Fruit Skills + Basic Attacks`
+                    `**Active:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}`,
+                    `**Speed:** ${RAID_CONFIG.TURN_DELAY/1000}s/turn`
                 ].join('\n'),
                 inline: false
             }
         );
     
-    // Add recent battle log (last 3 actions for better tracking)
+    // Add battle log (last 2 actions for compact display)
     if (battleState.battleLog && battleState.battleLog.length > 0) {
-        const recentActions = battleState.battleLog.slice(-3);
+        const recentActions = battleState.battleLog.slice(-2);
         const logText = recentActions.map((action, index) => {
             const turnNum = battleState.battleLog.length - recentActions.length + index + 1;
-            let actionText = `**T${turnNum}:** `;
             
             if (action.type === 'skill_attack') {
-                actionText += `💫 ${action.skillName} used - ${action.damage} damage`;
-                if (action.isCritical) actionText += ' (CRIT!)';
+                return `**T${turnNum}:** 💫 ${action.skillName} - ${action.damage} dmg${action.isCritical ? ' (CRIT)' : ''}`;
             } else if (action.type === 'basic_attack') {
-                actionText += `⚔️ Basic attack - ${action.damage} damage`;
-                if (action.isCritical) actionText += ' (CRIT!)';
+                return `**T${turnNum}:** ⚔️ Basic Attack - ${action.damage} dmg${action.isCritical ? ' (CRIT)' : ''}`;
             } else {
-                actionText += `🔄 ${action.type}`;
+                return `**T${turnNum}:** 🔄 ${action.type}`;
             }
-            
-            return actionText;
         }).join('\n');
         
         embed.addFields({
-            name: '📜 Recent Battle Log',
-            value: logText || 'No actions yet...',
+            name: '📜 Recent Actions',
+            value: logText || 'Battle starting...',
             inline: false
         });
     }
     
-    embed.setFooter({ text: `Battle ID: ${battleState.id} | Enhanced Combat System` })
+    embed.setFooter({ text: `Battle ID: ${battleState.id}` })
          .setTimestamp();
     
     return embed;
 }
 
 /**
- * Create enhanced battle description based on turn result
+ * Create professional battle description
  */
 function createBattleDescription(battleState, turnResult) {
     if (!turnResult) {
-        return `🎯 **Enhanced PvP Battle in Progress!**\n` +
-               `Turn-based combat with detailed Devil Fruit skills and abilities!\n` +
-               `⚡ **Speed:** ${RAID_CONFIG.TURN_DELAY/1000}s per turn | **Max Turns:** ${RAID_CONFIG.MAX_BATTLE_TURNS}`;
+        return `🎯 **PvP Battle in Progress**\n` +
+               `Turn-based combat with Devil Fruit abilities`;
     }
     
     let description = `**Latest Action:**\n${turnResult.message}`;
     
     if (turnResult.effects && turnResult.effects.length > 0) {
-        description += '\n\n**🌟 Additional Effects:**\n' + turnResult.effects.join('\n');
-    }
-    
-    // Add damage summary for the turn
-    if (turnResult.damage > 0) {
-        description += `\n\n**💥 Turn Damage Summary:** ${turnResult.damage} total damage dealt`;
+        description += '\n\n**Effects Applied:**\n' + turnResult.effects.join('\n');
     }
     
     return description;
 }
 
 /**
- * Create detailed player status with enhanced HP bar and skill info
+ * Create professional player status display
  */
 function createPlayerStatus(player) {
     const hpBar = createHPBar(player.currentHP, player.maxHP);
-    const hpPercent = Math.round((player.currentHP / player.maxHP) * 100);
     
-    let status = `**HP:** ${hpBar}\n`;
-    status += `**Health:** ${player.currentHP.toLocaleString()}/${player.maxHP.toLocaleString()} (${hpPercent}%)\n`;
-    status += `**Combat Power:** ${player.totalCP.toLocaleString()}\n`;
+    let status = `**HP:** ${hpBar} (${player.currentHP.toLocaleString()}/${player.maxHP.toLocaleString()})\n`;
+    status += `**CP:** ${player.totalCP.toLocaleString()}\n`;
     
-    // Show equipped fruit and skill with detailed info
+    // Show equipped fruit and skill
     if (player.bestFruit && player.skillData) {
         const fruitEmoji = RARITY_EMOJIS[player.bestFruit.fruit_rarity] || '🍈';
         const rarityName = player.bestFruit.fruit_rarity.charAt(0).toUpperCase() + player.bestFruit.fruit_rarity.slice(1);
-        status += `${fruitEmoji} **${player.bestFruit.fruit_name}** (${rarityName})\n`;
+        status += `**Fruit:** ${fruitEmoji} ${player.bestFruit.fruit_name} (${rarityName})\n`;
         
         const skillCooldown = player.skillCooldowns[player.skillData.name] || 0;
-        const skillStatus = skillCooldown > 0 ? `🔒 ${skillCooldown} turns` : '✅ Ready';
-        status += `⚡ **${player.skillData.name}** [${skillStatus}]\n`;
-        status += `🎯 **Skill:** ${player.skillData.damage} DMG, ${player.skillData.cooldown}s CD\n`;
+        const skillStatus = skillCooldown > 0 ? `🔒 ${skillCooldown}t` : '✅';
+        status += `**Skill:** ${player.skillData.name} ${skillStatus} (${player.skillData.damage}dmg)\n`;
     }
     
-    // Show status effects with better formatting
+    // Show status effects compactly
     if (player.statusEffects && player.statusEffects.length > 0) {
         const effects = player.statusEffects.map(effect => {
             const emoji = getStatusEffectEmoji(effect.type);
-            return `${emoji}${effect.type}(${effect.duration})`;
+            return `${emoji}${effect.duration}`;
         }).join(' ');
-        status += `🔮 **Effects:** ${effects}`;
+        status += `**Effects:** ${effects}`;
     } else {
-        status += `🔮 **Effects:** None`;
+        status += `**Effects:** None`;
     }
     
     return status;
 }
 
 /**
- * Create horizontal HP bar with enhanced visuals
+ * Create compact horizontal HP bar
  */
 function createHPBar(currentHP, maxHP) {
     const barLength = RAID_CONFIG.HP_BAR_LENGTH;
@@ -641,8 +626,8 @@ function createHPBar(currentHP, maxHP) {
     const filledBars = Math.floor(hpPercent * barLength);
     const emptyBars = barLength - filledBars;
     
-    // Different colors based on HP percentage - using different emojis for horizontal bar
-    let barEmoji = '🟩'; // Green for high HP (horizontal)
+    // Different colors based on HP percentage
+    let barEmoji = '🟩'; // Green for high HP
     if (hpPercent < 0.2) {
         barEmoji = '🟥'; // Red for very low HP
     } else if (hpPercent < 0.4) {
@@ -654,9 +639,8 @@ function createHPBar(currentHP, maxHP) {
     const filled = barEmoji.repeat(filledBars);
     const empty = '⬛'.repeat(emptyBars);
     
-    // Create horizontal bar with percentage
-    const percentText = `${Math.round(hpPercent * 100)}%`;
-    return `[${filled}${empty}] ${percentText}`;
+    // Compact single-line format
+    return `[${filled}${empty}] ${Math.round(hpPercent * 100)}%`;
 }
 
 /**
@@ -895,7 +879,7 @@ function getReasonText(reason) {
 function createErrorEmbed(message) {
     return new EmbedBuilder()
         .setColor('#FF0000')
-        .setTitle('❌ Enhanced Raid Failed')
+        .setTitle('❌ Raid Failed')
         .setDescription(message)
         .setTimestamp();
 }
@@ -908,7 +892,7 @@ function createRematchButton(winnerId, loserId) {
         .addComponents(
             new ButtonBuilder()
                 .setCustomId(`rematch_${winnerId}_${loserId}`)
-                .setLabel('⚔️ Offer Enhanced Rematch')
+                .setLabel('⚔️ Offer Rematch')
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🔄')
         );
@@ -944,7 +928,7 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
             const validation = await validateRaid(winnerId, target);
             if (!validation.valid) {
                 return buttonInteraction.reply({
-                    content: `❌ Enhanced rematch not available: ${validation.reason}`,
+                    content: `❌ Rematch not available: ${validation.reason}`,
                     ephemeral: true
                 });
             }
@@ -953,7 +937,7 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('rematch_used')
-                        .setLabel('⚔️ Enhanced Rematch Requested!')
+                        .setLabel('⚔️ Rematch Requested!')
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(true)
                 );
@@ -961,7 +945,7 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
             await buttonInteraction.update({ components: [disabledRow] });
             
             await buttonInteraction.followUp({
-                content: `🔄 **Enhanced rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\` for another epic turn-based battle!`,
+                content: `🔄 **Rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\` for another battle!`,
                 ephemeral: false
             });
         });
@@ -972,19 +956,19 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
                     .addComponents(
                         new ButtonBuilder()
                             .setCustomId('rematch_expired')
-                            .setLabel('⚔️ Enhanced Rematch Expired')
+                            .setLabel('⚔️ Rematch Expired')
                             .setStyle(ButtonStyle.Secondary)
                             .setDisabled(true)
                     );
                 
                 await interaction.editReply({ components: [disabledRow] });
             } catch (error) {
-                console.log('Failed to disable enhanced rematch button:', error.message);
+                console.log('Failed to disable rematch button:', error.message);
             }
         });
         
     } catch (error) {
-        console.error('Error setting up enhanced rematch collector:', error);
+        console.error('Error setting up rematch collector:', error);
     }
 }
 
@@ -1081,14 +1065,14 @@ async function createDetailedResultEmbed(battleResult, rewards, attacker, target
         }
     }
     
-    embed.setFooter({ text: `Enhanced raid completed in ${totalTurns} turns with ${battleLog.length} actions | Speed: ${RAID_CONFIG.TURN_DELAY/1000}s/turn` })
+    embed.setFooter({ text: `Raid completed in ${totalTurns} turns with ${battleLog.length} actions | Speed: ${RAID_CONFIG.TURN_DELAY/1000}s/turn` })
          .setTimestamp();
     
     return embed;
 }
 
 /**
- * Create enhanced skill usage summary with more details
+ * Create professional skill usage summary
  */
 function createSkillUsageSummary(battleResult) {
     const attackerSkills = new Map();
