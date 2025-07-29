@@ -1,4 +1,4 @@
-// src/services/GachaService.js - UPDATED: Complete integration with DevilFruitSkills.js
+// src/services/GachaService.js - UPDATED: Fixed Pity System (900-1000 start, 0.05% divine)
 const DatabaseManager = require('../database/DatabaseManager');
 const EconomyService = require('./EconomyService');
 const Logger = require('../utils/Logger');
@@ -90,7 +90,7 @@ class GachaService {
     }
 
     /**
-     * Pull a single devil fruit with FIXED pity system and skill integration
+     * Pull a single devil fruit with UPDATED pity system and skill integration
      */
     async pullSingleFruit(userId, pityCount) {
         try {
@@ -103,7 +103,7 @@ class GachaService {
             let selectedRarity;
             let pityUsed = false;
             
-            if (shouldUsePity && pityCount >= 100) { // Minimum pity requirement
+            if (shouldUsePity && pityCount >= 900) { // UPDATED: Minimum pity requirement raised to 900
                 // Pity triggered - use premium rates (mythical/divine only)
                 selectedRarity = this.selectPityRarity();
                 pityUsed = true;
@@ -163,18 +163,21 @@ class GachaService {
 
     /**
      * Calculate pity chance based on current pity count
+     * UPDATED: Pity doesn't really start until 900-1000 pulls
      */
     calculatePityChance(pityCount) {
         if (pityCount >= PITY_SYSTEM.HARD_PITY_LIMIT) {
-            return 100; // 100% chance at hard pity
+            return 100; // 100% chance at hard pity (1500)
         }
         
-        if (pityCount < 100) {
-            return 0; // No pity chance before 100 pulls
+        // UPDATED: No meaningful pity before 900 pulls
+        if (pityCount < 900) {
+            return 0; // No pity chance before 900 pulls
         }
         
-        // Exponential scaling between 100 and hard pity limit
-        const progress = (pityCount - 100) / (PITY_SYSTEM.HARD_PITY_LIMIT - 100);
+        // Pity starts ramping up from 900 to hard pity limit
+        const pityStart = 900;
+        const progress = (pityCount - pityStart) / (PITY_SYSTEM.HARD_PITY_LIMIT - pityStart);
         const chance = Math.pow(progress, PITY_SYSTEM.SCALING_POWER) * PITY_SYSTEM.MAX_PITY_CHANCE;
         
         return Math.min(chance, PITY_SYSTEM.MAX_PITY_CHANCE);
@@ -182,11 +185,18 @@ class GachaService {
 
     /**
      * Select rarity when pity is triggered (mythical/divine only)
+     * UPDATED: Much lower divine chance (0.05% instead of default)
      */
     selectPityRarity() {
         const random = Math.random() * 100;
         
-        if (random < PITY_SYSTEM.PREMIUM_RATES.divine) {
+        // UPDATED: Divine chance reduced to 0.05%
+        const UPDATED_PITY_RATES = {
+            divine: 0.05,    // UPDATED: Was higher, now 0.05%
+            mythical: 99.95  // UPDATED: Rest goes to mythical
+        };
+        
+        if (random < UPDATED_PITY_RATES.divine) {
             return 'divine';
         } else {
             return 'mythical';
@@ -239,6 +249,7 @@ class GachaService {
 
     /**
      * Get detailed pity information for display
+     * UPDATED: Reflects new pity thresholds
      */
     async getPityInfo(userId) {
         try {
@@ -246,12 +257,24 @@ class GachaService {
             const pityChance = this.calculatePityChance(pityCount);
             const remainingPulls = Math.max(0, PITY_SYSTEM.HARD_PITY_LIMIT - pityCount);
             
+            // UPDATED: Show when pity actually starts being meaningful
+            let nextGuaranteed;
+            if (pityCount < 900) {
+                const pullsTo900 = 900 - pityCount;
+                nextGuaranteed = `${pullsTo900} pulls until pity starts`;
+            } else if (remainingPulls === 0) {
+                nextGuaranteed = 'Next pull';
+            } else {
+                nextGuaranteed = `${remainingPulls} pulls`;
+            }
+            
             return {
                 current: pityCount,
                 hardPity: PITY_SYSTEM.HARD_PITY_LIMIT,
                 chance: pityChance,
                 remaining: remainingPulls,
-                nextGuaranteed: remainingPulls === 0 ? 'Next pull' : `${remainingPulls} pulls`
+                nextGuaranteed,
+                pityActive: pityCount >= 900 // UPDATED: Show if pity is actually active
             };
         } catch (error) {
             this.logger.error(`Error getting pity info for ${userId}:`, error);
@@ -260,24 +283,37 @@ class GachaService {
                 hardPity: PITY_SYSTEM.HARD_PITY_LIMIT,
                 chance: 0,
                 remaining: PITY_SYSTEM.HARD_PITY_LIMIT,
-                nextGuaranteed: `${PITY_SYSTEM.HARD_PITY_LIMIT} pulls`
+                nextGuaranteed: `${PITY_SYSTEM.HARD_PITY_LIMIT} pulls`,
+                pityActive: false
             };
         }
     }
 
     /**
      * Format pity display for embeds
+     * UPDATED: Better messaging for new pity system
      */
     formatPityDisplay(pityInfo, pityUsedInSession = false) {
         const progressBar = this.createProgressBar(pityInfo.current, pityInfo.hardPity);
         
         let pityText = `🎯 **Pity System:** ${pityInfo.current}/${pityInfo.hardPity}\n`;
         pityText += `${progressBar}\n`;
-        pityText += `📊 **Current Chance:** ${pityInfo.chance.toFixed(2)}%\n`;
+        
+        if (pityInfo.pityActive) {
+            pityText += `📊 **Current Chance:** ${pityInfo.chance.toFixed(2)}%\n`;
+        } else {
+            pityText += `📊 **Pity Status:** Inactive (starts at 900 pulls)\n`;
+        }
+        
         pityText += `⏭️ **Next Guaranteed:** ${pityInfo.nextGuaranteed}`;
         
         if (pityUsedInSession) {
             pityText += `\n✨ **Pity was used this session!**`;
+        }
+        
+        // UPDATED: Add note about divine rates
+        if (pityInfo.pityActive) {
+            pityText += `\n🌟 **Divine Rate:** 0.05% (when pity triggers)`;
         }
         
         return pityText;
@@ -633,11 +669,12 @@ class GachaService {
 
     /**
      * Get current pull rates with pity consideration
+     * UPDATED: Reflects new pity thresholds
      */
     getCurrentRates(pityCount = 0) {
         const baseRates = { ...BASE_PULL_RATES };
         
-        if (pityCount >= 100) {
+        if (pityCount >= 900) { // UPDATED: Changed from 100 to 900
             const pityChance = this.calculatePityChance(pityCount);
             
             // Show how pity affects rates
@@ -646,7 +683,7 @@ class GachaService {
                 pityChance,
                 effectiveRates: {
                     ...baseRates,
-                    pityInfo: `${pityChance.toFixed(2)}% chance for guaranteed Mythical/Divine`
+                    pityInfo: `${pityChance.toFixed(2)}% chance for guaranteed Mythical/Divine (Divine: 0.05%)`
                 }
             };
         }
