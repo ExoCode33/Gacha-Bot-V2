@@ -7,7 +7,7 @@ const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 
 // Enhanced raid configuration
 const RAID_CONFIG = {
-    COOLDOWN_TIME: 300000, // 5 minutes between raids
+    COOLDOWN_TIME: 180000, // 3 minutes between raids (reduced from 5)
     MIN_CP_REQUIRED: 500, // Minimum CP to participate
     BERRY_STEAL_PERCENTAGE: 0.15, // 15% of opponent's berries
     FRUIT_DROP_CHANCES: {
@@ -15,9 +15,9 @@ const RAID_CONFIG = {
         'epic': 0.08, 'rare': 0.12, 'uncommon': 0.18, 'common': 0.25
     },
     MAX_FRUIT_DROPS: 3,
-    MAX_BATTLE_TURNS: 20,
-    TURN_DELAY: 3000, // 3 seconds between turns for animation
-    HP_BAR_LENGTH: 20 // Length of HP bar in characters
+    MAX_BATTLE_TURNS: 50, // Increased from 20 to 50
+    TURN_DELAY: 1500, // 1.5 seconds between turns (reduced from 3 seconds)
+    HP_BAR_LENGTH: 15 // Horizontal HP bar length
 };
 
 // Active raid cooldowns and battles
@@ -371,23 +371,39 @@ function executeBasicAttack(battleState, attacker, defender) {
 }
 
 /**
- * Create skill attack message with dramatic flair
+ * Create skill attack message with dramatic flair and detailed info
  */
 function createSkillAttackMessage(attacker, defender, skill, damage, isCritical) {
     const fruitEmoji = RARITY_EMOJIS[attacker.bestFruit?.fruit_rarity] || '🍈';
     const critText = isCritical ? ' **CRITICAL HIT!** 💥' : '';
     
-    return `${fruitEmoji} **${attacker.username}** unleashes **${skill.name}**!\n` +
-           `✨ *${skill.description}*\n` +
-           `💀 Deals **${damage}** damage to ${defender.username}${critText}`;
+    // Enhanced skill description with mechanics
+    let skillDetails = `**${skill.name}**`;
+    if (skill.type && skill.type !== 'attack') {
+        skillDetails += ` (${skill.type.charAt(0).toUpperCase() + skill.type.slice(1)} Type)`;
+    }
+    if (skill.range && skill.range !== 'single') {
+        skillDetails += ` [${skill.range.charAt(0).toUpperCase() + skill.range.slice(1)} Target]`;
+    }
+    
+    return `${fruitEmoji} **${attacker.username}** unleashes ${skillDetails}!\n` +
+           `📖 *"${skill.description}"*\n` +
+           `⚡ **Damage:** ${skill.damage} base → ${damage} final${critText}\n` +
+           `🔄 **Cooldown:** ${skill.cooldown || 2} turns | **Cost:** ${skill.cost || 0} energy`;
 }
 
 /**
- * Create basic attack message
+ * Create basic attack message with more detail
  */
 function createBasicAttackMessage(attacker, defender, damage, isCritical) {
     const critText = isCritical ? ' **CRITICAL HIT!** 💥' : '';
-    return `⚔️ **${attacker.username}** attacks ${defender.username} for **${damage}** damage${critText}`;
+    const attackType = attacker.bestFruit ? 
+        `${attacker.bestFruit.fruit_name} Enhanced Attack` : 
+        'Basic Combat Strike';
+    
+    return `⚔️ **${attacker.username}** uses **${attackType}**!\n` +
+           `🥊 **Base Damage:** ${Math.floor(damage * 0.8)} → **Final:** ${damage}${critText}\n` +
+           `🎯 Target: ${defender.username}`;
 }
 
 /**
@@ -490,13 +506,13 @@ function reduceCooldowns(player) {
 }
 
 /**
- * Create enhanced battle embed with HP bars and detailed info
+ * Create enhanced battle embed with detailed battle log
  */
 function createBattleEmbed(battleState, turnResult = null) {
     const { attacker, target, turn } = battleState;
     
     const embed = new EmbedBuilder()
-        .setTitle('⚔️ Enhanced Raid Battle')
+        .setTitle('⚔️ Enhanced PvP Raid Battle')
         .setColor(RARITY_COLORS.legendary)
         .setDescription(createBattleDescription(battleState, turnResult))
         .addFields(
@@ -511,69 +527,113 @@ function createBattleEmbed(battleState, turnResult = null) {
                 inline: true
             },
             {
-                name: '📊 Battle Info',
-                value: `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}\n**Current Player:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}`,
-                inline: true
+                name: '📊 Battle Information',
+                value: [
+                    `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}`,
+                    `**Active Player:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}`,
+                    `**Battle Speed:** Enhanced (${RAID_CONFIG.TURN_DELAY/1000}s/turn)`,
+                    `**Combat Type:** Devil Fruit Skills + Basic Attacks`
+                ].join('\n'),
+                inline: false
             }
-        )
-        .setFooter({ text: `Battle ID: ${battleState.id}` })
-        .setTimestamp();
+        );
+    
+    // Add recent battle log (last 3 actions for better tracking)
+    if (battleState.battleLog && battleState.battleLog.length > 0) {
+        const recentActions = battleState.battleLog.slice(-3);
+        const logText = recentActions.map((action, index) => {
+            const turnNum = battleState.battleLog.length - recentActions.length + index + 1;
+            let actionText = `**T${turnNum}:** `;
+            
+            if (action.type === 'skill_attack') {
+                actionText += `💫 ${action.skillName} used - ${action.damage} damage`;
+                if (action.isCritical) actionText += ' (CRIT!)';
+            } else if (action.type === 'basic_attack') {
+                actionText += `⚔️ Basic attack - ${action.damage} damage`;
+                if (action.isCritical) actionText += ' (CRIT!)';
+            } else {
+                actionText += `🔄 ${action.type}`;
+            }
+            
+            return actionText;
+        }).join('\n');
+        
+        embed.addFields({
+            name: '📜 Recent Battle Log',
+            value: logText || 'No actions yet...',
+            inline: false
+        });
+    }
+    
+    embed.setFooter({ text: `Battle ID: ${battleState.id} | Enhanced Combat System` })
+         .setTimestamp();
     
     return embed;
 }
 
 /**
- * Create battle description based on turn result
+ * Create enhanced battle description based on turn result
  */
 function createBattleDescription(battleState, turnResult) {
     if (!turnResult) {
-        return '🎯 **Battle in progress...** Turn-based combat with devil fruit skills!';
+        return `🎯 **Enhanced PvP Battle in Progress!**\n` +
+               `Turn-based combat with detailed Devil Fruit skills and abilities!\n` +
+               `⚡ **Speed:** ${RAID_CONFIG.TURN_DELAY/1000}s per turn | **Max Turns:** ${RAID_CONFIG.MAX_BATTLE_TURNS}`;
     }
     
-    let description = turnResult.message;
+    let description = `**Latest Action:**\n${turnResult.message}`;
     
     if (turnResult.effects && turnResult.effects.length > 0) {
-        description += '\n\n**Additional Effects:**\n' + turnResult.effects.join('\n');
+        description += '\n\n**🌟 Additional Effects:**\n' + turnResult.effects.join('\n');
+    }
+    
+    // Add damage summary for the turn
+    if (turnResult.damage > 0) {
+        description += `\n\n**💥 Turn Damage Summary:** ${turnResult.damage} total damage dealt`;
     }
     
     return description;
 }
 
 /**
- * Create detailed player status with HP bar and skill info
+ * Create detailed player status with enhanced HP bar and skill info
  */
 function createPlayerStatus(player) {
     const hpBar = createHPBar(player.currentHP, player.maxHP);
     const hpPercent = Math.round((player.currentHP / player.maxHP) * 100);
     
-    let status = `${hpBar}\n`;
-    status += `**HP:** ${player.currentHP}/${player.maxHP} (${hpPercent}%)\n`;
-    status += `**CP:** ${player.totalCP.toLocaleString()}\n`;
+    let status = `**HP:** ${hpBar}\n`;
+    status += `**Health:** ${player.currentHP.toLocaleString()}/${player.maxHP.toLocaleString()} (${hpPercent}%)\n`;
+    status += `**Combat Power:** ${player.totalCP.toLocaleString()}\n`;
     
-    // Show equipped fruit and skill
+    // Show equipped fruit and skill with detailed info
     if (player.bestFruit && player.skillData) {
         const fruitEmoji = RARITY_EMOJIS[player.bestFruit.fruit_rarity] || '🍈';
-        status += `${fruitEmoji} **${player.bestFruit.fruit_name}**\n`;
+        const rarityName = player.bestFruit.fruit_rarity.charAt(0).toUpperCase() + player.bestFruit.fruit_rarity.slice(1);
+        status += `${fruitEmoji} **${player.bestFruit.fruit_name}** (${rarityName})\n`;
         
         const skillCooldown = player.skillCooldowns[player.skillData.name] || 0;
-        const skillStatus = skillCooldown > 0 ? `(${skillCooldown} turns)` : '(Ready)';
-        status += `⚡ **${player.skillData.name}** ${skillStatus}\n`;
+        const skillStatus = skillCooldown > 0 ? `🔒 ${skillCooldown} turns` : '✅ Ready';
+        status += `⚡ **${player.skillData.name}** [${skillStatus}]\n`;
+        status += `🎯 **Skill:** ${player.skillData.damage} DMG, ${player.skillData.cooldown}s CD\n`;
     }
     
-    // Show status effects
-    if (player.statusEffects.length > 0) {
+    // Show status effects with better formatting
+    if (player.statusEffects && player.statusEffects.length > 0) {
         const effects = player.statusEffects.map(effect => {
             const emoji = getStatusEffectEmoji(effect.type);
-            return `${emoji} ${effect.type} (${effect.duration})`;
+            return `${emoji}${effect.type}(${effect.duration})`;
         }).join(' ');
         status += `🔮 **Effects:** ${effects}`;
+    } else {
+        status += `🔮 **Effects:** None`;
     }
     
     return status;
 }
 
 /**
- * Create visual HP bar
+ * Create horizontal HP bar with enhanced visuals
  */
 function createHPBar(currentHP, maxHP) {
     const barLength = RAID_CONFIG.HP_BAR_LENGTH;
@@ -581,18 +641,22 @@ function createHPBar(currentHP, maxHP) {
     const filledBars = Math.floor(hpPercent * barLength);
     const emptyBars = barLength - filledBars;
     
-    // Different colors based on HP percentage
-    let barEmoji = '🟢'; // Green for high HP
-    if (hpPercent < 0.3) {
-        barEmoji = '🟥'; // Red for low HP
-    } else if (hpPercent < 0.6) {
-        barEmoji = '🟡'; // Yellow for medium HP
+    // Different colors based on HP percentage - using different emojis for horizontal bar
+    let barEmoji = '🟩'; // Green for high HP (horizontal)
+    if (hpPercent < 0.2) {
+        barEmoji = '🟥'; // Red for very low HP
+    } else if (hpPercent < 0.4) {
+        barEmoji = '🟧'; // Orange for low HP
+    } else if (hpPercent < 0.7) {
+        barEmoji = '🟨'; // Yellow for medium HP
     }
     
     const filled = barEmoji.repeat(filledBars);
-    const empty = '⬜'.repeat(emptyBars);
+    const empty = '⬛'.repeat(emptyBars);
     
-    return `${filled}${empty}`;
+    // Create horizontal bar with percentage
+    const percentText = `${Math.round(hpPercent * 100)}%`;
+    return `[${filled}${empty}] ${percentText}`;
 }
 
 /**
@@ -959,18 +1023,29 @@ async function createDetailedResultEmbed(battleResult, rewards, attacker, target
                     `**Total Turns:** ${totalTurns}/${RAID_CONFIG.MAX_BATTLE_TURNS}`,
                     `**Final HP:** ${attacker.username}: ${finalHP.attacker}/${battleResult.attacker.maxHP} | ${target.username}: ${finalHP.target}/${battleResult.target.maxHP}`,
                     `**Battle Reason:** ${getReasonText(reason)}`,
+                    `**Combat Duration:** ${((Date.now() - battleResult.startTime) / 1000).toFixed(1)}s`,
                     `**Combat Type:** Enhanced Turn-based with Devil Fruit Skills`
                 ].join('\n'),
                 inline: false
             }
         );
     
-    // Add skill usage summary
+    // Add detailed skill usage summary
     const skillSummary = createSkillUsageSummary(battleResult);
     if (skillSummary) {
         embed.addFields({
-            name: '⚡ Skills Used',
+            name: '⚡ Skills & Abilities Used',
             value: skillSummary,
+            inline: false
+        });
+    }
+    
+    // Add battle statistics
+    const battleStats = createBattleStatistics(battleResult);
+    if (battleStats) {
+        embed.addFields({
+            name: '📊 Battle Statistics',
+            value: battleStats,
             inline: false
         });
     }
@@ -1006,14 +1081,14 @@ async function createDetailedResultEmbed(battleResult, rewards, attacker, target
         }
     }
     
-    embed.setFooter({ text: `Enhanced raid completed in ${totalTurns} turns with ${battleLog.length} actions` })
+    embed.setFooter({ text: `Enhanced raid completed in ${totalTurns} turns with ${battleLog.length} actions | Speed: ${RAID_CONFIG.TURN_DELAY/1000}s/turn` })
          .setTimestamp();
     
     return embed;
 }
 
 /**
- * Create skill usage summary
+ * Create enhanced skill usage summary with more details
  */
 function createSkillUsageSummary(battleResult) {
     const attackerSkills = new Map();
@@ -1025,7 +1100,14 @@ function createSkillUsageSummary(battleResult) {
             const skillMap = isAttacker ? attackerSkills : targetSkills;
             const skillName = action.skillName;
             
-            skillMap.set(skillName, (skillMap.get(skillName) || 0) + 1);
+            if (!skillMap.has(skillName)) {
+                skillMap.set(skillName, { count: 0, totalDamage: 0, crits: 0 });
+            }
+            
+            const skillStats = skillMap.get(skillName);
+            skillStats.count++;
+            skillStats.totalDamage += action.damage || 0;
+            if (action.isCritical) skillStats.crits++;
         }
     });
     
@@ -1033,19 +1115,70 @@ function createSkillUsageSummary(battleResult) {
     
     if (attackerSkills.size > 0) {
         summary += `**${battleResult.attacker.username}:**\n`;
-        attackerSkills.forEach((count, skill) => {
+        attackerSkills.forEach((stats, skill) => {
             const emoji = RARITY_EMOJIS[battleResult.attacker.bestFruit?.fruit_rarity] || '⚡';
-            summary += `${emoji} ${skill} (${count}x)\n`;
+            const avgDamage = Math.round(stats.totalDamage / stats.count);
+            const critText = stats.crits > 0 ? ` (${stats.crits} crits)` : '';
+            summary += `${emoji} **${skill}** - ${stats.count}x, ${avgDamage} avg DMG${critText}\n`;
         });
+        summary += '\n';
     }
     
     if (targetSkills.size > 0) {
         summary += `**${battleResult.target.username}:**\n`;
-        targetSkills.forEach((count, skill) => {
+        targetSkills.forEach((stats, skill) => {
             const emoji = RARITY_EMOJIS[battleResult.target.bestFruit?.fruit_rarity] || '⚡';
-            summary += `${emoji} ${skill} (${count}x)\n`;
+            const avgDamage = Math.round(stats.totalDamage / stats.count);
+            const critText = stats.crits > 0 ? ` (${stats.crits} crits)` : '';
+            summary += `${emoji} **${skill}** - ${stats.count}x, ${avgDamage} avg DMG${critText}\n`;
         });
     }
     
     return summary || null;
+}
+
+/**
+ * Create detailed battle statistics
+ */
+function createBattleStatistics(battleResult) {
+    let attackerDamage = 0;
+    let targetDamage = 0;
+    let attackerSkillUses = 0;
+    let targetSkillUses = 0;
+    let attackerCrits = 0;
+    let targetCrits = 0;
+    
+    battleResult.battleLog.forEach(action => {
+        const isAttacker = action.message.includes(battleResult.attacker.username);
+        
+        if (action.damage) {
+            if (isAttacker) {
+                attackerDamage += action.damage;
+            } else {
+                targetDamage += action.damage;
+            }
+        }
+        
+        if (action.type === 'skill_attack') {
+            if (isAttacker) {
+                attackerSkillUses++;
+            } else {
+                targetSkillUses++;
+            }
+        }
+        
+        if (action.isCritical) {
+            if (isAttacker) {
+                attackerCrits++;
+            } else {
+                targetCrits++;
+            }
+        }
+    });
+    
+    return [
+        `**${battleResult.attacker.username}:** ${attackerDamage} total DMG, ${attackerSkillUses} skills, ${attackerCrits} crits`,
+        `**${battleResult.target.username}:** ${targetDamage} total DMG, ${targetSkillUses} skills, ${targetCrits} crits`,
+        `**Turn Efficiency:** ${Math.round((battleResult.battleLog.length / battleResult.totalTurns) * 100)}% action rate`
+    ].join('\n');
 }
