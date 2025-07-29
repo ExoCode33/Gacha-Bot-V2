@@ -5,9 +5,9 @@ const EconomyService = require('../../../services/EconomyService');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 
-// PvP raid configuration
+// Enhanced raid configuration
 const RAID_CONFIG = {
-    COOLDOWN_TIME: 180000, // 3 minutes between raids
+    COOLDOWN_TIME: 300000, // 5 minutes between raids
     MIN_CP_REQUIRED: 500, // Minimum CP to participate
     BERRY_STEAL_PERCENTAGE: 0.15, // 15% of opponent's berries
     FRUIT_DROP_CHANCES: {
@@ -15,9 +15,9 @@ const RAID_CONFIG = {
         'epic': 0.08, 'rare': 0.12, 'uncommon': 0.18, 'common': 0.25
     },
     MAX_FRUIT_DROPS: 3,
-    MAX_BATTLE_TURNS: 50,
-    TURN_DELAY: 1500, // 1.5 seconds between turns
-    HP_BAR_LENGTH: 12 // Compact horizontal HP bar
+    MAX_BATTLE_TURNS: 20,
+    TURN_DELAY: 3000, // 3 seconds between turns for animation
+    HP_BAR_LENGTH: 20 // Length of HP bar in characters
 };
 
 // Active raid cooldowns and battles
@@ -27,7 +27,7 @@ const activeBattles = new Map();
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('pvp-raid')
-        .setDescription('⚔️ Launch a raid with turn-based combat against another pirate!')
+        .setDescription('⚔️ Launch an enhanced raid with turn-based combat against another pirate!')
         .addUserOption(option =>
             option.setName('target')
                 .setDescription('The pirate you want to raid')
@@ -53,14 +53,14 @@ module.exports = {
             
             await interaction.deferReply();
             
-            // Get participant data with skills
+            // Get enhanced participant data with skills
             const [attackerData, targetData] = await Promise.all([
-                getParticipantData(attacker.id),
-                getParticipantData(target.id)
+                getEnhancedParticipantData(attacker.id),
+                getEnhancedParticipantData(target.id)
             ]);
             
-            // Start the turn-based battle
-            const battleResult = await executeBattle(interaction, attackerData, targetData);
+            // Start the enhanced turn-based battle
+            const battleResult = await executeEnhancedBattle(interaction, attackerData, targetData);
             
             // Process rewards and penalties
             const rewards = await processRaidRewards(battleResult, attackerData, targetData);
@@ -89,7 +89,7 @@ module.exports = {
             interaction.client.logger.error('Enhanced PvP Raid error:', error);
             
             const errorResponse = {
-                embeds: [createErrorEmbed('An error occurred during the raid!')],
+                embeds: [createErrorEmbed('An error occurred during the enhanced raid!')],
                 ephemeral: true
             };
             
@@ -103,9 +103,9 @@ module.exports = {
 };
 
 /**
- * Get participant data with devil fruit skills
+ * Get enhanced participant data with devil fruit skills
  */
-async function getParticipantData(userId) {
+async function getEnhancedParticipantData(userId) {
     const user = await DatabaseManager.getUser(userId);
     const fruits = await DatabaseManager.getUserDevilFruits(userId);
     
@@ -170,9 +170,9 @@ function calculateMaxHP(totalCP, level) {
 }
 
 /**
- * Execute turn-based battle with animations
+ * Execute enhanced turn-based battle with animations
  */
-async function executeBattle(interaction, attackerData, targetData) {
+async function executeEnhancedBattle(interaction, attackerData, targetData) {
     // Initialize battle state
     const battleId = `raid_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
     
@@ -248,7 +248,7 @@ async function executeBattle(interaction, attackerData, targetData) {
 async function sendBattleStartMessage(interaction, battleState) {
     const embed = createBattleEmbed(battleState, {
         type: 'battle_start',
-        message: '⚔️ **PvP Raid Battle Begins!**',
+        message: '⚔️ **Enhanced Raid Battle Begins!**',
         details: 'Turn-based combat with devil fruit skills!'
     });
     
@@ -371,39 +371,23 @@ function executeBasicAttack(battleState, attacker, defender) {
 }
 
 /**
- * Create skill attack message with dramatic flair and detailed info
+ * Create skill attack message with dramatic flair
  */
 function createSkillAttackMessage(attacker, defender, skill, damage, isCritical) {
     const fruitEmoji = RARITY_EMOJIS[attacker.bestFruit?.fruit_rarity] || '🍈';
     const critText = isCritical ? ' **CRITICAL HIT!** 💥' : '';
     
-    // Enhanced skill description with mechanics
-    let skillDetails = `**${skill.name}**`;
-    if (skill.type && skill.type !== 'attack') {
-        skillDetails += ` (${skill.type.charAt(0).toUpperCase() + skill.type.slice(1)} Type)`;
-    }
-    if (skill.range && skill.range !== 'single') {
-        skillDetails += ` [${skill.range.charAt(0).toUpperCase() + skill.range.slice(1)} Target]`;
-    }
-    
-    return `${fruitEmoji} **${attacker.username}** unleashes ${skillDetails}!\n` +
-           `📖 *"${skill.description}"*\n` +
-           `⚡ **Damage:** ${skill.damage} base → ${damage} final${critText}\n` +
-           `🔄 **Cooldown:** ${skill.cooldown || 2} turns | **Cost:** ${skill.cost || 0} energy`;
+    return `${fruitEmoji} **${attacker.username}** unleashes **${skill.name}**!\n` +
+           `✨ *${skill.description}*\n` +
+           `💀 Deals **${damage}** damage to ${defender.username}${critText}`;
 }
 
 /**
- * Create basic attack message with more detail
+ * Create basic attack message
  */
 function createBasicAttackMessage(attacker, defender, damage, isCritical) {
     const critText = isCritical ? ' **CRITICAL HIT!** 💥' : '';
-    const attackType = attacker.bestFruit ? 
-        `${attacker.bestFruit.fruit_name} Enhanced Attack` : 
-        'Basic Combat Strike';
-    
-    return `⚔️ **${attacker.username}** uses **${attackType}**!\n` +
-           `🥊 **Base Damage:** ${Math.floor(damage * 0.8)} → **Final:** ${damage}${critText}\n` +
-           `🎯 Target: ${defender.username}`;
+    return `⚔️ **${attacker.username}** attacks ${defender.username} for **${damage}** damage${critText}`;
 }
 
 /**
@@ -506,13 +490,13 @@ function reduceCooldowns(player) {
 }
 
 /**
- * Create professional battle embed
+ * Create enhanced battle embed with HP bars and detailed info
  */
 function createBattleEmbed(battleState, turnResult = null) {
     const { attacker, target, turn } = battleState;
     
     const embed = new EmbedBuilder()
-        .setTitle('⚔️ PvP Raid Battle')
+        .setTitle('⚔️ Enhanced Raid Battle')
         .setColor(RARITY_COLORS.legendary)
         .setDescription(createBattleDescription(battleState, turnResult))
         .addFields(
@@ -527,98 +511,69 @@ function createBattleEmbed(battleState, turnResult = null) {
                 inline: true
             },
             {
-                name: '📊 Battle Status',
-                value: [
-                    `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}`,
-                    `**Active:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}`,
-                    `**Speed:** ${RAID_CONFIG.TURN_DELAY/1000}s/turn`
-                ].join('\n'),
-                inline: false
+                name: '📊 Battle Info',
+                value: `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}\n**Current Player:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}`,
+                inline: true
             }
-        );
-    
-    // Add battle log (last 2 actions for compact display)
-    if (battleState.battleLog && battleState.battleLog.length > 0) {
-        const recentActions = battleState.battleLog.slice(-2);
-        const logText = recentActions.map((action, index) => {
-            const turnNum = battleState.battleLog.length - recentActions.length + index + 1;
-            
-            if (action.type === 'skill_attack') {
-                return `**T${turnNum}:** 💫 ${action.skillName} - ${action.damage} dmg${action.isCritical ? ' (CRIT)' : ''}`;
-            } else if (action.type === 'basic_attack') {
-                return `**T${turnNum}:** ⚔️ Basic Attack - ${action.damage} dmg${action.isCritical ? ' (CRIT)' : ''}`;
-            } else {
-                return `**T${turnNum}:** 🔄 ${action.type}`;
-            }
-        }).join('\n');
-        
-        embed.addFields({
-            name: '📜 Recent Actions',
-            value: logText || 'Battle starting...',
-            inline: false
-        });
-    }
-    
-    embed.setFooter({ text: `Battle ID: ${battleState.id}` })
-         .setTimestamp();
+        )
+        .setFooter({ text: `Battle ID: ${battleState.id}` })
+        .setTimestamp();
     
     return embed;
 }
 
 /**
- * Create professional battle description
+ * Create battle description based on turn result
  */
 function createBattleDescription(battleState, turnResult) {
     if (!turnResult) {
-        return `🎯 **PvP Battle in Progress**\n` +
-               `Turn-based combat with Devil Fruit abilities`;
+        return '🎯 **Battle in progress...** Turn-based combat with devil fruit skills!';
     }
     
-    let description = `**Latest Action:**\n${turnResult.message}`;
+    let description = turnResult.message;
     
     if (turnResult.effects && turnResult.effects.length > 0) {
-        description += '\n\n**Effects Applied:**\n' + turnResult.effects.join('\n');
+        description += '\n\n**Additional Effects:**\n' + turnResult.effects.join('\n');
     }
     
     return description;
 }
 
 /**
- * Create professional player status display
+ * Create detailed player status with HP bar and skill info
  */
 function createPlayerStatus(player) {
     const hpBar = createHPBar(player.currentHP, player.maxHP);
+    const hpPercent = Math.round((player.currentHP / player.maxHP) * 100);
     
-    let status = `**HP:** ${hpBar} (${player.currentHP.toLocaleString()}/${player.maxHP.toLocaleString()})\n`;
+    let status = `${hpBar}\n`;
+    status += `**HP:** ${player.currentHP}/${player.maxHP} (${hpPercent}%)\n`;
     status += `**CP:** ${player.totalCP.toLocaleString()}\n`;
     
     // Show equipped fruit and skill
     if (player.bestFruit && player.skillData) {
         const fruitEmoji = RARITY_EMOJIS[player.bestFruit.fruit_rarity] || '🍈';
-        const rarityName = player.bestFruit.fruit_rarity.charAt(0).toUpperCase() + player.bestFruit.fruit_rarity.slice(1);
-        status += `**Fruit:** ${fruitEmoji} ${player.bestFruit.fruit_name} (${rarityName})\n`;
+        status += `${fruitEmoji} **${player.bestFruit.fruit_name}**\n`;
         
         const skillCooldown = player.skillCooldowns[player.skillData.name] || 0;
-        const skillStatus = skillCooldown > 0 ? `🔒 ${skillCooldown}t` : '✅';
-        status += `**Skill:** ${player.skillData.name} ${skillStatus} (${player.skillData.damage}dmg)\n`;
+        const skillStatus = skillCooldown > 0 ? `(${skillCooldown} turns)` : '(Ready)';
+        status += `⚡ **${player.skillData.name}** ${skillStatus}\n`;
     }
     
-    // Show status effects compactly
-    if (player.statusEffects && player.statusEffects.length > 0) {
+    // Show status effects
+    if (player.statusEffects.length > 0) {
         const effects = player.statusEffects.map(effect => {
             const emoji = getStatusEffectEmoji(effect.type);
-            return `${emoji}${effect.duration}`;
+            return `${emoji} ${effect.type} (${effect.duration})`;
         }).join(' ');
-        status += `**Effects:** ${effects}`;
-    } else {
-        status += `**Effects:** None`;
+        status += `🔮 **Effects:** ${effects}`;
     }
     
     return status;
 }
 
 /**
- * Create compact horizontal HP bar
+ * Create visual HP bar
  */
 function createHPBar(currentHP, maxHP) {
     const barLength = RAID_CONFIG.HP_BAR_LENGTH;
@@ -627,20 +582,17 @@ function createHPBar(currentHP, maxHP) {
     const emptyBars = barLength - filledBars;
     
     // Different colors based on HP percentage
-    let barEmoji = '🟩'; // Green for high HP
-    if (hpPercent < 0.2) {
-        barEmoji = '🟥'; // Red for very low HP
-    } else if (hpPercent < 0.4) {
-        barEmoji = '🟧'; // Orange for low HP
-    } else if (hpPercent < 0.7) {
-        barEmoji = '🟨'; // Yellow for medium HP
+    let barEmoji = '🟢'; // Green for high HP
+    if (hpPercent < 0.3) {
+        barEmoji = '🟥'; // Red for low HP
+    } else if (hpPercent < 0.6) {
+        barEmoji = '🟡'; // Yellow for medium HP
     }
     
     const filled = barEmoji.repeat(filledBars);
-    const empty = '⬛'.repeat(emptyBars);
+    const empty = '⬜'.repeat(emptyBars);
     
-    // Compact single-line format
-    return `[${filled}${empty}] ${Math.round(hpPercent * 100)}%`;
+    return `${filled}${empty}`;
 }
 
 /**
@@ -689,48 +641,6 @@ function determineBattleWinner(battleState) {
         // Time limit reached - winner has more HP percentage
         const attackerPercent = attacker.currentHP / attacker.maxHP;
         const targetPercent = target.currentHP / target.maxHP;
-        
-        if (attackerPercent > targetPercent) {
-            return { id: attacker.userId, reason: 'time_limit' };
-        } else if (targetPercent > attackerPercent) {
-            return { id: target.userId, reason: 'time_limit' };
-        } else {
-            return { id: null, reason: 'draw' };
-        }
-    }
-}
-
-/**
- * Validate if raid can proceed
- */
-async function validateRaid(attackerId, target) {
-    if (!target || target.bot) {
-        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
-    }
-    
-    if (attackerId === target.id) {
-        return { valid: false, reason: 'Cannot raid yourself!' };
-    }
-    
-    const lastRaid = raidCooldowns.get(attackerId);
-    if (lastRaid && (Date.now() - lastRaid) < RAID_CONFIG.COOLDOWN_TIME) {
-        const remainingTime = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000);
-        return { valid: false, reason: `Raid cooldown active! Wait ${remainingTime} more seconds.` };
-    }
-    
-    try {
-        const [attackerUser, targetUser] = await Promise.all([
-            DatabaseManager.getUser(attackerId),
-            DatabaseManager.getUser(target.id)
-        ]);
-        
-        if (!attackerUser) {
-            return { valid: false, reason: 'You need to use other commands first to initialize your account!' };
-        }
-        
-        if (!targetUser) {
-            return { valid: false, reason: 'Target user not found in the database!' };
-        }
         
         if (attackerUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
             return { valid: false, reason: `You need at least ${RAID_CONFIG.MIN_CP_REQUIRED} CP to raid!` };
@@ -879,7 +789,7 @@ function getReasonText(reason) {
 function createErrorEmbed(message) {
     return new EmbedBuilder()
         .setColor('#FF0000')
-        .setTitle('❌ Raid Failed')
+        .setTitle('❌ Enhanced Raid Failed')
         .setDescription(message)
         .setTimestamp();
 }
@@ -892,7 +802,7 @@ function createRematchButton(winnerId, loserId) {
         .addComponents(
             new ButtonBuilder()
                 .setCustomId(`rematch_${winnerId}_${loserId}`)
-                .setLabel('⚔️ Offer Rematch')
+                .setLabel('⚔️ Offer Enhanced Rematch')
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🔄')
         );
@@ -928,7 +838,7 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
             const validation = await validateRaid(winnerId, target);
             if (!validation.valid) {
                 return buttonInteraction.reply({
-                    content: `❌ Rematch not available: ${validation.reason}`,
+                    content: `❌ Enhanced rematch not available: ${validation.reason}`,
                     ephemeral: true
                 });
             }
@@ -937,7 +847,7 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('rematch_used')
-                        .setLabel('⚔️ Rematch Requested!')
+                        .setLabel('⚔️ Enhanced Rematch Requested!')
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(true)
                 );
@@ -945,7 +855,7 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
             await buttonInteraction.update({ components: [disabledRow] });
             
             await buttonInteraction.followUp({
-                content: `🔄 **Rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\` for another battle!`,
+                content: `🔄 **Enhanced rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\` for another epic turn-based battle!`,
                 ephemeral: false
             });
         });
@@ -956,19 +866,27 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
                     .addComponents(
                         new ButtonBuilder()
                             .setCustomId('rematch_expired')
-                            .setLabel('⚔️ Rematch Expired')
+                            .setLabel('⚔️ Enhanced Rematch Expired')
                             .setStyle(ButtonStyle.Secondary)
                             .setDisabled(true)
                     );
                 
                 await interaction.editReply({ components: [disabledRow] });
             } catch (error) {
-                console.log('Failed to disable rematch button:', error.message);
+                console.log('Failed to disable enhanced rematch button:', error.message);
             }
         });
         
     } catch (error) {
-        console.error('Error setting up rematch collector:', error);
+        console.error('Error setting up enhanced rematch collector:', error);
+    }
+}Percent > targetPercent) {
+            return { id: attacker.userId, reason: 'time_limit' };
+        } else if (targetPercent > attackerPercent) {
+            return { id: target.userId, reason: 'time_limit' };
+        } else {
+            return { id: null, reason: 'draw' };
+        }
     }
 }
 
@@ -1007,29 +925,18 @@ async function createDetailedResultEmbed(battleResult, rewards, attacker, target
                     `**Total Turns:** ${totalTurns}/${RAID_CONFIG.MAX_BATTLE_TURNS}`,
                     `**Final HP:** ${attacker.username}: ${finalHP.attacker}/${battleResult.attacker.maxHP} | ${target.username}: ${finalHP.target}/${battleResult.target.maxHP}`,
                     `**Battle Reason:** ${getReasonText(reason)}`,
-                    `**Combat Duration:** ${((Date.now() - battleResult.startTime) / 1000).toFixed(1)}s`,
                     `**Combat Type:** Enhanced Turn-based with Devil Fruit Skills`
                 ].join('\n'),
                 inline: false
             }
         );
     
-    // Add detailed skill usage summary
+    // Add skill usage summary
     const skillSummary = createSkillUsageSummary(battleResult);
     if (skillSummary) {
         embed.addFields({
-            name: '⚡ Skills & Abilities Used',
+            name: '⚡ Skills Used',
             value: skillSummary,
-            inline: false
-        });
-    }
-    
-    // Add battle statistics
-    const battleStats = createBattleStatistics(battleResult);
-    if (battleStats) {
-        embed.addFields({
-            name: '📊 Battle Statistics',
-            value: battleStats,
             inline: false
         });
     }
@@ -1065,14 +972,14 @@ async function createDetailedResultEmbed(battleResult, rewards, attacker, target
         }
     }
     
-    embed.setFooter({ text: `Raid completed in ${totalTurns} turns with ${battleLog.length} actions | Speed: ${RAID_CONFIG.TURN_DELAY/1000}s/turn` })
+    embed.setFooter({ text: `Enhanced raid completed in ${totalTurns} turns with ${battleLog.length} actions` })
          .setTimestamp();
     
     return embed;
 }
 
 /**
- * Create professional skill usage summary
+ * Create skill usage summary
  */
 function createSkillUsageSummary(battleResult) {
     const attackerSkills = new Map();
@@ -1084,14 +991,7 @@ function createSkillUsageSummary(battleResult) {
             const skillMap = isAttacker ? attackerSkills : targetSkills;
             const skillName = action.skillName;
             
-            if (!skillMap.has(skillName)) {
-                skillMap.set(skillName, { count: 0, totalDamage: 0, crits: 0 });
-            }
-            
-            const skillStats = skillMap.get(skillName);
-            skillStats.count++;
-            skillStats.totalDamage += action.damage || 0;
-            if (action.isCritical) skillStats.crits++;
+            skillMap.set(skillName, (skillMap.get(skillName) || 0) + 1);
         }
     });
     
@@ -1099,70 +999,56 @@ function createSkillUsageSummary(battleResult) {
     
     if (attackerSkills.size > 0) {
         summary += `**${battleResult.attacker.username}:**\n`;
-        attackerSkills.forEach((stats, skill) => {
+        attackerSkills.forEach((count, skill) => {
             const emoji = RARITY_EMOJIS[battleResult.attacker.bestFruit?.fruit_rarity] || '⚡';
-            const avgDamage = Math.round(stats.totalDamage / stats.count);
-            const critText = stats.crits > 0 ? ` (${stats.crits} crits)` : '';
-            summary += `${emoji} **${skill}** - ${stats.count}x, ${avgDamage} avg DMG${critText}\n`;
+            summary += `${emoji} ${skill} (${count}x)\n`;
         });
-        summary += '\n';
     }
     
     if (targetSkills.size > 0) {
         summary += `**${battleResult.target.username}:**\n`;
-        targetSkills.forEach((stats, skill) => {
+        targetSkills.forEach((count, skill) => {
             const emoji = RARITY_EMOJIS[battleResult.target.bestFruit?.fruit_rarity] || '⚡';
-            const avgDamage = Math.round(stats.totalDamage / stats.count);
-            const critText = stats.crits > 0 ? ` (${stats.crits} crits)` : '';
-            summary += `${emoji} **${skill}** - ${stats.count}x, ${avgDamage} avg DMG${critText}\n`;
+            summary += `${emoji} ${skill} (${count}x)\n`;
         });
     }
     
     return summary || null;
 }
 
+// Keep all the existing helper functions (validateRaid, processRaidRewards, etc.)
+// ... (Previous validation, rewards, and utility functions remain the same)
+
 /**
- * Create detailed battle statistics
+ * Validate if raid can proceed
  */
-function createBattleStatistics(battleResult) {
-    let attackerDamage = 0;
-    let targetDamage = 0;
-    let attackerSkillUses = 0;
-    let targetSkillUses = 0;
-    let attackerCrits = 0;
-    let targetCrits = 0;
+async function validateRaid(attackerId, target) {
+    if (!target || target.bot) {
+        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
+    }
     
-    battleResult.battleLog.forEach(action => {
-        const isAttacker = action.message.includes(battleResult.attacker.username);
-        
-        if (action.damage) {
-            if (isAttacker) {
-                attackerDamage += action.damage;
-            } else {
-                targetDamage += action.damage;
-            }
-        }
-        
-        if (action.type === 'skill_attack') {
-            if (isAttacker) {
-                attackerSkillUses++;
-            } else {
-                targetSkillUses++;
-            }
-        }
-        
-        if (action.isCritical) {
-            if (isAttacker) {
-                attackerCrits++;
-            } else {
-                targetCrits++;
-            }
-        }
-    });
+    if (attackerId === target.id) {
+        return { valid: false, reason: 'Cannot raid yourself!' };
+    }
     
-    return [
-        `**${battleResult.attacker.username}:** ${attackerDamage} total DMG, ${attackerSkillUses} skills, ${attackerCrits} crits`,
-        `**${battleResult.target.username}:** ${targetDamage} total DMG, ${targetSkillUses} skills, ${targetCrits} crits`,
-        `**Turn Efficiency:** ${Math.round((battleResult.battleLog.length / battleResult.totalTurns) * 100)}% action rate`
-    ].join('\n');
-}
+    const lastRaid = raidCooldowns.get(attackerId);
+    if (lastRaid && (Date.now() - lastRaid) < RAID_CONFIG.COOLDOWN_TIME) {
+        const remainingTime = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000);
+        return { valid: false, reason: `Raid cooldown active! Wait ${remainingTime} more seconds.` };
+    }
+    
+    try {
+        const [attackerUser, targetUser] = await Promise.all([
+            DatabaseManager.getUser(attackerId),
+            DatabaseManager.getUser(target.id)
+        ]);
+        
+        if (!attackerUser) {
+            return { valid: false, reason: 'You need to use other commands first to initialize your account!' };
+        }
+        
+        if (!targetUser) {
+            return { valid: false, reason: 'Target user not found in the database!' };
+        }
+        
+        if (attacker
