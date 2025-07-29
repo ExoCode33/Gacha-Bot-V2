@@ -1,8 +1,9 @@
-// src/commands/slash/pvp/pvp-raid.js - COMPLETE: All Improvements Applied
+// src/commands/slash/pvp/pvp-raid.js - COMPLETE: All Improvements Applied + History Recording
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
+const { recordRaidInHistory } = require('./pvp-raid-history');
 
 // Raid configuration
 const RAID_CONFIG = {
@@ -461,13 +462,13 @@ function createBattleEmbed(raidState) {
     
     const attackerTeamText = attacker.team.map((fruit, index) => {
         const isActive = index === attacker.activeFruitIndex;
-        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
+        const hpBar = createFixedHPBar(fruit.currentHP, fruit.maxHP);
         const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
         const activeIcon = isActive ? '▶️' : '▫️';
         
-        // Use consistent formatting with fixed spacing
-        return `${activeIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
-    }).join('\n');
+        // Fixed format with consistent spacing
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+    }).join('\n\n');
     
     embed.addFields({
         name: `⚔️ ${attacker.username}'s Team`,
@@ -477,12 +478,12 @@ function createBattleEmbed(raidState) {
     
     const defenderTeamText = defender.team.map((fruit, index) => {
         const isActive = index === defender.activeFruitIndex;
-        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
+        const hpBar = createFixedHPBar(fruit.currentHP, fruit.maxHP);
         const activeIcon = isActive ? '▶️' : '▫️';
         
-        // Use identical formatting to attacker side
-        return `${activeIcon} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
-    }).join('\n');
+        // Identical format to attacker side
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+    }).join('\n\n');
     
     embed.addFields({
         name: `🛡️ ${defender.username}'s Team`,
@@ -770,6 +771,24 @@ async function endBattle(interaction, raidState, battleResult) {
         components: []
     });
     
+    // Record raid in history
+    try {
+        await recordRaidInHistory({
+            attackerId: raidState.attacker.userId,
+            defenderId: raidState.defender.userId,
+            winnerId: battleResult.winner,
+            battleDuration: Math.floor((Date.now() - raidState.startTime) / 1000),
+            totalTurns: raidState.turn,
+            berriesStolen: rewards.berries || 0,
+            fruitsStolen: rewards.fruitsStolen || [],
+            battleLog: raidState.battleLog,
+            startTime: raidState.startTime,
+            endTime: Date.now()
+        });
+    } catch (error) {
+        console.error('Failed to record raid in history:', error);
+    }
+    
     activeRaids.delete(raidState.id);
 }
 
@@ -787,14 +806,14 @@ function createBattleResultEmbed(raidState, battleResult, rewards) {
         .setTimestamp();
     
     const attackerStatus = attacker.team.map(fruit => {
-        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
-        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
-    }).join('\n');
+        const hpBar = createFixedHPBar(fruit.currentHP, fruit.maxHP);
+        return `${fruit.emoji} **${fruit.name}**\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+    }).join('\n\n');
     
     const defenderStatus = defender.team.map(fruit => {
-        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
-        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
-    }).join('\n');
+        const hpBar = createFixedHPBar(fruit.currentHP, fruit.maxHP);
+        return `${fruit.emoji} **${fruit.name}**\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+    }).join('\n\n');
     
     embed.addFields(
         {
@@ -859,8 +878,8 @@ function createBattleResultEmbed(raidState, battleResult, rewards) {
     return embed;
 }
 
-function createPerfectHPBar(currentHP, maxHP) {
-    // Always create exactly 10 emojis for perfect alignment
+function createFixedHPBar(currentHP, maxHP) {
+    // FIXED: Always exactly 10 emojis with consistent formatting
     const barLength = 10;
     const percentage = Math.max(0, Math.min(1, currentHP / maxHP));
     const filledBars = Math.floor(percentage * barLength);
@@ -869,7 +888,7 @@ function createPerfectHPBar(currentHP, maxHP) {
     // Choose HP color based on percentage
     let hpEmoji = '🟢'; // Green for healthy (>50%)
     if (percentage <= 0) {
-        // All dead - all black
+        // All dead - use all black circles
         return '⚫⚫⚫⚫⚫⚫⚫⚫⚫⚫';
     } else if (percentage < 0.25) {
         hpEmoji = '🔴'; // Red for critical (<25%)
@@ -877,26 +896,35 @@ function createPerfectHPBar(currentHP, maxHP) {
         hpEmoji = '🟡'; // Yellow for injured (25-50%)
     }
     
-    // Build the bar with exact count to ensure 10 emojis total
-    let bar = '';
+    // Build bar manually to ensure exactly 10 emojis
+    let hpBar = '';
+    
+    // Add filled portions
     for (let i = 0; i < filledBars; i++) {
-        bar += hpEmoji;
-    }
-    for (let i = 0; i < emptyBars; i++) {
-        bar += '⚫';
+        hpBar += hpEmoji;
     }
     
-    return bar;
+    // Add empty portions
+    for (let i = 0; i < emptyBars; i++) {
+        hpBar += '⚫';
+    }
+    
+    return hpBar;
+}
+
+function createPerfectHPBar(currentHP, maxHP) {
+    // Use the fixed version for consistency
+    return createFixedHPBar(currentHP, maxHP);
 }
 
 function createAlignedHPBar(currentHP, maxHP) {
-    // Use the perfect version for consistency
-    return createPerfectHPBar(currentHP, maxHP);
+    // Use the fixed version for consistency
+    return createFixedHPBar(currentHP, maxHP);
 }
 
 function createMiniHPBar(currentHP, maxHP, length = 10) {
-    // Use the aligned version for consistency
-    return createAlignedHPBar(currentHP, maxHP);
+    // Use the fixed version for consistency everywhere
+    return createFixedHPBar(currentHP, maxHP);
 }
 
 async function getUserFruitsForSelection(userId) {
