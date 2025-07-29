@@ -1,4 +1,4 @@
-// src/commands/slash/pvp/pvp-raid.js - COMPLETE: Full Automated Battle System
+// src/commands/slash/pvp/pvp-raid.js - COMPLETE: Full Automated Battle System - FIXED
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const EconomyService = require('../../../services/EconomyService');
@@ -83,7 +83,8 @@ module.exports = {
             
             // Setup button collector for rematch
             if (components.length > 0) {
-                setupRematchCollector(interaction, attacker.id, target.id);
+                // FIXED: Properly await the collector setup
+                await setupRematchCollector(interaction, attacker.id, target.id);
             }
             
         } catch (error) {
@@ -580,69 +581,81 @@ function createRematchButton(winnerId, loserId) {
 }
 
 /**
- * Setup rematch button collector
+ * Setup rematch button collector - FIXED
  */
-function setupRematchCollector(interaction, winnerId, loserId) {
-    const message = interaction.fetchReply();
-    const collector = message.createMessageComponentCollector({ 
-        time: 300000 // 5 minutes
-    });
-    
-    collector.on('collect', async (buttonInteraction) => {
-        if (buttonInteraction.user.id !== winnerId) {
-            return buttonInteraction.reply({
-                content: '❌ Only the winner can offer a rematch!',
-                ephemeral: true
-            });
-        }
+async function setupRematchCollector(interaction, winnerId, loserId) {
+    try {
+        // FIXED: await the fetchReply() call to get the actual message
+        const message = await interaction.fetchReply();
         
-        // Check if rematch is still valid (cooldowns, etc.)
-        const target = await interaction.client.users.fetch(loserId).catch(() => null);
-        if (!target) {
-            return buttonInteraction.reply({
-                content: '❌ Target user not found!',
-                ephemeral: true
-            });
-        }
-        
-        const validation = await validateRaid(winnerId, target);
-        if (!validation.valid) {
-            return buttonInteraction.reply({
-                content: `❌ Rematch not available: ${validation.reason}`,
-                ephemeral: true
-            });
-        }
-        
-        // Disable the button and notify
-        const disabledRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('rematch_used')
-                    .setLabel('⚔️ Rematch Requested!')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true)
-            );
-        
-        await buttonInteraction.update({ components: [disabledRow] });
-        
-        // Notify about rematch availability
-        await buttonInteraction.followUp({
-            content: `🔄 **Rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\``,
-            ephemeral: false
+        const collector = message.createMessageComponentCollector({ 
+            time: 300000 // 5 minutes
         });
-    });
-    
-    collector.on('end', () => {
-        // Disable button when collector expires
-        const disabledRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('rematch_expired')
-                    .setLabel('⚔️ Rematch Expired')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true)
-            );
         
-        interaction.editReply({ components: [disabledRow] }).catch(() => {});
-    });
+        collector.on('collect', async (buttonInteraction) => {
+            if (buttonInteraction.user.id !== winnerId) {
+                return buttonInteraction.reply({
+                    content: '❌ Only the winner can offer a rematch!',
+                    ephemeral: true
+                });
+            }
+            
+            // Check if rematch is still valid (cooldowns, etc.)
+            const target = await interaction.client.users.fetch(loserId).catch(() => null);
+            if (!target) {
+                return buttonInteraction.reply({
+                    content: '❌ Target user not found!',
+                    ephemeral: true
+                });
+            }
+            
+            const validation = await validateRaid(winnerId, target);
+            if (!validation.valid) {
+                return buttonInteraction.reply({
+                    content: `❌ Rematch not available: ${validation.reason}`,
+                    ephemeral: true
+                });
+            }
+            
+            // Disable the button and notify
+            const disabledRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('rematch_used')
+                        .setLabel('⚔️ Rematch Requested!')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true)
+                );
+            
+            await buttonInteraction.update({ components: [disabledRow] });
+            
+            // Notify about rematch availability
+            await buttonInteraction.followUp({
+                content: `🔄 **Rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\``,
+                ephemeral: false
+            });
+        });
+        
+        collector.on('end', async () => {
+            try {
+                // Disable button when collector expires
+                const disabledRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('rematch_expired')
+                            .setLabel('⚔️ Rematch Expired')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true)
+                    );
+                
+                await interaction.editReply({ components: [disabledRow] });
+            } catch (error) {
+                // Silently fail if interaction is no longer valid
+                console.log('Failed to disable rematch button:', error.message);
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error setting up rematch collector:', error);
+    }
 }
