@@ -1,4 +1,4 @@
-// src/commands/slash/pvp/pvp-raid.js - Authentic One Piece Raid System
+// src/commands/slash/pvp/pvp-raid.js - Complete Authentic One Piece Raid System
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
@@ -59,7 +59,7 @@ module.exports = {
             ]);
             
             // Start the raid
-            const raidResult = await executeRaid(interaction, attackerData, targetData);
+            await executeRaid(interaction, attackerData, targetData);
             
             // Set cooldown
             raidCooldowns.set(attacker.id, Date.now());
@@ -94,7 +94,7 @@ async function executeRaid(interaction, attackerData, targetData) {
             ...attackerData,
             currentHP: calculateMaxHP(attackerData.totalCP, attackerData.level),
             maxHP: calculateMaxHP(attackerData.totalCP, attackerData.level),
-            activeFruitIndex: 0, // Currently active fruit
+            activeFruitIndex: 0,
             statusEffects: [],
             skillCooldowns: {}
         },
@@ -102,7 +102,7 @@ async function executeRaid(interaction, attackerData, targetData) {
             ...targetData,
             currentHP: calculateMaxHP(targetData.totalCP, targetData.level),
             maxHP: calculateMaxHP(targetData.totalCP, targetData.level),
-            activeFruitIndex: 0, // AI controlled
+            activeFruitIndex: 0,
             statusEffects: [],
             skillCooldowns: {}
         },
@@ -116,15 +116,12 @@ async function executeRaid(interaction, attackerData, targetData) {
     
     // Start the interactive battle
     await startInteractiveBattle(interaction, raidState);
-    
-    return raidState;
 }
 
 /**
  * Start interactive turn-based battle
  */
 async function startInteractiveBattle(interaction, raidState) {
-    // Send initial battle interface
     const embed = createBattleEmbed(raidState);
     const components = createBattleComponents(raidState);
     
@@ -133,7 +130,6 @@ async function startInteractiveBattle(interaction, raidState) {
         components
     });
     
-    // Setup battle collector
     setupBattleCollector(interaction, raidState, message);
 }
 
@@ -143,25 +139,19 @@ async function startInteractiveBattle(interaction, raidState) {
 function createBattleEmbed(raidState, lastAction = null) {
     const { attacker, target, turn } = raidState;
     
-    // Get active fruits
     const attackerFruit = attacker.fruits[attacker.activeFruitIndex];
     const targetFruit = target.fruits[target.activeFruitIndex];
     
-    // Calculate HP percentages
-    const attackerHPPercent = Math.round((attacker.currentHP / attacker.maxHP) * 100);
-    const targetHPPercent = Math.round((target.currentHP / target.maxHP) * 100);
-    
-    // Create HP bars
     const attackerHPBar = createHPBar(attacker.currentHP, attacker.maxHP);
     const targetHPBar = createHPBar(target.currentHP, target.maxHP);
     
     const embed = new EmbedBuilder()
         .setTitle('⚔️ Raid Battle!')
-        .setDescription(`${attacker.username} successfully raided ${target.username} with enhanced visual combat!`)
+        .setDescription(`Battle in progress between ${attacker.username} and ${target.username}`)
         .setColor(RARITY_COLORS.legendary)
         .addFields(
             {
-                name: '⚔️ Final HP Status',
+                name: '⚔️ HP Status',
                 value: [
                     `💀 **${attacker.username}:**`,
                     attackerHPBar,
@@ -174,37 +164,23 @@ function createBattleEmbed(raidState, lastAction = null) {
                 inline: false
             },
             {
-                name: '⚔️ Battle Summary',
+                name: '🍈 Active Devil Fruits',
                 value: [
-                    `**Total Turns:** ${turn}/50`,
-                    `**Battle Reason:** Enhanced Visual Turn-based System`,
-                    `**Combat Type:** Enhanced Visual Turn-based System`,
-                    `**Visual Features:** Animated HP bars, damage flashes, separated logs`
+                    `**${attacker.username}:** ${attackerFruit?.emoji || '⚪'} ${attackerFruit?.name || 'None'}`,
+                    `**${target.username}:** ${targetFruit?.emoji || '⚪'} ${targetFruit?.name || 'None'}`
                 ].join('\n'),
                 inline: false
             }
         );
     
-    // Add active fruits info
-    embed.addFields({
-        name: '🍈 Active Devil Fruits',
-        value: [
-            `**${attacker.username}:** ${attackerFruit?.emoji || '⚪'} ${attackerFruit?.name || 'None'}`,
-            `**${target.username}:** ${targetFruit?.emoji || '⚪'} ${targetFruit?.name || 'None'}`
-        ].join('\n'),
-        inline: true
-    });
-    
-    // Add last action if any
     if (lastAction) {
         embed.addFields({
             name: '💥 Last Action',
             value: lastAction,
-            inline: true
+            inline: false
         });
     }
     
-    // Add turn indicator
     if (raidState.currentPlayer === 'attacker') {
         embed.addFields({
             name: '⏰ Current Turn',
@@ -214,7 +190,7 @@ function createBattleEmbed(raidState, lastAction = null) {
     }
     
     embed.setFooter({ 
-        text: `Enhanced Visual Raid completed in ${turn} turns | Visual Combat System v3.0 • Today at ${new Date().toLocaleTimeString()}` 
+        text: `Turn ${turn} | Enhanced Visual Combat System` 
     })
     .setTimestamp();
     
@@ -228,7 +204,6 @@ function createBattleComponents(raidState) {
     const components = [];
     
     if (raidState.currentPlayer === 'attacker') {
-        // Action buttons
         const actionRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -251,11 +226,10 @@ function createBattleComponents(raidState) {
         
         components.push(actionRow);
         
-        // Fruit switching menu
         if (raidState.attacker.fruits.length > 1) {
             const fruitOptions = raidState.attacker.fruits.map((fruit, index) => ({
                 label: `${fruit.name}`.substring(0, 100),
-                description: `${fruit.rarity} • ${fruit.totalCP} CP • ${fruit.currentHP || fruit.maxHP}/${fruit.maxHP || fruit.totalCP} HP`.substring(0, 100),
+                description: `${fruit.rarity} • ${fruit.totalCP} CP`.substring(0, 100),
                 value: `switch_${index}`,
                 emoji: fruit.emoji,
                 default: index === raidState.attacker.activeFruitIndex
@@ -304,7 +278,6 @@ function setupBattleCollector(interaction, raidState, message) {
                 await handleFruitMenuSwitch(buttonInteraction, raidState);
             }
             
-            // Check if battle ended
             const battleResult = checkBattleEnd(raidState);
             if (battleResult.ended) {
                 await endBattle(buttonInteraction, raidState, battleResult);
@@ -312,7 +285,6 @@ function setupBattleCollector(interaction, raidState, message) {
                 return;
             }
             
-            // Continue battle
             await processTurn(buttonInteraction, raidState);
             
         } catch (error) {
@@ -326,7 +298,6 @@ function setupBattleCollector(interaction, raidState, message) {
     
     collector.on('end', async () => {
         if (activeRaids.has(raidState.id)) {
-            // Battle timed out
             const timeoutResult = {
                 ended: true,
                 winner: raidState.target.userId,
@@ -345,7 +316,6 @@ async function handleAttack(interaction, raidState) {
     const target = raidState.target;
     const activeFruit = attacker.fruits[attacker.activeFruitIndex];
     
-    // Calculate damage
     let damage = Math.floor(50 + (activeFruit.totalCP / 50));
     const critChance = 0.15;
     const isCritical = Math.random() < critChance;
@@ -354,12 +324,10 @@ async function handleAttack(interaction, raidState) {
         damage = Math.floor(damage * 1.8);
     }
     
-    // Apply damage
     const originalHP = target.currentHP;
     target.currentHP = Math.max(0, target.currentHP - damage);
     const actualDamage = originalHP - target.currentHP;
     
-    // Log action
     const actionText = `${attacker.username} attacks with ${activeFruit.name} for ${actualDamage} damage${isCritical ? ' (CRITICAL!)' : ''}!`;
     raidState.battleLog.push(actionText);
     
@@ -377,7 +345,6 @@ async function handleSkillUse(interaction, raidState) {
     const target = raidState.target;
     const activeFruit = attacker.fruits[attacker.activeFruitIndex];
     
-    // Get skill data
     const skillData = getSkillData(activeFruit.id, activeFruit.rarity) || {
         name: `${activeFruit.name} Power`,
         damage: Math.floor(activeFruit.totalCP / 20),
@@ -386,7 +353,6 @@ async function handleSkillUse(interaction, raidState) {
         description: `Harness the power of the ${activeFruit.name}`
     };
     
-    // Check cooldown
     const cooldownKey = `${activeFruit.id}_${skillData.name}`;
     if (attacker.skillCooldowns[cooldownKey] > 0) {
         return interaction.reply({
@@ -395,30 +361,25 @@ async function handleSkillUse(interaction, raidState) {
         });
     }
     
-    // Calculate skill damage
     let damage = skillData.damage || Math.floor(activeFruit.totalCP / 15);
-    const critChance = 0.25; // Higher crit chance for skills
+    const critChance = 0.25;
     const isCritical = Math.random() < critChance;
     
     if (isCritical) {
         damage = Math.floor(damage * 2.2);
     }
     
-    // Apply damage
     const originalHP = target.currentHP;
     target.currentHP = Math.max(0, target.currentHP - damage);
     const actualDamage = originalHP - target.currentHP;
     
-    // Set cooldown
     attacker.skillCooldowns[cooldownKey] = skillData.cooldown || 2;
     
-    // Apply effects
     let effectText = '';
     if (skillData.effect) {
         effectText = applySkillEffect(skillData.effect, target);
     }
     
-    // Log action
     const actionText = `${attacker.username} uses ${skillData.name} for ${actualDamage} damage${isCritical ? ' (CRITICAL!)' : ''}!${effectText}`;
     raidState.battleLog.push(actionText);
     
@@ -469,7 +430,6 @@ async function handleFruitMenuSwitch(interaction, raidState) {
 async function handleSkillInfo(interaction, raidState) {
     const activeFruit = raidState.attacker.fruits[raidState.attacker.activeFruitIndex];
     
-    // Get skill data
     const skillData = getSkillData(activeFruit.id, activeFruit.rarity) || {
         name: `${activeFruit.name} Power`,
         damage: Math.floor(activeFruit.totalCP / 20),
@@ -480,7 +440,6 @@ async function handleSkillInfo(interaction, raidState) {
         range: 'single'
     };
     
-    // Create detailed skill info embed
     const skillEmbed = new EmbedBuilder()
         .setTitle(`📊 ${skillData.name} - Skill Information`)
         .setColor(RARITY_COLORS[activeFruit.rarity] || RARITY_COLORS.common)
@@ -509,7 +468,6 @@ async function handleSkillInfo(interaction, raidState) {
             }
         );
     
-    // Add cooldown status
     const cooldownKey = `${activeFruit.id}_${skillData.name}`;
     const currentCooldown = raidState.attacker.skillCooldowns[cooldownKey] || 0;
     
@@ -539,7 +497,6 @@ async function handleSkillInfo(interaction, raidState) {
 function createEffectsDescription(skillData) {
     let effects = [];
     
-    // Main effect
     if (skillData.effect) {
         const effectNames = {
             'burn_damage': '🔥 Burn (DoT)',
@@ -552,7 +509,6 @@ function createEffectsDescription(skillData) {
         effects.push(effectNames[skillData.effect] || skillData.effect);
     }
     
-    // Special abilities
     if (skillData.special) {
         Object.entries(skillData.special).forEach(([key, value]) => {
             if (value === true) {
@@ -598,25 +554,19 @@ function applySkillEffect(effect, target) {
  * Process turn and handle AI
  */
 async function processTurn(interaction, raidState) {
-    // Switch to target's turn (AI)
     raidState.currentPlayer = 'target';
     
-    // AI takes action
     await processAITurn(raidState);
     
-    // Reduce cooldowns
     reduceCooldowns(raidState.attacker);
     reduceCooldowns(raidState.target);
     
-    // Process status effects
     processStatusEffects(raidState.attacker);
     processStatusEffects(raidState.target);
     
-    // Next turn
     raidState.turn++;
     raidState.currentPlayer = 'attacker';
     
-    // Update battle display
     const embed = createBattleEmbed(raidState);
     const components = createBattleComponents(raidState);
     
@@ -634,16 +584,13 @@ async function processAITurn(raidState) {
     const attacker = raidState.attacker;
     const activeFruit = target.fruits[target.activeFruitIndex];
     
-    // AI logic: 70% skill use, 30% basic attack
     const useSkill = Math.random() > 0.3;
     
     if (useSkill) {
-        // Try to use skill
         const skillData = getSkillData(activeFruit.id, activeFruit.rarity);
         const cooldownKey = `${activeFruit.id}_${skillData?.name || 'basic'}`;
         
         if (skillData && target.skillCooldowns[cooldownKey] <= 0) {
-            // Use skill
             let damage = skillData.damage || Math.floor(activeFruit.totalCP / 15);
             
             const originalHP = attacker.currentHP;
@@ -655,11 +602,9 @@ async function processAITurn(raidState) {
             const actionText = `${target.username} uses ${skillData.name} for ${actualDamage} damage!`;
             raidState.battleLog.push(actionText);
         } else {
-            // Basic attack
             executeAIBasicAttack(raidState);
         }
     } else {
-        // Basic attack
         executeAIBasicAttack(raidState);
     }
 }
@@ -686,7 +631,6 @@ function executeAIBasicAttack(raidState) {
  * Check if battle has ended
  */
 function checkBattleEnd(raidState) {
-    // Check for KO
     if (raidState.attacker.currentHP <= 0) {
         return { ended: true, winner: raidState.target.userId, reason: 'Decisive Victory' };
     }
@@ -694,7 +638,6 @@ function checkBattleEnd(raidState) {
         return { ended: true, winner: raidState.attacker.userId, reason: 'Decisive Victory' };
     }
     
-    // Check turn limit
     if (raidState.turn >= RAID_CONFIG.MAX_BATTLE_TURNS) {
         const attackerHP = raidState.attacker.currentHP / raidState.attacker.maxHP;
         const targetHP = raidState.target.currentHP / raidState.target.maxHP;
@@ -715,10 +658,8 @@ function checkBattleEnd(raidState) {
 async function endBattle(interaction, raidState, battleResult) {
     const { winner, reason } = battleResult;
     
-    // Calculate rewards
     const rewards = await calculateRewards(raidState, winner);
     
-    // Create final result embed (like screenshot)
     const resultEmbed = createFinalResultEmbed(raidState, battleResult, rewards);
     
     await interaction.editReply({
@@ -726,7 +667,6 @@ async function endBattle(interaction, raidState, battleResult) {
         components: []
     });
     
-    // Clean up
     activeRaids.delete(raidState.id);
 }
 
@@ -740,9 +680,8 @@ function createFinalResultEmbed(raidState, battleResult, rewards) {
     const winnerName = winner === attacker.userId ? attacker.username : target.username;
     const loserName = winner === attacker.userId ? target.username : attacker.username;
     
-    // Create HP bars for final status
-    const attackerHPBar = createHPBar(attacker.currentHP, attacker.maxHP, '#00FF00');
-    const targetHPBar = createHPBar(target.currentHP, target.maxHP, '#FF0000');
+    const attackerHPBar = createHPBar(attacker.currentHP, attacker.maxHP);
+    const targetHPBar = createHPBar(target.currentHP, target.maxHP);
     
     const embed = new EmbedBuilder()
         .setTitle('🏆 Raid Victory!')
@@ -774,7 +713,6 @@ function createFinalResultEmbed(raidState, battleResult, rewards) {
             }
         );
     
-    // Add combat skills used
     const skillsUsed = getSkillsUsed(raidState);
     if (skillsUsed.length > 0) {
         embed.addFields({
@@ -784,7 +722,6 @@ function createFinalResultEmbed(raidState, battleResult, rewards) {
         });
     }
     
-    // Add battle rewards
     if (rewards.berries > 0 || rewards.fruitsStolen.length > 0) {
         let rewardsText = '';
         
@@ -821,17 +758,16 @@ function createFinalResultEmbed(raidState, battleResult, rewards) {
 /**
  * Create HP bar visualization
  */
-function createHPBar(currentHP, maxHP, color = '#00FF00') {
+function createHPBar(currentHP, maxHP) {
     const percentage = Math.max(0, currentHP / maxHP);
     const filledBars = Math.floor(percentage * RAID_CONFIG.HP_BAR_LENGTH);
     const emptyBars = RAID_CONFIG.HP_BAR_LENGTH - filledBars;
     
-    // Choose appropriate emoji based on HP percentage
-    let hpEmoji = '🟩'; // Green
+    let hpEmoji = '🟩';
     if (percentage < 0.3) {
-        hpEmoji = '🟥'; // Red
+        hpEmoji = '🟥';
     } else if (percentage < 0.6) {
-        hpEmoji = '🟨'; // Yellow
+        hpEmoji = '🟨';
     }
     
     return hpEmoji.repeat(filledBars) + '⬜'.repeat(emptyBars);
@@ -843,7 +779,6 @@ function createHPBar(currentHP, maxHP, color = '#00FF00') {
 function getSkillsUsed(raidState) {
     const skills = [];
     
-    // Extract skills from battle log
     raidState.battleLog.forEach(action => {
         if (action.includes('uses ') && !action.includes('attacks')) {
             const skillMatch = action.match(/uses (.+?) for/);
@@ -856,7 +791,7 @@ function getSkillsUsed(raidState) {
         }
     });
     
-    return skills.slice(0, 5); // Limit to 5 skills
+    return skills.slice(0, 5);
 }
 
 /**
@@ -870,19 +805,16 @@ async function calculateRewards(raidState, winnerId) {
     };
     
     if (winnerId === raidState.attacker.userId) {
-        // Attacker won - gets berries and possibly fruits
         const targetBerries = raidState.target.berries || 0;
         const berriesStolen = Math.floor(targetBerries * RAID_CONFIG.BERRY_STEAL_PERCENTAGE);
         
         if (berriesStolen > 0) {
             rewards.berries = berriesStolen;
             
-            // Update database
             await DatabaseManager.updateUserBerries(raidState.attacker.userId, berriesStolen, 'raid_victory');
             await DatabaseManager.updateUserBerries(raidState.target.userId, -berriesStolen, 'raid_loss');
         }
         
-        // Try to steal fruits
         const stolenFruits = await tryStealFruits(raidState.target.userId, raidState.attacker.userId);
         rewards.fruitsStolen = stolenFruits;
         
@@ -908,7 +840,6 @@ async function tryStealFruits(targetId, attackerId) {
             const dropChance = RAID_CONFIG.FRUIT_DROP_CHANCES[randomFruit.fruit_rarity] || 0.1;
             
             if (Math.random() < dropChance) {
-                // Transfer fruit
                 await transferFruit(randomFruit, targetId, attackerId);
                 stolenFruits.push({
                     name: randomFruit.fruit_name,
@@ -916,7 +847,6 @@ async function tryStealFruits(targetId, attackerId) {
                     emoji: RARITY_EMOJIS[randomFruit.fruit_rarity] || '⚪'
                 });
                 
-                // Remove from available fruits
                 const index = targetFruits.indexOf(randomFruit);
                 if (index > -1) {
                     targetFruits.splice(index, 1);
@@ -935,7 +865,6 @@ async function tryStealFruits(targetId, attackerId) {
  */
 async function transferFruit(fruit, fromUserId, toUserId) {
     try {
-        // Remove from original owner
         await DatabaseManager.query(`
             DELETE FROM user_devil_fruits 
             WHERE user_id = $1 AND fruit_id = $2 
@@ -946,7 +875,6 @@ async function transferFruit(fruit, fromUserId, toUserId) {
             )
         `, [fromUserId, fruit.fruit_id]);
         
-        // Add to new owner
         await DatabaseManager.addDevilFruit(toUserId, {
             id: fruit.fruit_id,
             name: fruit.fruit_name,
@@ -956,7 +884,6 @@ async function transferFruit(fruit, fromUserId, toUserId) {
             description: fruit.fruit_description
         });
         
-        // Recalculate CP for both users
         await Promise.all([
             DatabaseManager.recalculateUserCP(fromUserId),
             DatabaseManager.recalculateUserCP(toUserId)
@@ -974,10 +901,8 @@ async function getParticipantData(userId) {
     const user = await DatabaseManager.getUser(userId);
     if (!user) throw new Error('User not found');
     
-    // Get user's devil fruits
     const fruits = await DatabaseManager.getUserDevilFruits(userId);
     
-    // Process fruits for battle
     const battleFruits = fruits.map(fruit => ({
         id: fruit.fruit_id,
         name: fruit.fruit_name,
@@ -989,7 +914,7 @@ async function getParticipantData(userId) {
         emoji: RARITY_EMOJIS[fruit.fruit_rarity] || '⚪',
         maxHP: Math.floor(fruit.total_cp * 1.2),
         currentHP: Math.floor(fruit.total_cp * 1.2)
-    })).sort((a, b) => b.totalCP - a.totalCP).slice(0, 5); // Top 5 fruits
+    })).sort((a, b) => b.totalCP - a.totalCP).slice(0, 5);
     
     return {
         userId,
@@ -1027,13 +952,11 @@ function reduceCooldowns(player) {
  */
 function processStatusEffects(player) {
     player.statusEffects = player.statusEffects.filter(effect => {
-        // Apply effect
         if (effect.type === 'burn' || effect.type === 'poison') {
             const damage = effect.damage || 5;
             player.currentHP = Math.max(0, player.currentHP - damage);
         }
         
-        // Reduce duration
         effect.duration--;
         return effect.duration > 0;
     });
