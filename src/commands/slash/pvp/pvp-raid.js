@@ -463,7 +463,9 @@ function createBattleEmbed(raidState) {
         const isActive = index === attacker.activeFruitIndex;
         const hpBar = createAlignedHPBar(fruit.currentHP, fruit.maxHP);
         const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
-        return `${isActive ? '▶️' : '▫️'} ${fruit.emoji} **${fruit.name}**${cooldownText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const activeIcon = isActive ? '▶️' : '▫️';
+        
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n');
     
     embed.addFields({
@@ -475,7 +477,9 @@ function createBattleEmbed(raidState) {
     const defenderTeamText = defender.team.map((fruit, index) => {
         const isActive = index === defender.activeFruitIndex;
         const hpBar = createAlignedHPBar(fruit.currentHP, fruit.maxHP);
-        return `${isActive ? '▶️' : '▫️'} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const activeIcon = isActive ? '▶️' : '▫️';
+        
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n');
     
     embed.addFields({
@@ -862,17 +866,18 @@ function createAlignedHPBar(currentHP, maxHP) {
     // Choose HP color based on percentage
     let hpEmoji = '🟢'; // Green for healthy
     if (percentage <= 0) {
-        hpEmoji = '⚫'; // Black for dead
+        return '⚫⚫⚫⚫⚫⚫⚫⚫⚫⚫'; // All black for dead
     } else if (percentage < 0.25) {
         hpEmoji = '🔴'; // Red for critical
     } else if (percentage < 0.5) {
         hpEmoji = '🟡'; // Yellow for injured
     }
     
-    // Use consistent emojis for empty spaces
-    const emptyEmoji = '⚫';
+    // Create the bar with exact emoji count
+    const filledPart = hpEmoji.repeat(filledBars);
+    const emptyPart = '⚫'.repeat(emptyBars);
     
-    return hpEmoji.repeat(filledBars) + emptyEmoji.repeat(emptyBars);
+    return filledPart + emptyPart;
 }
 
 function createMiniHPBar(currentHP, maxHP, length = 10) {
