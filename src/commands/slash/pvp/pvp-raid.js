@@ -1,4 +1,4 @@
-// src/commands/slash/pvp/pvp-raid.js - ENHANCED: Turn-based Battle with Skills, HP Bars & Animations
+// src/commands/slash/pvp/pvp-raid.js - FIXED: Complete PvP Raid Command
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const EconomyService = require('../../../services/EconomyService');
@@ -101,6 +101,53 @@ module.exports = {
         }
     }
 };
+
+/**
+ * Validate if raid can proceed
+ */
+async function validateRaid(attackerId, target) {
+    if (!target || target.bot) {
+        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
+    }
+    
+    if (attackerId === target.id) {
+        return { valid: false, reason: 'Cannot raid yourself!' };
+    }
+    
+    const lastRaid = raidCooldowns.get(attackerId);
+    if (lastRaid && (Date.now() - lastRaid) < RAID_CONFIG.COOLDOWN_TIME) {
+        const remainingTime = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000);
+        return { valid: false, reason: `Raid cooldown active! Wait ${remainingTime} more seconds.` };
+    }
+    
+    try {
+        const [attackerUser, targetUser] = await Promise.all([
+            DatabaseManager.getUser(attackerId),
+            DatabaseManager.getUser(target.id)
+        ]);
+        
+        if (!attackerUser) {
+            return { valid: false, reason: 'You need to use other commands first to initialize your account!' };
+        }
+        
+        if (!targetUser) {
+            return { valid: false, reason: 'Target user not found in the database!' };
+        }
+        
+        if (attackerUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
+            return { valid: false, reason: `You need at least ${RAID_CONFIG.MIN_CP_REQUIRED} CP to raid!` };
+        }
+        
+        if (targetUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
+            return { valid: false, reason: `Target has insufficient CP (minimum ${RAID_CONFIG.MIN_CP_REQUIRED} required)!` };
+        }
+        
+    } catch (error) {
+        return { valid: false, reason: 'Database error during validation!' };
+    }
+    
+    return { valid: true };
+}
 
 /**
  * Get enhanced participant data with devil fruit skills
@@ -642,19 +689,14 @@ function determineBattleWinner(battleState) {
         const attackerPercent = attacker.currentHP / attacker.maxHP;
         const targetPercent = target.currentHP / target.maxHP;
         
-        if (attackerUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
-            return { valid: false, reason: `You need at least ${RAID_CONFIG.MIN_CP_REQUIRED} CP to raid!` };
+        if (attackerPercent > targetPercent) {
+            return { id: attacker.userId, reason: 'time_limit' };
+        } else if (targetPercent > attackerPercent) {
+            return { id: target.userId, reason: 'time_limit' };
+        } else {
+            return { id: null, reason: 'draw' };
         }
-        
-        if (targetUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
-            return { valid: false, reason: `Target has insufficient CP (minimum ${RAID_CONFIG.MIN_CP_REQUIRED} required)!` };
-        }
-        
-    } catch (error) {
-        return { valid: false, reason: 'Database error during validation!' };
     }
-    
-    return { valid: true };
 }
 
 /**
@@ -784,113 +826,6 @@ function getReasonText(reason) {
 }
 
 /**
- * Create error embed
- */
-function createErrorEmbed(message) {
-    return new EmbedBuilder()
-        .setColor('#FF0000')
-        .setTitle('❌ Enhanced Raid Failed')
-        .setDescription(message)
-        .setTimestamp();
-}
-
-/**
- * Create rematch button
- */
-function createRematchButton(winnerId, loserId) {
-    return new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId(`rematch_${winnerId}_${loserId}`)
-                .setLabel('⚔️ Offer Enhanced Rematch')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('🔄')
-        );
-}
-
-/**
- * Setup rematch button collector - FIXED
- */
-async function setupRematchCollector(interaction, winnerId, loserId) {
-    try {
-        const message = await interaction.fetchReply();
-        
-        const collector = message.createMessageComponentCollector({ 
-            time: 300000 // 5 minutes
-        });
-        
-        collector.on('collect', async (buttonInteraction) => {
-            if (buttonInteraction.user.id !== winnerId) {
-                return buttonInteraction.reply({
-                    content: '❌ Only the winner can offer a rematch!',
-                    ephemeral: true
-                });
-            }
-            
-            const target = await interaction.client.users.fetch(loserId).catch(() => null);
-            if (!target) {
-                return buttonInteraction.reply({
-                    content: '❌ Target user not found!',
-                    ephemeral: true
-                });
-            }
-            
-            const validation = await validateRaid(winnerId, target);
-            if (!validation.valid) {
-                return buttonInteraction.reply({
-                    content: `❌ Enhanced rematch not available: ${validation.reason}`,
-                    ephemeral: true
-                });
-            }
-            
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('rematch_used')
-                        .setLabel('⚔️ Enhanced Rematch Requested!')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true)
-                );
-            
-            await buttonInteraction.update({ components: [disabledRow] });
-            
-            await buttonInteraction.followUp({
-                content: `🔄 **Enhanced rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\` for another epic turn-based battle!`,
-                ephemeral: false
-            });
-        });
-        
-        collector.on('end', async () => {
-            try {
-                const disabledRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('rematch_expired')
-                            .setLabel('⚔️ Enhanced Rematch Expired')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(true)
-                    );
-                
-                await interaction.editReply({ components: [disabledRow] });
-            } catch (error) {
-                console.log('Failed to disable enhanced rematch button:', error.message);
-            }
-        });
-        
-    } catch (error) {
-        console.error('Error setting up enhanced rematch collector:', error);
-    }
-}Percent > targetPercent) {
-            return { id: attacker.userId, reason: 'time_limit' };
-        } else if (targetPercent > attackerPercent) {
-            return { id: target.userId, reason: 'time_limit' };
-        } else {
-            return { id: null, reason: 'draw' };
-        }
-    }
-}
-
-/**
  * Create detailed final result embed
  */
 async function createDetailedResultEmbed(battleResult, rewards, attacker, target) {
@@ -1016,39 +951,101 @@ function createSkillUsageSummary(battleResult) {
     return summary || null;
 }
 
-// Keep all the existing helper functions (validateRaid, processRaidRewards, etc.)
-// ... (Previous validation, rewards, and utility functions remain the same)
+/**
+ * Create error embed
+ */
+function createErrorEmbed(message) {
+    return new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Enhanced Raid Failed')
+        .setDescription(message)
+        .setTimestamp();
+}
 
 /**
- * Validate if raid can proceed
+ * Create rematch button
  */
-async function validateRaid(attackerId, target) {
-    if (!target || target.bot) {
-        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
-    }
-    
-    if (attackerId === target.id) {
-        return { valid: false, reason: 'Cannot raid yourself!' };
-    }
-    
-    const lastRaid = raidCooldowns.get(attackerId);
-    if (lastRaid && (Date.now() - lastRaid) < RAID_CONFIG.COOLDOWN_TIME) {
-        const remainingTime = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000);
-        return { valid: false, reason: `Raid cooldown active! Wait ${remainingTime} more seconds.` };
-    }
-    
+function createRematchButton(winnerId, loserId) {
+    return new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId(`rematch_${winnerId}_${loserId}`)
+                .setLabel('⚔️ Offer Enhanced Rematch')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔄')
+        );
+}
+
+/**
+ * Setup rematch button collector
+ */
+async function setupRematchCollector(interaction, winnerId, loserId) {
     try {
-        const [attackerUser, targetUser] = await Promise.all([
-            DatabaseManager.getUser(attackerId),
-            DatabaseManager.getUser(target.id)
-        ]);
+        const message = await interaction.fetchReply();
         
-        if (!attackerUser) {
-            return { valid: false, reason: 'You need to use other commands first to initialize your account!' };
-        }
+        const collector = message.createMessageComponentCollector({ 
+            time: 300000 // 5 minutes
+        });
         
-        if (!targetUser) {
-            return { valid: false, reason: 'Target user not found in the database!' };
-        }
+        collector.on('collect', async (buttonInteraction) => {
+            if (buttonInteraction.user.id !== winnerId) {
+                return buttonInteraction.reply({
+                    content: '❌ Only the winner can offer a rematch!',
+                    ephemeral: true
+                });
+            }
+            
+            const target = await interaction.client.users.fetch(loserId).catch(() => null);
+            if (!target) {
+                return buttonInteraction.reply({
+                    content: '❌ Target user not found!',
+                    ephemeral: true
+                });
+            }
+            
+            const validation = await validateRaid(winnerId, target);
+            if (!validation.valid) {
+                return buttonInteraction.reply({
+                    content: `❌ Enhanced rematch not available: ${validation.reason}`,
+                    ephemeral: true
+                });
+            }
+            
+            const disabledRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('rematch_used')
+                        .setLabel('⚔️ Enhanced Rematch Requested!')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true)
+                );
+            
+            await buttonInteraction.update({ components: [disabledRow] });
+            
+            await buttonInteraction.followUp({
+                content: `🔄 **Enhanced rematch requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\` for another epic turn-based battle!`,
+                ephemeral: false
+            });
+        });
         
-        if (attacker
+        collector.on('end', async () => {
+            try {
+                const disabledRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('rematch_expired')
+                            .setLabel('⚔️ Enhanced Rematch Expired')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true)
+                    );
+                
+                await interaction.editReply({ components: [disabledRow] });
+            } catch (error) {
+                console.log('Failed to disable enhanced rematch button:', error.message);
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error setting up enhanced rematch collector:', error);
+    }
+}
