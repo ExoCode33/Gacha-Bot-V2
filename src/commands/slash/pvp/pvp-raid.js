@@ -286,14 +286,24 @@ function createEnhancedPlayerStatus(player) {
 }
 
 /**
- * ENHANCED: Execute visual battle with damage animations
+ * ENHANCED: Execute strategic turn-based battle with fruit switching
  */
 async function executeVisualBattle(interaction, attackerData, targetData) {
     // Initialize battle state
     const battleId = `raid_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
     
-    attackerData.currentHP = attackerData.maxHP;
-    targetData.currentHP = targetData.maxHP;
+    // Calculate HP based on individual fruit power (not team total)
+    const attackerBestCP = Math.max(...attackerData.teamFruits.map(f => f.totalCP));
+    const targetBestCP = Math.max(...targetData.teamFruits.map(f => f.totalCP));
+    
+    attackerData.currentHP = calculateMaxHP(attackerBestCP, attackerData.level);
+    attackerData.maxHP = attackerData.currentHP;
+    targetData.currentHP = calculateMaxHP(targetBestCP, targetData.level);
+    targetData.maxHP = targetData.currentHP;
+    
+    // Set active fruit (index 0 = first fruit)
+    attackerData.activeFruitIndex = 0;
+    targetData.activeFruitIndex = 0;
     
     const battleState = {
         id: battleId,
@@ -302,51 +312,19 @@ async function executeVisualBattle(interaction, attackerData, targetData) {
         turn: 1,
         currentPlayer: 'attacker',
         battleLog: [],
-        startTime: Date.now()
+        startTime: Date.now(),
+        waitingForAction: false
     };
     
     activeBattles.set(battleId, battleState);
     
-    // Send initial battle setup
-    await sendVisualBattleStart(interaction, battleState);
+    // Send initial battle setup with fruit selection
+    await sendStrategicBattleStart(interaction, battleState);
     
-    // Execute turn-based combat with visual updates
-    while (battleState.turn <= RAID_CONFIG.MAX_BATTLE_TURNS) {
-        const currentPlayerData = battleState.currentPlayer === 'attacker' 
-            ? battleState.attacker 
-            : battleState.target;
-        const opponentData = battleState.currentPlayer === 'attacker' 
-            ? battleState.target 
-            : battleState.attacker;
-        
-        // Execute turn
-        const turnResult = await executeTurn(battleState, currentPlayerData, opponentData);
-        
-        // ENHANCED: Show damage animation frames
-        if (turnResult.damage > 0) {
-            for (let frame = 1; frame <= RAID_CONFIG.ANIMATION_FRAMES; frame++) {
-                await updateVisualBattleMessage(interaction, battleState, turnResult, frame);
-                await new Promise(resolve => setTimeout(resolve, RAID_CONFIG.DAMAGE_FLASH_DELAY / RAID_CONFIG.ANIMATION_FRAMES));
-            }
-        }
-        
-        // Show final state without animation
-        await updateVisualBattleMessage(interaction, battleState, turnResult, 0);
-        
-        // Check for battle end
-        if (battleState.attacker.currentHP <= 0 || battleState.target.currentHP <= 0) {
-            break;
-        }
-        
-        // Switch turns and increment turn counter
-        battleState.currentPlayer = battleState.currentPlayer === 'attacker' ? 'target' : 'attacker';
-        battleState.turn++;
-        
-        // Add delay for dramatic effect
-        await new Promise(resolve => setTimeout(resolve, RAID_CONFIG.TURN_DELAY));
-    }
+    // Start turn-based combat loop
+    await executeStrategicTurnLoop(interaction, battleState);
     
-    // Determine winner and create final result
+    // Battle ended, determine winner
     const winner = determineBattleWinner(battleState);
     const finalResult = {
         battleId,
@@ -367,42 +345,567 @@ async function executeVisualBattle(interaction, attackerData, targetData) {
 }
 
 /**
- * ENHANCED: Send visual battle start message
+ * Send strategic battle start with fruit selection interface
  */
-async function sendVisualBattleStart(interaction, battleState) {
-    const embed = createVisualBattleEmbed(battleState, {
-        type: 'battle_start',
-        message: '⚔️ **Enhanced Visual Raid Battle Begins!**',
-        details: 'Turn-based combat with visual HP system!'
-    });
+async function sendStrategicBattleStart(interaction, battleState) {
+    const embed = createStrategicBattleEmbed(battleState);
+    const components = createTurnActionComponents(battleState, battleState.attacker);
     
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed], components });
+    
+    // Setup turn-based collector
+    setupTurnBasedCollector(interaction, battleState.id);
 }
 
 /**
- * ENHANCED: Update battle message with visual HP system and animations
+ * Execute strategic turn loop (player input required)
  */
-async function updateVisualBattleMessage(interaction, battleState, turnResult, animationFrame = 0) {
-    try {
-        // Reduce cooldowns for both players
-        reduceCooldowns(battleState.attacker);
-        reduceCooldowns(battleState.target);
-        
-        // Add to battle log
-        if (turnResult && animationFrame === 0) { // Only add to log on final frame
-            battleState.battleLog.push(turnResult);
+async function executeStrategicTurnLoop(interaction, battleState) {
+    battleState.waitingForAction = true;
+    
+    // This function sets up the battle state and waits for player interactions
+    // The actual turn execution happens in the collector
+}
+
+/**
+ * Create strategic battle embed with active fruits
+ */
+function createStrategicBattleEmbed(battleState, turnResult = null, animationFrame = 0) {
+    const { attacker, target, turn } = battleState;
+    
+    // Get active fruits
+    const attackerActiveFruit = attacker.teamFruits[attacker.activeFruitIndex];
+    const targetActiveFruit = target.teamFruits[target.activeFruitIndex];
+    
+    // Calculate HP percentages
+    const attackerHPPercent = Math.round((attacker.currentHP / attacker.maxHP) * 100);
+    const targetHPPercent = Math.round((target.currentHP / target.maxHP) * 100);
+    
+    // Get recent damage for animation
+    const attackerDamage = turnResult && turnResult.defender === attacker.username ? turnResult.damage : 0;
+    const targetDamage = turnResult && turnResult.defender === target.username ? turnResult.damage : 0;
+    
+    // Create animated HP bars
+    const attackerHPBar = createVisualHPBar(attacker.currentHP, attacker.maxHP, attackerDamage, animationFrame);
+    const targetHPBar = createVisualHPBar(target.currentHP, target.maxHP, targetDamage, animationFrame);
+    
+    const embed = new EmbedBuilder()
+        .setTitle('⚔️ STRATEGIC FRUIT BATTLE')
+        .setColor(RARITY_COLORS.legendary)
+        .setDescription(createStrategicBattleHeader(battleState, turnResult, animationFrame))
+        .setTimestamp();
+    
+    // HP displays
+    embed.addFields(
+        {
+            name: '🏴‍☠️ ATTACKER HP',
+            value: `**${attacker.username}**\n${attackerHPBar}\n**${attacker.currentHP}** / **${attacker.maxHP}** HP (**${attackerHPPercent}%**)`,
+            inline: false
+        },
+        {
+            name: '🛡️ DEFENDER HP', 
+            value: `**${target.username}**\n${targetHPBar}\n**${target.currentHP}** / **${target.maxHP}** HP (**${targetHPPercent}%**)`,
+            inline: false
+        }
+    );
+    
+    // Active fruits display
+    embed.addFields(
+        {
+            name: '⚡ ATTACKER ACTIVE FRUIT',
+            value: createActiveFruitDisplay(attackerActiveFruit, attacker),
+            inline: true
+        },
+        {
+            name: '🛡️ DEFENDER ACTIVE FRUIT',
+            value: createActiveFruitDisplay(targetActiveFruit, target),
+            inline: true
+        },
+        {
+            name: '📊 BATTLE INFO',
+            value: `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}\n**Current Player:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}\n**Duration:** ${Math.floor((Date.now() - battleState.startTime) / 1000)}s`,
+            inline: true
+        }
+    );
+    
+    // Battle log
+    const battleLogSection = createSeparatedBattleLogs(battleState, turnResult);
+    if (battleLogSection) {
+        embed.addFields({
+            name: '📜 BATTLE LOG',
+            value: battleLogSection,
+            inline: false
+        });
+    }
+    
+    embed.setFooter({ 
+        text: `Battle ID: ${battleState.id} | Strategic Combat System v4.0${animationFrame > 0 ? ' | Damage Animation' : ''}` 
+    });
+    
+    return embed;
+}
+
+/**
+ * Create active fruit display
+ */
+function createActiveFruitDisplay(fruit, player) {
+    if (!fruit) return '*No fruit selected*';
+    
+    const skillCooldown = player.skillCooldowns[fruit.skillData.name] || 0;
+    const skillStatus = skillCooldown > 0 ? `🔄 ${skillCooldown} turns` : '✅ Ready';
+    
+    return `${fruit.emoji} **${fruit.name}**\n` +
+           `💪 **${fruit.totalCP.toLocaleString()}** CP\n` +
+           `⚡ **${fruit.skillData.name}**\n` +
+           `💥 ${fruit.skillData.damage} DMG • ${skillStatus}\n` +
+           `📝 *${fruit.skillData.description}*`;
+}
+
+/**
+ * Create turn action components for player input
+ */
+function createTurnActionComponents(battleState, currentPlayerData) {
+    const components = [];
+    const isAttacker = battleState.currentPlayer === 'attacker';
+    const playerPrefix = isAttacker ? 'att' : 'def';
+    
+    // Action buttons row
+    const actionRow = new ActionRowBuilder();
+    
+    // Basic attack button
+    actionRow.addComponents(
+        new ButtonBuilder()
+            .setCustomId(`battle_basic_${battleState.id}_${playerPrefix}`)
+            .setLabel('⚔️ Basic Attack')
+            .setStyle(ButtonStyle.Secondary)
+    );
+    
+    // Skill attack button
+    const activeFruit = currentPlayerData.teamFruits[currentPlayerData.activeFruitIndex];
+    const skillOnCooldown = activeFruit && isSkillOnCooldown(currentPlayerData, activeFruit.skillData.name);
+    
+    actionRow.addComponents(
+        new ButtonBuilder()
+            .setCustomId(`battle_skill_${battleState.id}_${playerPrefix}`)
+            .setLabel(`✨ ${activeFruit?.skillData.name || 'Skill Attack'}`)
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(skillOnCooldown)
+    );
+    
+    // Defend button
+    actionRow.addComponents(
+        new ButtonBuilder()
+            .setCustomId(`battle_defend_${battleState.id}_${playerPrefix}`)
+            .setLabel('🛡️ Defend')
+            .setStyle(ButtonStyle.Success)
+    );
+    
+    components.push(actionRow);
+    
+    // Fruit switching dropdown
+    if (currentPlayerData.teamFruits.length > 1) {
+        const fruitOptions = currentPlayerData.teamFruits.map((fruit, index) => {
+            const isActive = index === currentPlayerData.activeFruitIndex;
+            const skillCooldown = currentPlayerData.skillCooldowns[fruit.skillData.name] || 0;
+            const skillStatus = skillCooldown > 0 ? ` (CD: ${skillCooldown})` : '';
             
-            // Keep only last 10 actions to prevent embed from getting too long
-            if (battleState.battleLog.length > 10) {
-                battleState.battleLog = battleState.battleLog.slice(-10);
-            }
+            return {
+                label: `${fruit.name}${skillStatus}`.substring(0, 100),
+                description: `${fruit.skillData.name} - ${fruit.skillData.damage} DMG`.substring(0, 100),
+                value: `fruit_${index}`,
+                emoji: fruit.emoji,
+                default: isActive
+            };
+        });
+        
+        const fruitSelect = new StringSelectMenuBuilder()
+            .setCustomId(`battle_switch_${battleState.id}_${playerPrefix}`)
+            .setPlaceholder('Switch active fruit...')
+            .addOptions(fruitOptions);
+        
+        components.push(new ActionRowBuilder().addComponents(fruitSelect));
+    }
+    
+    return components;
+}
+
+/**
+ * Setup turn-based battle collector
+ */
+function setupTurnBasedCollector(interaction, battleId) {
+    const collector = interaction.channel.createMessageComponentCollector({
+        time: 120000 // 2 minutes per turn
+    });
+    
+    collector.on('collect', async (componentInteraction) => {
+        const battleState = activeBattles.get(battleId);
+        if (!battleState) {
+            return componentInteraction.reply({ 
+                content: '❌ Battle session expired!', 
+                ephemeral: true 
+            });
         }
         
-        const embed = createVisualBattleEmbed(battleState, turnResult, animationFrame);
-        await interaction.editReply({ embeds: [embed] });
-    } catch (error) {
-        console.error('Error updating visual battle message:', error);
+        const isAttacker = battleState.currentPlayer === 'attacker';
+        const expectedUserId = isAttacker ? battleState.attacker.userId : battleState.target.userId;
+        
+        if (componentInteraction.user.id !== expectedUserId) {
+            return componentInteraction.reply({
+                content: `❌ It's ${isAttacker ? battleState.attacker.username : battleState.target.username}'s turn!`,
+                ephemeral: true
+            });
+        }
+        
+        const customId = componentInteraction.customId;
+        
+        try {
+            if (customId.includes('_basic_')) {
+                await handleBasicAttackAction(componentInteraction, battleState, interaction);
+            } else if (customId.includes('_skill_')) {
+                await handleSkillAttackAction(componentInteraction, battleState, interaction);
+            } else if (customId.includes('_defend_')) {
+                await handleDefendAction(componentInteraction, battleState, interaction);
+            } else if (customId.includes('_switch_')) {
+                await handleFruitSwitchAction(componentInteraction, battleState, interaction);
+            }
+        } catch (error) {
+            console.error('Turn action error:', error);
+            await componentInteraction.reply({
+                content: '❌ An error occurred during your action!',
+                ephemeral: true
+            });
+        }
+    });
+    
+    collector.on('end', () => {
+        // Handle timeout
+        const battleState = activeBattles.get(battleId);
+        if (battleState && battleState.waitingForAction) {
+            interaction.editReply({
+                content: '⏰ Battle timed out due to inactivity.',
+                components: []
+            }).catch(() => {});
+            activeBattles.delete(battleId);
+        }
+    });
+}
+
+/**
+ * Create strategic battle header
+ */
+function createStrategicBattleHeader(battleState, turnResult, animationFrame = 0) {
+    if (!turnResult) {
+        const currentPlayerName = battleState.currentPlayer === 'attacker' ? battleState.attacker.username : battleState.target.username;
+        return `⚔️ **STRATEGIC FRUIT BATTLE** ⚔️\n*${currentPlayerName}'s turn - Choose your action and active fruit!*`;
     }
+    
+    let header = '';
+    
+    // Animation indicator
+    if (animationFrame > 0) {
+        header += '💥 **DAMAGE IMPACT!** 💥\n';
+    }
+    
+    // Action description with fruit info
+    if (turnResult.type === 'skill_attack') {
+        header += `✨ **${turnResult.attacker}** used **${turnResult.skillName}**!\n`;
+        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}\n`;
+        if (turnResult.effects && turnResult.effects.length > 0) {
+            header += `🔮 **EFFECTS:** ${turnResult.effects.join(', ')}\n`;
+        }
+    } else if (turnResult.type === 'basic_attack') {
+        header += `⚔️ **${turnResult.attacker}** used **Basic Attack**!\n`;
+        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}\n`;
+    } else if (turnResult.type === 'defend') {
+        header += `🛡️ **${turnResult.attacker}** is defending!\n`;
+        if (turnResult.hpRecovery > 0) {
+            header += `💚 **RECOVERY:** ${turnResult.hpRecovery} HP\n`;
+        }
+    } else if (turnResult.type === 'fruit_switch') {
+        header += `🔄 **${turnResult.attacker}** switched to **${turnResult.newFruit}**!\n`;
+    }
+    
+    return header || '*Battle in progress...*';
+}
+
+/**
+ * Handle basic attack action
+ */
+async function handleBasicAttackAction(componentInteraction, battleState, originalInteraction) {
+    const currentPlayerData = battleState.currentPlayer === 'attacker' ? battleState.attacker : battleState.target;
+    const opponentData = battleState.currentPlayer === 'attacker' ? battleState.target : battleState.attacker;
+    
+    // Execute basic attack
+    const turnResult = executeStrategicBasicAttack(battleState, currentPlayerData, opponentData);
+    
+    // Process turn result
+    await processTurnResult(componentInteraction, battleState, turnResult, originalInteraction);
+}
+
+/**
+ * Handle skill attack action
+ */
+async function handleSkillAttackAction(componentInteraction, battleState, originalInteraction) {
+    const currentPlayerData = battleState.currentPlayer === 'attacker' ? battleState.attacker : battleState.target;
+    const opponentData = battleState.currentPlayer === 'attacker' ? battleState.target : battleState.attacker;
+    
+    const activeFruit = currentPlayerData.teamFruits[currentPlayerData.activeFruitIndex];
+    
+    // Check if skill is on cooldown
+    if (isSkillOnCooldown(currentPlayerData, activeFruit.skillData.name)) {
+        return componentInteraction.reply({
+            content: `❌ ${activeFruit.skillData.name} is on cooldown for ${currentPlayerData.skillCooldowns[activeFruit.skillData.name]} more turns!`,
+            ephemeral: true
+        });
+    }
+    
+    // Execute skill attack
+    const turnResult = executeStrategicSkillAttack(battleState, currentPlayerData, opponentData, activeFruit);
+    
+    // Process turn result
+    await processTurnResult(componentInteraction, battleState, turnResult, originalInteraction);
+}
+
+/**
+ * Handle defend action
+ */
+async function handleDefendAction(componentInteraction, battleState, originalInteraction) {
+    const currentPlayerData = battleState.currentPlayer === 'attacker' ? battleState.attacker : battleState.target;
+    
+    // Execute defend
+    const hpRecovery = Math.floor(currentPlayerData.maxHP * 0.1); // 10% HP recovery
+    currentPlayerData.currentHP = Math.min(currentPlayerData.maxHP, currentPlayerData.currentHP + hpRecovery);
+    
+    // Add damage reduction for next turn
+    currentPlayerData.statusEffects.push({
+        type: 'damage_reduction',
+        value: 0.4, // 40% damage reduction
+        duration: 1
+    });
+    
+    const turnResult = {
+        type: 'defend',
+        attacker: currentPlayerData.username,
+        hpRecovery,
+        damage: 0,
+        timestamp: Date.now()
+    };
+    
+    // Process turn result
+    await processTurnResult(componentInteraction, battleState, turnResult, originalInteraction);
+}
+
+/**
+ * Handle fruit switch action
+ */
+async function handleFruitSwitchAction(componentInteraction, battleState, originalInteraction) {
+    const currentPlayerData = battleState.currentPlayer === 'attacker' ? battleState.attacker : battleState.target;
+    const selectedFruitIndex = parseInt(componentInteraction.values[0].split('_')[1]);
+    
+    if (selectedFruitIndex === currentPlayerData.activeFruitIndex) {
+        return componentInteraction.reply({
+            content: '❌ That fruit is already active!',
+            ephemeral: true
+        });
+    }
+    
+    // Switch active fruit
+    const oldFruit = currentPlayerData.teamFruits[currentPlayerData.activeFruitIndex];
+    const newFruit = currentPlayerData.teamFruits[selectedFruitIndex];
+    currentPlayerData.activeFruitIndex = selectedFruitIndex;
+    
+    const turnResult = {
+        type: 'fruit_switch',
+        attacker: currentPlayerData.username,
+        oldFruit: oldFruit.name,
+        newFruit: newFruit.name,
+        damage: 0,
+        timestamp: Date.now()
+    };
+    
+    // Process turn result (switching doesn't end turn, just updates display)
+    await componentInteraction.update({
+        embeds: [createStrategicBattleEmbed(battleState, turnResult)],
+        components: createTurnActionComponents(battleState, currentPlayerData)
+    });
+}
+
+/**
+ * Process turn result and advance battle state
+ */
+async function processTurnResult(componentInteraction, battleState, turnResult, originalInteraction) {
+    // Add to battle log
+    battleState.battleLog.push(turnResult);
+    
+    // Keep only last 10 actions
+    if (battleState.battleLog.length > 10) {
+        battleState.battleLog = battleState.battleLog.slice(-10);
+    }
+    
+    // Process status effects
+    processStatusEffectsWithResults(battleState.attacker);
+    processStatusEffectsWithResults(battleState.target);
+    
+    // Reduce cooldowns
+    reduceCooldowns(battleState.attacker);
+    reduceCooldowns(battleState.target);
+    
+    // Show damage animation if there was damage
+    if (turnResult.damage > 0) {
+        for (let frame = 1; frame <= RAID_CONFIG.ANIMATION_FRAMES; frame++) {
+            await componentInteraction.update({
+                embeds: [createStrategicBattleEmbed(battleState, turnResult, frame)],
+                components: []
+            });
+            await new Promise(resolve => setTimeout(resolve, RAID_CONFIG.DAMAGE_FLASH_DELAY / RAID_CONFIG.ANIMATION_FRAMES));
+        }
+    }
+    
+    // Check for battle end
+    if (battleState.attacker.currentHP <= 0 || battleState.target.currentHP <= 0 || battleState.turn >= RAID_CONFIG.MAX_BATTLE_TURNS) {
+        // Battle ended
+        battleState.waitingForAction = false;
+        
+        const embed = createStrategicBattleEmbed(battleState, turnResult, 0);
+        embed.setDescription('⚔️ **BATTLE COMPLETE!** ⚔️\n*Calculating results...*');
+        
+        await componentInteraction.update({ embeds: [embed], components: [] });
+        
+        // Continue with battle end processing in original executeVisualBattle function
+        return;
+    }
+    
+    // Switch turns
+    battleState.currentPlayer = battleState.currentPlayer === 'attacker' ? 'target' : 'attacker';
+    battleState.turn++;
+    
+    // Get next player data for components
+    const nextPlayerData = battleState.currentPlayer === 'attacker' ? battleState.attacker : battleState.target;
+    
+    // Update display for next turn
+    const embed = createStrategicBattleEmbed(battleState, turnResult, 0);
+    const components = createTurnActionComponents(battleState, nextPlayerData);
+    
+    await componentInteraction.update({ embeds: [embed], components });
+}
+
+/**
+ * Execute strategic basic attack (using active fruit's base stats)
+ */
+function executeStrategicBasicAttack(battleState, attacker, defender) {
+    const activeFruit = attacker.teamFruits[attacker.activeFruitIndex];
+    
+    // Calculate damage based on active fruit's CP
+    let damage = 40 + Math.floor(activeFruit.totalCP / 80); // Reduced base damage
+    const levelDiff = Math.max(0.5, 1 + (attacker.level - defender.level) * 0.03);
+    
+    damage = Math.floor(damage * levelDiff);
+    
+    // Apply variance
+    const variance = 0.7 + (Math.random() * 0.6);
+    damage = Math.floor(damage * variance);
+    
+    // Check for critical hit
+    const critChance = 0.1;
+    const isCritical = Math.random() < critChance;
+    if (isCritical) {
+        damage = Math.floor(damage * 1.5);
+    }
+    
+    // Apply damage with damage reduction
+    const damageReduction = getDamageReduction(defender);
+    damage = Math.floor(damage * (1 - damageReduction));
+    
+    const originalHP = defender.currentHP;
+    defender.currentHP = Math.max(0, defender.currentHP - damage);
+    const actualDamage = originalHP - defender.currentHP;
+    
+    return {
+        type: 'basic_attack',
+        damage: actualDamage,
+        isCritical,
+        attacker: attacker.username,
+        defender: defender.username,
+        activeFruit: activeFruit.name,
+        timestamp: Date.now()
+    };
+}
+
+/**
+ * Execute strategic skill attack (using active fruit's skill)
+ */
+function executeStrategicSkillAttack(battleState, attacker, defender, activeFruit) {
+    const skill = activeFruit.skillData;
+    
+    // Calculate skill damage based on active fruit
+    let damage = skill.damage || 100;
+    
+    // Skill multiplier (moderate boost)
+    damage = Math.floor(damage * 1.3);
+    
+    // Rarity multiplier for active fruit
+    const rarityMultiplier = getBalancedRaritySkillMultiplier(activeFruit.rarity);
+    damage = Math.floor(damage * rarityMultiplier);
+    
+    // Fruit CP multiplier
+    const fruitCPMultiplier = 1 + (activeFruit.totalCP / 5000); // Small CP bonus
+    damage = Math.floor(damage * fruitCPMultiplier);
+    
+    // Level difference
+    const levelDiff = Math.max(0.7, 1 + (attacker.level - defender.level) * 0.05);
+    damage = Math.floor(damage * levelDiff);
+    
+    // Apply variance
+    const variance = 0.85 + (Math.random() * 0.3);
+    damage = Math.floor(damage * variance);
+    
+    // Check for critical hit
+    const critChance = 0.18 + (attacker.level / 1000);
+    const isCritical = Math.random() < critChance;
+    if (isCritical) {
+        damage = Math.floor(damage * 1.6);
+    }
+    
+    // Apply damage with damage reduction
+    const damageReduction = getDamageReduction(defender);
+    damage = Math.floor(damage * (1 - damageReduction));
+    
+    const originalHP = defender.currentHP;
+    defender.currentHP = Math.max(0, defender.currentHP - damage);
+    const actualDamage = originalHP - defender.currentHP;
+    
+    // Set skill cooldown
+    setSkillCooldown(attacker, skill.name, skill.cooldown || 2);
+    
+    // Apply skill effects
+    const effectResults = applySkillEffectsWithResults(skill, attacker, defender);
+    
+    return {
+        type: 'skill_attack',
+        skillName: skill.name,
+        damage: actualDamage,
+        isCritical,
+        effects: effectResults,
+        attacker: attacker.username,
+        defender: defender.username,
+        activeFruit: activeFruit.name,
+        timestamp: Date.now()
+    };
+}
+
+/**
+ * Get damage reduction from status effects
+ */
+function getDamageReduction(player) {
+    let reduction = 0;
+    
+    player.statusEffects.forEach(effect => {
+        if (effect.type === 'damage_reduction') {
+            reduction += effect.value;
+        }
+    });
+    
+    return Math.min(reduction, 0.8); // Max 80% damage reduction
 }
 
 /**
