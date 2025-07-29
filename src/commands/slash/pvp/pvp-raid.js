@@ -537,109 +537,378 @@ function reduceCooldowns(player) {
 }
 
 /**
- * Create enhanced battle embed with HP bars and detailed info
+ * Create professional single-line HP bar
+ */
+function createProfessionalHPBar(currentHP, maxHP, length = 15) {
+    const hpPercent = Math.max(0, Math.min(1, currentHP / maxHP));
+    const filledBars = Math.floor(hpPercent * length);
+    const emptyBars = length - filledBars;
+    
+    // Professional color coding
+    let barColor;
+    if (hpPercent > 0.6) {
+        barColor = '🟢'; // Green for healthy
+    } else if (hpPercent > 0.3) {
+        barColor = '🟡'; // Yellow for wounded
+    } else {
+        barColor = '🔴'; // Red for critical
+    }
+    
+    const filled = barColor.repeat(filledBars);
+    const empty = '⬛'.repeat(emptyBars);
+    
+    return `${filled}${empty}`;
+}
+
+/**
+ * Create professional battle embed with clean layout
  */
 function createBattleEmbed(battleState, turnResult = null) {
     const { attacker, target, turn } = battleState;
     
+    // Calculate HP percentages
+    const attackerHPPercent = Math.round((attacker.currentHP / attacker.maxHP) * 100);
+    const targetHPPercent = Math.round((target.currentHP / target.maxHP) * 100);
+    
+    // Create professional HP bars
+    const attackerHPBar = createProfessionalHPBar(attacker.currentHP, attacker.maxHP, 15);
+    const targetHPBar = createProfessionalHPBar(target.currentHP, target.maxHP, 15);
+    
+    // Professional status display
+    const attackerStatus = createProfessionalPlayerStatus(attacker);
+    const targetStatus = createProfessionalPlayerStatus(target);
+    
     const embed = new EmbedBuilder()
-        .setTitle('⚔️ Enhanced Raid Battle')
+        .setTitle('⚔️ ENHANCED RAID BATTLE')
         .setColor(RARITY_COLORS.legendary)
-        .setDescription(createBattleDescription(battleState, turnResult))
+        .setDescription(createBattleHeader(battleState, turnResult))
         .addFields(
             {
-                name: `🏴‍☠️ ${attacker.username} (Attacker)`,
-                value: createPlayerStatus(attacker),
+                name: '🏴‍☠️ ATTACKER',
+                value: `**${attacker.username}**\n${attackerHPBar}\n**HP:** ${attacker.currentHP}/${attacker.maxHP} (${attackerHPPercent}%)\n${attackerStatus}`,
                 inline: true
             },
             {
-                name: `🛡️ ${target.username} (Defender)`,
-                value: createPlayerStatus(target),
+                name: '🛡️ DEFENDER', 
+                value: `**${target.username}**\n${targetHPBar}\n**HP:** ${target.currentHP}/${target.maxHP} (${targetHPPercent}%)\n${targetStatus}`,
                 inline: true
             },
             {
-                name: '📊 Battle Info',
-                value: `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}\n**Current Player:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}`,
+                name: '📊 BATTLE STATUS',
+                value: `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}\n**Active:** ${battleState.currentPlayer === 'attacker' ? attacker.username : target.username}\n**Duration:** ${Math.floor((Date.now() - battleState.startTime) / 1000)}s`,
                 inline: true
             }
         )
-        .setFooter({ text: `Battle ID: ${battleState.id}` })
         .setTimestamp();
+    
+    // Add battle log as separate field if there's recent action
+    if (turnResult && battleState.battleLog && battleState.battleLog.length > 0) {
+        embed.addFields({
+            name: '📜 BATTLE LOG',
+            value: createProfessionalBattleLog(battleState),
+            inline: false
+        });
+    }
+    
+    embed.setFooter({ 
+        text: `Battle ID: ${battleState.id} | Enhanced Combat System v2.0` 
+    });
     
     return embed;
 }
 
 /**
- * Create battle description based on turn result
+ * Create professional player status (compact format)
  */
-function createBattleDescription(battleState, turnResult) {
-    if (!turnResult) {
-        return '🎯 **Battle in progress...** Turn-based combat with devil fruit skills!';
-    }
+function createProfessionalPlayerStatus(player) {
+    let status = '';
     
-    let description = turnResult.message;
-    
-    if (turnResult.effects && turnResult.effects.length > 0) {
-        description += '\n\n**Additional Effects:**\n' + turnResult.effects.join('\n');
-    }
-    
-    return description;
-}
-
-/**
- * Create detailed player status with HP bar and skill info
- */
-function createPlayerStatus(player) {
-    const hpBar = createHPBar(player.currentHP, player.maxHP);
-    const hpPercent = Math.round((player.currentHP / player.maxHP) * 100);
-    
-    let status = `${hpBar}\n`;
-    status += `**HP:** ${player.currentHP}/${player.maxHP} (${hpPercent}%)\n`;
-    status += `**CP:** ${player.totalCP.toLocaleString()}\n`;
-    
-    // Show equipped fruit and skill
+    // Devil Fruit info
     if (player.bestFruit && player.skillData) {
         const fruitEmoji = RARITY_EMOJIS[player.bestFruit.fruit_rarity] || '🍈';
-        status += `${fruitEmoji} **${player.bestFruit.fruit_name}**\n`;
-        
         const skillCooldown = player.skillCooldowns[player.skillData.name] || 0;
-        const skillStatus = skillCooldown > 0 ? `(${skillCooldown} turns)` : '(Ready)';
-        status += `⚡ **${player.skillData.name}** ${skillStatus}\n`;
+        const skillStatus = skillCooldown > 0 ? `🔄${skillCooldown}` : '✅';
+        
+        status += `${fruitEmoji} **${player.bestFruit.fruit_name}**\n`;
+        status += `⚡ ${player.skillData.name} ${skillStatus}\n`;
+        status += `💪 **${player.totalCP.toLocaleString()}** CP`;
     }
     
-    // Show status effects
-    if (player.statusEffects.length > 0) {
+    // Status effects (compact)
+    if (player.statusEffects && player.statusEffects.length > 0) {
         const effects = player.statusEffects.map(effect => {
             const emoji = getStatusEffectEmoji(effect.type);
-            return `${emoji} ${effect.type} (${effect.duration})`;
+            return `${emoji}${effect.duration}`;
         }).join(' ');
-        status += `🔮 **Effects:** ${effects}`;
+        status += `\n🔮 ${effects}`;
     }
     
     return status;
 }
 
 /**
- * Create visual HP bar
+ * Create battle header with current action
  */
-function createHPBar(currentHP, maxHP) {
-    const barLength = RAID_CONFIG.HP_BAR_LENGTH;
-    const hpPercent = currentHP / maxHP;
-    const filledBars = Math.floor(hpPercent * barLength);
-    const emptyBars = barLength - filledBars;
-    
-    // Different colors based on HP percentage
-    let barEmoji = '🟢'; // Green for high HP
-    if (hpPercent < 0.3) {
-        barEmoji = '🟥'; // Red for low HP
-    } else if (hpPercent < 0.6) {
-        barEmoji = '🟡'; // Yellow for medium HP
+function createBattleHeader(battleState, turnResult) {
+    if (!turnResult) {
+        return '⚡ **BATTLE IN PROGRESS** ⚡\n*Turn-based combat with Devil Fruit abilities*';
     }
     
-    const filled = barEmoji.repeat(filledBars);
-    const empty = '⬜'.repeat(emptyBars);
+    let header = '';
     
-    return `${filled}${empty}`;
+    // Main action description
+    if (turnResult.type === 'skill_attack') {
+        const skillEmoji = '✨';
+        header += `${skillEmoji} **SKILL USED:** ${turnResult.skillName}\n`;
+        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}\n`;
+    } else if (turnResult.type === 'basic_attack') {
+        header += `⚔️ **BASIC ATTACK**\n`;
+        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}\n`;
+    }
+    
+    // Additional effects
+    if (turnResult.effects && turnResult.effects.length > 0) {
+        header += `🔮 **EFFECTS:** ${turnResult.effects.join(', ')}\n`;
+    }
+    
+    return header || '*Preparing for combat...*';
+}
+
+/**
+ * Create professional battle log (last 3 actions)
+ */
+function createProfessionalBattleLog(battleState) {
+    if (!battleState.battleLog || battleState.battleLog.length === 0) {
+        return '*No actions yet*';
+    }
+    
+    // Get last 3 actions for compact display
+    const recentActions = battleState.battleLog.slice(-3);
+    
+    return recentActions.map((action, index) => {
+        const actionNumber = battleState.battleLog.length - recentActions.length + index + 1;
+        
+        // Format action based on type
+        let actionText = '';
+        
+        if (action.type === 'skill_attack') {
+            const critText = action.isCritical ? ' 💥' : '';
+            actionText = `**${action.skillName}** → ${action.damage} DMG${critText}`;
+        } else if (action.type === 'basic_attack') {
+            const critText = action.isCritical ? ' 💥' : '';
+            actionText = `**Basic Attack** → ${action.damage} DMG${critText}`;
+        } else {
+            actionText = action.message || 'Unknown action';
+        }
+        
+        return `\`${actionNumber}.\` ${actionText}`;
+    }).join('\n');
+}
+
+/**
+ * Enhanced turn execution with better logging
+ */
+async function executeTurn(battleState, currentPlayer, opponent) {
+    // Process status effects first
+    const statusResults = processStatusEffectsWithResults(currentPlayer);
+    
+    // Check if player is disabled
+    if (isPlayerDisabled(currentPlayer)) {
+        return {
+            type: 'disabled',
+            message: `${currentPlayer.username} is disabled and skips their turn!`,
+            damage: 0,
+            statusResults
+        };
+    }
+    
+    // Determine action (80% skill use, 20% basic attack if skill on cooldown)
+    const useSkill = currentPlayer.skillData && 
+                    !isSkillOnCooldown(currentPlayer, currentPlayer.skillData.name) && 
+                    Math.random() > 0.2;
+    
+    let result;
+    if (useSkill) {
+        result = executeEnhancedSkillAttack(battleState, currentPlayer, opponent);
+    } else {
+        result = executeEnhancedBasicAttack(battleState, currentPlayer, opponent);
+    }
+    
+    // Add status effect results to the main result
+    result.statusResults = statusResults;
+    
+    return result;
+}
+
+/**
+ * Enhanced skill attack with better data
+ */
+function executeEnhancedSkillAttack(battleState, attacker, defender) {
+    const skill = attacker.skillData;
+    
+    // Calculate skill damage
+    let damage = skill.damage || 100;
+    const cpMultiplier = Math.min(attacker.totalCP / defender.totalCP, 2.0);
+    const levelDiff = Math.max(0.5, 1 + (attacker.level - defender.level) * 0.05);
+    
+    damage = Math.floor(damage * cpMultiplier * levelDiff);
+    
+    // Apply random variance
+    const variance = 0.8 + (Math.random() * 0.4);
+    damage = Math.floor(damage * variance);
+    
+    // Check for critical hit
+    const critChance = 0.15 + (attacker.level / 1000);
+    const isCritical = Math.random() < critChance;
+    if (isCritical) {
+        damage = Math.floor(damage * 1.8);
+    }
+    
+    // Apply damage
+    const originalHP = defender.currentHP;
+    defender.currentHP = Math.max(0, defender.currentHP - damage);
+    const actualDamage = originalHP - defender.currentHP;
+    
+    // Set skill cooldown
+    setSkillCooldown(attacker, skill.name, skill.cooldown || 2);
+    
+    // Apply skill effects
+    const effectResults = applySkillEffectsWithResults(skill, attacker, defender);
+    
+    // Create enhanced result
+    const result = {
+        type: 'skill_attack',
+        skillName: skill.name,
+        damage: actualDamage,
+        isCritical,
+        effects: effectResults,
+        attacker: attacker.username,
+        defender: defender.username,
+        timestamp: Date.now()
+    };
+    
+    return result;
+}
+
+/**
+ * Enhanced basic attack with better data
+ */
+function executeEnhancedBasicAttack(battleState, attacker, defender) {
+    // Calculate basic attack damage
+    let damage = 60 + Math.floor(attacker.totalCP / 50);
+    const levelDiff = Math.max(0.5, 1 + (attacker.level - defender.level) * 0.03);
+    
+    damage = Math.floor(damage * levelDiff);
+    
+    // Apply random variance
+    const variance = 0.7 + (Math.random() * 0.6);
+    damage = Math.floor(damage * variance);
+    
+    // Check for critical hit
+    const critChance = 0.1;
+    const isCritical = Math.random() < critChance;
+    if (isCritical) {
+        damage = Math.floor(damage * 1.5);
+    }
+    
+    // Apply damage
+    const originalHP = defender.currentHP;
+    defender.currentHP = Math.max(0, defender.currentHP - damage);
+    const actualDamage = originalHP - defender.currentHP;
+    
+    const result = {
+        type: 'basic_attack',
+        damage: actualDamage,
+        isCritical,
+        attacker: attacker.username,
+        defender: defender.username,
+        timestamp: Date.now()
+    };
+    
+    return result;
+}
+
+/**
+ * Process status effects with detailed results
+ */
+function processStatusEffectsWithResults(player) {
+    const results = [];
+    
+    player.statusEffects = player.statusEffects.filter(effect => {
+        let keepEffect = true;
+        
+        switch (effect.type) {
+            case 'burn':
+            case 'poison':
+                const dotDamage = Math.floor(player.maxHP * effect.damagePercent);
+                const originalHP = player.currentHP;
+                player.currentHP = Math.max(0, player.currentHP - dotDamage);
+                const actualDamage = originalHP - player.currentHP;
+                
+                if (actualDamage > 0) {
+                    results.push({
+                        type: effect.type,
+                        damage: actualDamage,
+                        message: `${getStatusEffectEmoji(effect.type)} ${actualDamage} DMG`
+                    });
+                }
+                break;
+            case 'regen':
+                const healAmount = Math.floor(player.maxHP * 0.05);
+                player.currentHP = Math.min(player.maxHP, player.currentHP + healAmount);
+                results.push({
+                    type: 'regen',
+                    heal: healAmount,
+                    message: `💚 +${healAmount} HP`
+                });
+                break;
+        }
+        
+        effect.duration--;
+        if (effect.duration <= 0) {
+            keepEffect = false;
+            results.push({
+                type: 'effect_expired',
+                effectType: effect.type,
+                message: `${getStatusEffectEmoji(effect.type)} expired`
+            });
+        }
+        
+        return keepEffect;
+    });
+    
+    return results;
+}
+
+/**
+ * Apply skill effects with detailed results
+ */
+function applySkillEffectsWithResults(skill, attacker, defender) {
+    const effects = [];
+    
+    if (skill.effect) {
+        switch (skill.effect) {
+            case 'burn_damage':
+                addStatusEffect(defender, 'burn', 3, 0.1);
+                effects.push('🔥 Burning');
+                break;
+            case 'freeze_effect':
+                addStatusEffect(defender, 'frozen', 1, 0);
+                effects.push('❄️ Frozen');
+                break;
+            case 'poison_dot':
+                addStatusEffect(defender, 'poison', 2, 0.15);
+                effects.push('☠️ Poisoned');
+                break;
+            case 'self_heal':
+                const healAmount = Math.floor(attacker.maxHP * 0.15);
+                attacker.currentHP = Math.min(attacker.maxHP, attacker.currentHP + healAmount);
+                effects.push(`💚 +${healAmount} HP`);
+                break;
+        }
+    }
+    
+    return effects;
 }
 
 /**
@@ -657,7 +926,7 @@ function getStatusEffectEmoji(effectType) {
 }
 
 /**
- * Update battle message with new turn results
+ * Update battle message with professional layout
  */
 async function updateBattleMessage(interaction, battleState, turnResult) {
     try {
@@ -665,10 +934,125 @@ async function updateBattleMessage(interaction, battleState, turnResult) {
         reduceCooldowns(battleState.attacker);
         reduceCooldowns(battleState.target);
         
+        // Add to battle log
+        if (turnResult) {
+            battleState.battleLog.push(turnResult);
+            
+            // Keep only last 10 actions to prevent embed from getting too long
+            if (battleState.battleLog.length > 10) {
+                battleState.battleLog = battleState.battleLog.slice(-10);
+            }
+        }
+        
         const embed = createBattleEmbed(battleState, turnResult);
         await interaction.editReply({ embeds: [embed] });
     } catch (error) {
-        console.error('Error updating battle message:', error);
+        console.error('Error updating professional battle message:', error);
+    }
+}
+
+/**
+ * Create professional final results embed
+ */
+async function createDetailedResultEmbed(battleResult, rewards, attacker, target) {
+    const { winner, reason, totalTurns, finalHP } = battleResult;
+    
+    let color = RARITY_COLORS.common;
+    let title = '⚔️ BATTLE COMPLETE';
+    let resultIcon = '⚖️';
+    
+    if (winner === attacker.id) {
+        color = RARITY_COLORS.legendary;
+        title = '🏆 RAID VICTORY';
+        resultIcon = '👑';
+    } else if (winner === target.id) {
+        color = RARITY_COLORS.epic;
+        title = '🛡️ RAID DEFENDED';
+        resultIcon = '🛡️';
+    }
+    
+    const embed = new EmbedBuilder()
+        .setTitle(title)
+        .setColor(color)
+        .setDescription(`${resultIcon} **${getResultDescription(winner, attacker, target, reason)}**`)
+        .addFields(
+            {
+                name: '📊 BATTLE STATISTICS',
+                value: [
+                    `**Duration:** ${totalTurns} turns`,
+                    `**Final HP:** ${attacker.username}: ${finalHP.attacker} | ${target.username}: ${finalHP.target}`,
+                    `**Victory Condition:** ${getReasonText(reason)}`,
+                    `**Combat System:** Enhanced Turn-Based`
+                ].join('\n'),
+                inline: false
+            }
+        );
+    
+    // Add detailed battle summary
+    const skillSummary = createSkillUsageSummary(battleResult);
+    if (skillSummary) {
+        embed.addFields({
+            name: '⚡ COMBAT SUMMARY',
+            value: skillSummary,
+            inline: false
+        });
+    }
+    
+    // Add rewards section if any
+    if (rewards && (rewards.berries !== 0 || rewards.fruitsStolen.length > 0)) {
+        let rewardsText = '';
+        
+        if (rewards.berries > 0) {
+            rewardsText += `💰 **${rewards.berries.toLocaleString()}** berries stolen\n`;
+        } else if (rewards.berries < 0) {
+            rewardsText += `💸 **${Math.abs(rewards.berries).toLocaleString()}** defense bonus\n`;
+        }
+        
+        if (rewards.fruitsStolen.length > 0) {
+            rewardsText += `🍈 **${rewards.fruitsStolen.length}** devil fruits stolen\n`;
+            rewards.fruitsStolen.forEach(fruit => {
+                const emoji = RARITY_EMOJIS[fruit.fruit_rarity] || '⚪';
+                rewardsText += `   ${emoji} ${fruit.fruit_name}\n`;
+            });
+        }
+        
+        if (rewards.experienceGained > 0) {
+            rewardsText += `⭐ **+${rewards.experienceGained}** experience gained`;
+        }
+        
+        if (rewardsText) {
+            embed.addFields({
+                name: '🎁 REWARDS',
+                value: rewardsText,
+                inline: false
+            });
+        }
+    }
+    
+    embed.setFooter({ text: 'Enhanced Combat System | Professional PvP' })
+         .setTimestamp();
+    
+    return embed;
+}
+
+/**
+ * Get result description
+ */
+function getResultDescription(winner, attacker, target, reason) {
+    if (!winner) {
+        return `Draw between ${attacker.username} and ${target.username}`;
+    }
+    
+    const winnerName = winner === attacker.id ? attacker.username : target.username;
+    const loserName = winner === attacker.id ? target.username : attacker.username;
+    
+    switch (reason) {
+        case 'victory':
+            return `${winnerName} defeats ${loserName}`;
+        case 'time_limit':
+            return `${winnerName} wins by HP advantage`;
+        default:
+            return `${winnerName} emerges victorious`;
     }
 }
 
