@@ -15,7 +15,7 @@ const RAID_CONFIG = {
         'epic': 0.08, 'rare': 0.12, 'uncommon': 0.18, 'common': 0.25
     },
     MAX_FRUIT_DROPS: 3,
-    MAX_BATTLE_TURNS: 20,
+    MAX_BATTLE_TURNS: 50, // Increased from 20 to 50 for longer battles
     TURN_DELAY: 2500, // 2.5 seconds between turns
     DAMAGE_FLASH_DELAY: 800, // Damage flash duration
     HP_BAR_LENGTH: 20, // Length of HP bar in squares
@@ -615,27 +615,43 @@ async function executeTurn(battleState, currentPlayer, opponent) {
 }
 
 /**
- * Enhanced skill attack with better data
+ * Enhanced skill attack with better data and MUCH higher damage
  */
 function executeEnhancedSkillAttack(battleState, attacker, defender) {
     const skill = attacker.skillData;
     
-    // Calculate skill damage
+    // ENHANCED: Much higher base skill damage calculation
     let damage = skill.damage || 100;
-    const cpMultiplier = Math.min(attacker.totalCP / defender.totalCP, 2.0);
-    const levelDiff = Math.max(0.5, 1 + (attacker.level - defender.level) * 0.05);
+    
+    // BOOST 1: Skill base damage multiplier (skills should be 2-3x stronger than basic attacks)
+    const skillPowerMultiplier = 2.5; // Skills are 2.5x more powerful
+    damage = Math.floor(damage * skillPowerMultiplier);
+    
+    // BOOST 2: Rarity multiplier for skills (much more significant)
+    const rarityMultiplier = getRaritySkillMultiplier(attacker.bestFruit?.fruit_rarity || 'common');
+    damage = Math.floor(damage * rarityMultiplier);
+    
+    // BOOST 3: Enhanced CP multiplier for skills
+    const cpMultiplier = Math.min(attacker.totalCP / defender.totalCP, 3.0); // Increased from 2.0 to 3.0
+    
+    // BOOST 4: Level difference bonus (more significant for skills)
+    const levelDiff = Math.max(0.7, 1 + (attacker.level - defender.level) * 0.08); // Increased from 0.05
     
     damage = Math.floor(damage * cpMultiplier * levelDiff);
     
-    // Apply random variance
-    const variance = 0.8 + (Math.random() * 0.4);
+    // BOOST 5: Skill mastery bonus based on total CP
+    const masteryBonus = 1 + (attacker.totalCP / 5000); // Up to 20% bonus for high CP users
+    damage = Math.floor(damage * masteryBonus);
+    
+    // Apply random variance (less variance for skills - more consistent)
+    const variance = 0.85 + (Math.random() * 0.3); // 85%-115% instead of 80%-120%
     damage = Math.floor(damage * variance);
     
-    // Check for critical hit
-    const critChance = 0.15 + (attacker.level / 1000);
+    // BOOST 6: Higher critical hit chance and damage for skills
+    const critChance = 0.25 + (attacker.level / 500); // Increased from 0.15 + level/1000
     const isCritical = Math.random() < critChance;
     if (isCritical) {
-        damage = Math.floor(damage * 1.8);
+        damage = Math.floor(damage * 2.2); // Increased from 1.8 to 2.2
     }
     
     // Apply damage
@@ -665,24 +681,24 @@ function executeEnhancedSkillAttack(battleState, attacker, defender) {
 }
 
 /**
- * Enhanced basic attack with better data
+ * Enhanced basic attack with balanced damage (should be weaker than skills)
  */
 function executeEnhancedBasicAttack(battleState, attacker, defender) {
-    // Calculate basic attack damage
-    let damage = 60 + Math.floor(attacker.totalCP / 50);
+    // BALANCED: Basic attacks should be reliable but weaker
+    let damage = 50 + Math.floor(attacker.totalCP / 60); // Reduced from /50 to /60
     const levelDiff = Math.max(0.5, 1 + (attacker.level - defender.level) * 0.03);
     
     damage = Math.floor(damage * levelDiff);
     
-    // Apply random variance
-    const variance = 0.7 + (Math.random() * 0.6);
+    // Basic attacks have more variance (less reliable)
+    const variance = 0.6 + (Math.random() * 0.8); // 60%-140% variance
     damage = Math.floor(damage * variance);
     
-    // Check for critical hit
-    const critChance = 0.1;
+    // Lower critical chance for basic attacks
+    const critChance = 0.1; // Keep at 10%
     const isCritical = Math.random() < critChance;
     if (isCritical) {
-        damage = Math.floor(damage * 1.5);
+        damage = Math.floor(damage * 1.5); // Keep at 1.5x
     }
     
     // Apply damage
@@ -700,6 +716,22 @@ function executeEnhancedBasicAttack(battleState, attacker, defender) {
     };
     
     return result;
+}
+
+/**
+ * ENHANCED: Get skill-specific rarity multiplier (much more significant than basic attacks)
+ */
+function getRaritySkillMultiplier(rarity) {
+    const multipliers = {
+        'common': 1.0,     // Base skill power
+        'uncommon': 1.3,   // 30% more damage
+        'rare': 1.6,       // 60% more damage
+        'epic': 2.0,       // 100% more damage (double!)
+        'legendary': 2.5,  // 150% more damage
+        'mythical': 3.2,   // 220% more damage
+        'divine': 4.0      // 300% more damage (quadruple!)
+    };
+    return multipliers[rarity] || 1.0;
 }
 
 /**
