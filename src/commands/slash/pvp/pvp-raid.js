@@ -104,7 +104,8 @@ module.exports = {
     }
 };
 
-/**
+// Export the module
+module.exports;
  * Set skill cooldown
  */
 function setSkillCooldown(player, skillName, turns) {
