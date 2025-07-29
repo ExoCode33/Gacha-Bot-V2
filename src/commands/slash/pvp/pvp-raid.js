@@ -1,4 +1,4 @@
-// src/commands/slash/pvp/pvp-raid.js - FIXED: Interaction Issues Resolved
+// src/commands/slash/pvp/pvp-raid.js - FIXED: Syntax Error Corrected
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, InteractionType } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
@@ -356,6 +356,8 @@ function createErrorEmbed(message) {
 function generateRaidId() {
     return `raid_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 }
+
+/**
  * Execute the main raid battle
  */
 async function executeRaid(interaction, attackerData, targetData) {
@@ -470,6 +472,7 @@ function createBattleEmbed(raidState, lastAction = null) {
     .setTimestamp();
     
     return embed;
+}
 }
 
 /**
@@ -1064,6 +1067,3 @@ function createFinalResultEmbed(raidState, battleResult, rewards) {
     .setTimestamp();
     
     return embed;
-}
-
-/**
