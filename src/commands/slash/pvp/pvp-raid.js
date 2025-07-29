@@ -270,10 +270,18 @@ function setupFruitSelectionCollector(interaction, selectionId, target) {
             
         } catch (error) {
             console.error('Fruit selection error:', error);
-            await componentInteraction.reply({
-                content: '❌ An error occurred!',
-                ephemeral: true
-            });
+            
+            // FIXED: Safely handle interaction responses
+            try {
+                if (!componentInteraction.replied && !componentInteraction.deferred) {
+                    await componentInteraction.reply({
+                        content: '❌ An error occurred!',
+                        ephemeral: true
+                    });
+                }
+            } catch (responseError) {
+                console.error('Failed to send error response:', responseError);
+            }
         }
     });
     
@@ -460,13 +468,34 @@ function createBattleEmbed(raidState) {
         .setColor(RARITY_COLORS.legendary)
         .setTimestamp();
     
-    // Create a single field with both teams side by side
-    const battleDisplay = createSideBySideTeams(raidState.attacker, raidState.defender);
+    // Use separate fields to avoid character limit issues
+    const attackerTeamText = attacker.team.map((fruit, index) => {
+        const isActive = index === attacker.activeFruitIndex;
+        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
+        const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
+        const activeIcon = isActive ? '▶️' : '▫️';
+        
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+    }).join('\n\n');
     
     embed.addFields({
-        name: '⚔️ Battle Status',
-        value: battleDisplay,
-        inline: false
+        name: `⚔️ ${attacker.username}'s Team`,
+        value: attackerTeamText,
+        inline: true
+    });
+    
+    const defenderTeamText = defender.team.map((fruit, index) => {
+        const isActive = index === defender.activeFruitIndex;
+        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
+        const activeIcon = isActive ? '▶️' : '▫️';
+        
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+    }).join('\n\n');
+    
+    embed.addFields({
+        name: `🛡️ ${defender.username}'s Team`,
+        value: defenderTeamText,
+        inline: true
     });
     
     // IMPROVED: Show longer battle log (last 8 actions instead of 3)
@@ -488,46 +517,6 @@ function createBattleEmbed(raidState) {
     }
     
     return embed;
-}
-
-function createSideBySideTeams(attacker, defender) {
-    let display = `**⚔️ ${attacker.username}'s Team** \`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\`\` **🛡️ ${defender.username}'s Team**\n\n`;
-    
-    // Process each team position
-    for (let i = 0; i < Math.max(attacker.team.length, defender.team.length); i++) {
-        const attackerFruit = attacker.team[i];
-        const defenderFruit = defender.team[i];
-        
-        // Left side (attacker)
-        let leftSide = '';
-        if (attackerFruit) {
-            const isActive = i === attacker.activeFruitIndex;
-            const hpBar = createPerfectHPBar(attackerFruit.currentHP, attackerFruit.maxHP);
-            const cooldownText = attackerFruit.cooldown > 0 ? ` (CD: ${attackerFruit.cooldown})` : '';
-            const activeIcon = isActive ? '▶️' : '▫️';
-            
-            leftSide = `${activeIcon} ${attackerFruit.emoji} **${attackerFruit.name}**${cooldownText}\n${hpBar} ${attackerFruit.currentHP}/${attackerFruit.maxHP} HP`;
-        } else {
-            leftSide = '```Empty Slot```';
-        }
-        
-        // Right side (defender)
-        let rightSide = '';
-        if (defenderFruit) {
-            const isActive = i === defender.activeFruitIndex;
-            const hpBar = createPerfectHPBar(defenderFruit.currentHP, defenderFruit.maxHP);
-            const activeIcon = isActive ? '▶️' : '▫️';
-            
-            rightSide = `${activeIcon} ${defenderFruit.emoji} **${defenderFruit.name}**\n${hpBar} ${defenderFruit.currentHP}/${defenderFruit.maxHP} HP`;
-        } else {
-            rightSide = '```Empty Slot```';
-        }
-        
-        // Add both sides with separator
-        display += leftSide + '\n\n' + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' + rightSide + '\n\n';
-    }
-    
-    return display;
 }
 
 function createBattleComponents(raidState) {
@@ -583,10 +572,18 @@ function setupBattleCollector(interaction, raidState) {
             }
         } catch (error) {
             console.error('Battle interaction error:', error);
-            await componentInteraction.reply({
-                content: '❌ An error occurred during battle!',
-                ephemeral: true
-            });
+            
+            // FIXED: Safely handle interaction responses
+            try {
+                if (!componentInteraction.replied && !componentInteraction.deferred) {
+                    await componentInteraction.reply({
+                        content: '❌ An error occurred during battle!',
+                        ephemeral: true
+                    });
+                }
+            } catch (responseError) {
+                console.error('Failed to send error response:', responseError);
+            }
         }
     });
     
