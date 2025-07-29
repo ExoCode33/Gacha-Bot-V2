@@ -466,8 +466,8 @@ function createBattleEmbed(raidState) {
         const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
         const activeIcon = isActive ? '▶️' : '▫️';
         
-        // Fixed format with consistent spacing
-        return `${activeIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        // Use fixed-width formatting for perfect alignment
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n\`\`\`${hpBar}\`\`\` ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     embed.addFields({
@@ -482,7 +482,7 @@ function createBattleEmbed(raidState) {
         const activeIcon = isActive ? '▶️' : '▫️';
         
         // Identical format to attacker side
-        return `${activeIcon} ${fruit.emoji} **${fruit.name}**\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${activeIcon} ${fruit.emoji} **${fruit.name}**\n\`\`\`${hpBar}\`\`\` ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     embed.addFields({
@@ -807,12 +807,12 @@ function createBattleResultEmbed(raidState, battleResult, rewards) {
     
     const attackerStatus = attacker.team.map(fruit => {
         const hpBar = createFixedHPBar(fruit.currentHP, fruit.maxHP);
-        return `${fruit.emoji} **${fruit.name}**\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${fruit.emoji} **${fruit.name}**\n\`\`\`${hpBar}\`\`\` ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     const defenderStatus = defender.team.map(fruit => {
         const hpBar = createFixedHPBar(fruit.currentHP, fruit.maxHP);
-        return `${fruit.emoji} **${fruit.name}**\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${fruit.emoji} **${fruit.name}**\n\`\`\`${hpBar}\`\`\` ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     embed.addFields(
