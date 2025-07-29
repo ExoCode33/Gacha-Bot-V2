@@ -1,4 +1,4 @@
-// src/events/client/interactionCreate.js - FIXED: Ensure user exists BEFORE command execution
+// src/events/client/interactionCreate.js - UPDATED: PvP Integration
 const Logger = require('../../utils/Logger');
 const ErrorHandler = require('../../utils/ErrorHandler');
 
@@ -73,17 +73,45 @@ async function handleSlashCommand(interaction, logger) {
 async function handleButtonInteraction(interaction, logger) {
     const customId = interaction.customId;
     
-    // Handle pull animation buttons
-    if (customId.startsWith('pull_')) {
-        // This will be handled by PullAnimationService
-        logger.debug(`Pull animation button: ${customId}`);
+    // Handle PvP Challenge invitation responses
+    if (customId.startsWith('accept_') || customId.startsWith('decline_')) {
+        // These are handled by the command's own collector
+        logger.debug(`PvP invitation response: ${customId}`);
         return;
     }
     
-    // Handle navigation buttons
-    if (['prev', 'next', 'summary'].includes(customId)) {
-        // These are handled by the respective services
-        logger.debug(`Navigation button: ${customId}`);
+    // Handle PvP Raid rematch buttons
+    if (customId.startsWith('rematch_')) {
+        // These are handled by the raid command's collector
+        logger.debug(`PvP raid rematch: ${customId}`);
+        return;
+    }
+    
+    // Handle PvP Challenge selection/battle buttons
+    if (customId.includes('select_') || customId.includes('battle_') || customId.includes('ban_') || customId.includes('confirm_')) {
+        const pvpHandler = require('./pvpChallengeHandler');
+        await pvpHandler.execute(interaction);
+        return;
+    }
+    
+    // Handle gacha animation buttons (from existing system)
+    if (customId.startsWith('summon_')) {
+        // These are handled by summon command collectors
+        logger.debug(`Gacha button: ${customId}`);
+        return;
+    }
+    
+    // Handle collection navigation buttons
+    if (['collection_first', 'collection_prev', 'collection_next', 'collection_last'].some(btn => customId.startsWith(btn))) {
+        // These are handled by collection command collectors
+        logger.debug(`Collection navigation: ${customId}`);
+        return;
+    }
+    
+    // Handle batch navigation buttons
+    if (['batch_first', 'batch_prev', 'batch_summary', 'batch_next', 'batch_last', 'back_to_batches'].includes(customId)) {
+        // These are handled by summon command collectors
+        logger.debug(`Batch navigation: ${customId}`);
         return;
     }
     
@@ -95,6 +123,13 @@ async function handleButtonInteraction(interaction, logger) {
  */
 async function handleSelectMenuInteraction(interaction, logger) {
     const customId = interaction.customId;
+    
+    // Handle PvP Challenge fruit selection menus
+    if (customId.includes('select_fruit_') || customId.includes('ban_fruit_') || customId.includes('battle_switch_')) {
+        const pvpHandler = require('./pvpChallengeHandler');
+        await pvpHandler.execute(interaction);
+        return;
+    }
     
     logger.debug(`Select menu interaction: ${customId}`, {
         values: interaction.values
