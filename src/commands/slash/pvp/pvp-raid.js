@@ -461,9 +461,9 @@ function createBattleEmbed(raidState) {
     
     const attackerTeamText = attacker.team.map((fruit, index) => {
         const isActive = index === attacker.activeFruitIndex;
-        const hpBar = createMiniHPBar(fruit.currentHP, fruit.maxHP, 10);
+        const hpBar = createAlignedHPBar(fruit.currentHP, fruit.maxHP);
         const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
-        return `${isActive ? '▶️' : '▫️'} ${fruit.emoji} **${fruit.name}**${cooldownText}\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${isActive ? '▶️' : '▫️'} ${fruit.emoji} **${fruit.name}**${cooldownText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n');
     
     embed.addFields({
@@ -474,8 +474,8 @@ function createBattleEmbed(raidState) {
     
     const defenderTeamText = defender.team.map((fruit, index) => {
         const isActive = index === defender.activeFruitIndex;
-        const hpBar = createMiniHPBar(fruit.currentHP, fruit.maxHP, 10);
-        return `${isActive ? '▶️' : '▫️'} ${fruit.emoji} **${fruit.name}**\n   ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const hpBar = createAlignedHPBar(fruit.currentHP, fruit.maxHP);
+        return `${isActive ? '▶️' : '▫️'} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n');
     
     embed.addFields({
@@ -781,13 +781,13 @@ function createBattleResultEmbed(raidState, battleResult, rewards) {
         .setTimestamp();
     
     const attackerStatus = attacker.team.map(fruit => {
-        const hpBar = createMiniHPBar(fruit.currentHP, fruit.maxHP, 10);
-        return `${fruit.emoji} **${fruit.name}**: ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const hpBar = createAlignedHPBar(fruit.currentHP, fruit.maxHP);
+        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n');
     
     const defenderStatus = defender.team.map(fruit => {
-        const hpBar = createMiniHPBar(fruit.currentHP, fruit.maxHP, 10);
-        return `${fruit.emoji} **${fruit.name}**: ${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const hpBar = createAlignedHPBar(fruit.currentHP, fruit.maxHP);
+        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n');
     
     embed.addFields(
@@ -853,19 +853,31 @@ function createBattleResultEmbed(raidState, battleResult, rewards) {
     return embed;
 }
 
-function createMiniHPBar(currentHP, maxHP, length = 10) {
-    const percentage = Math.max(0, currentHP / maxHP);
-    const filledBars = Math.floor(percentage * length);
-    const emptyBars = length - filledBars;
+function createAlignedHPBar(currentHP, maxHP) {
+    const barLength = 10; // Fixed length for all HP bars
+    const percentage = Math.max(0, Math.min(1, currentHP / maxHP));
+    const filledBars = Math.floor(percentage * barLength);
+    const emptyBars = barLength - filledBars;
     
-    let hpEmoji = '🟢';
-    if (percentage < 0.3) {
-        hpEmoji = '🔴';
-    } else if (percentage < 0.6) {
-        hpEmoji = '🟡';
+    // Choose HP color based on percentage
+    let hpEmoji = '🟢'; // Green for healthy
+    if (percentage <= 0) {
+        hpEmoji = '⚫'; // Black for dead
+    } else if (percentage < 0.25) {
+        hpEmoji = '🔴'; // Red for critical
+    } else if (percentage < 0.5) {
+        hpEmoji = '🟡'; // Yellow for injured
     }
     
-    return hpEmoji.repeat(filledBars) + '⚫'.repeat(emptyBars);
+    // Use consistent emojis for empty spaces
+    const emptyEmoji = '⚫';
+    
+    return hpEmoji.repeat(filledBars) + emptyEmoji.repeat(emptyBars);
+}
+
+function createMiniHPBar(currentHP, maxHP, length = 10) {
+    // Use the aligned version for consistency
+    return createAlignedHPBar(currentHP, maxHP);
 }
 
 async function getUserFruitsForSelection(userId) {
