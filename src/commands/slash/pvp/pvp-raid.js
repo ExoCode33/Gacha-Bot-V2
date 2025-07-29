@@ -16,7 +16,7 @@ const RAID_CONFIG = {
     },
     MAX_FRUIT_DROPS: 3,
     MAX_BATTLE_TURNS: 30,
-    TURN_TIMEOUT: 120000,
+    TURN_TIMEOUT: 600000, // FIXED: Increased to 10 minutes to prevent timeout
     HP_BAR_LENGTH: 20,
     TEAM_SIZE: 5,
     FRUITS_PER_PAGE: 20
@@ -451,12 +451,27 @@ async function showBattleInterface(interaction, raidState) {
     const embed = createBattleEmbed(raidState);
     const components = createBattleComponents(raidState);
     
-    await interaction.editReply({
-        embeds: [embed],
-        components
-    });
-    
-    setupBattleCollector(interaction, raidState);
+    // FIXED: Use editReply safely with error handling
+    try {
+        await interaction.editReply({
+            embeds: [embed],
+            components
+        });
+        
+        // Only setup collector if update was successful
+        setupBattleCollector(interaction, raidState);
+    } catch (error) {
+        console.error('Failed to update battle interface:', error);
+        // If we can't update the interface, end the battle gracefully
+        if (error.code === 10008 || error.code === 10062) {
+            console.log('Message or interaction expired, ending battle...');
+            await endBattle(interaction, raidState, { 
+                ended: true, 
+                winner: raidState.defender.userId, 
+                reason: 'interface_expired' 
+            });
+        }
+    }
 }
 
 function createBattleEmbed(raidState) {
@@ -567,13 +582,25 @@ function setupBattleCollector(interaction, raidState) {
     
     collector.on('collect', async (componentInteraction) => {
         try {
+            // Check if interaction is still valid
+            if (Date.now() - componentInteraction.createdTimestamp > 840000) { // 14 minutes
+                console.log('Interaction too old, skipping...');
+                return;
+            }
+            
             if (componentInteraction.customId.startsWith('battle_attack_')) {
                 await handleBattleAction(componentInteraction, raidState, interaction);
             }
         } catch (error) {
             console.error('Battle interaction error:', error);
             
-            // FIXED: Safely handle interaction responses
+            // FIXED: Don't try to respond if interaction is expired
+            if (error.code === 10062 || error.code === 40060) {
+                console.log('Interaction expired or already acknowledged, continuing battle...');
+                return;
+            }
+            
+            // Only try to respond to valid interactions
             try {
                 if (!componentInteraction.replied && !componentInteraction.deferred) {
                     await componentInteraction.reply({
@@ -598,12 +625,18 @@ async function handleBattleAction(componentInteraction, raidState, originalInter
     const fruitIndex = parseInt(componentInteraction.values[0].split('_')[1]);
     const attackingFruit = raidState.attacker.team[fruitIndex];
     
+    // FIXED: Use deferUpdate to avoid timeout issues
+    try {
+        await componentInteraction.deferUpdate();
+    } catch (error) {
+        console.error('Failed to defer interaction:', error);
+        return; // Exit if interaction is already expired
+    }
+    
     const damage = await executeAttack(raidState, fruitIndex);
     
-    await componentInteraction.reply({
-        content: `⚔️ ${attackingFruit.name} attacks for ${damage} damage!`,
-        ephemeral: true
-    });
+    // Add battle log entry for the attack
+    raidState.battleLog.push(`⚔️ ${attackingFruit.name} attacks for ${damage} damage!`);
     
     const battleResult = checkBattleEnd(raidState);
     if (battleResult.ended) {
