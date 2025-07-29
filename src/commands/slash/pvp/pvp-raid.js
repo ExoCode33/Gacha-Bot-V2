@@ -1,4 +1,4 @@
-// src/commands/slash/pvp/pvp-raid.js - AUTOMATED PvP Raid Command
+// src/commands/slash/pvp/pvp-raid.js - FIXED: Round variable scope issue
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const EconomyService = require('../../../services/EconomyService');
@@ -203,8 +203,11 @@ module.exports = {
         battleLog.push(`⚔️ Battle Power: ${attackerPower.attackPower} vs ${targetPower.attackPower}`);
         battleLog.push('');
         
+        // FIXED: Properly declare round variable
+        let currentRound = 1;
+        
         // Battle simulation
-        for (let round = 1; round <= RAID_CONFIG.BATTLE_ROUNDS; round++) {
+        for (currentRound = 1; currentRound <= RAID_CONFIG.BATTLE_ROUNDS; currentRound++) {
             if (attackerHP <= 0 || targetHP <= 0) break;
             
             // Attacker's turn
@@ -235,7 +238,7 @@ module.exports = {
                 }
             }
             
-            if (round % 3 === 0) {
+            if (currentRound % 3 === 0) {
                 battleLog.push(''); // Add spacing every 3 rounds
             }
         }
@@ -265,7 +268,7 @@ module.exports = {
             reason,
             finalHP: { attacker: attackerHP, target: targetHP },
             battleLog,
-            rounds: Math.min(round, RAID_CONFIG.BATTLE_ROUNDS),
+            rounds: Math.min(currentRound, RAID_CONFIG.BATTLE_ROUNDS),
             attackerPower,
             targetPower
         };
@@ -499,150 +502,3 @@ module.exports = {
             if (rewards.berries > 0) {
                 rewardsText += `💰 **Berries Stolen:** ${rewards.berries.toLocaleString()}\n`;
             } else if (rewards.berries < 0) {
-                rewardsText += `💸 **Defense Bonus:** ${Math.abs(rewards.berries).toLocaleString()}\n`;
-            }
-            
-            if (rewards.fruitsStolen.length > 0) {
-                rewardsText += `🍈 **Fruits Stolen:** ${rewards.fruitsStolen.length}\n`;
-                rewards.fruitsStolen.forEach(fruit => {
-                    const emoji = RARITY_EMOJIS[fruit.fruit_rarity] || '⚪';
-                    rewardsText += `   ${emoji} ${fruit.fruit_name}\n`;
-                });
-            }
-            
-            if (rewards.experienceGained > 0) {
-                rewardsText += `⭐ **Experience:** +${rewards.experienceGained}`;
-            }
-            
-            if (rewardsText) {
-                embed.addFields({
-                    name: '🎁 Rewards',
-                    value: rewardsText,
-                    inline: false
-                });
-            }
-        }
-        
-        // Add battle log (truncated for Discord limits)
-        const logText = battleLog.slice(0, 10).join('\n');
-        if (logText.length > 0 && logText.length < 1000) {
-            embed.addFields({
-                name: '📜 Battle Log',
-                value: logText.length > 1000 ? logText.substring(0, 997) + '...' : logText,
-                inline: false
-            });
-        }
-        
-        embed.setFooter({ text: `Raid completed in ${rounds} rounds` })
-             .setTimestamp();
-        
-        return embed;
-    },
-    
-    /**
-     * Get reason text for battle end
-     */
-    getReasonText(reason) {
-        switch (reason) {
-            case 'victory': return 'Decisive Victory';
-            case 'time_limit': return 'Time Limit Reached';
-            case 'mutual_destruction': return 'Mutual Destruction';
-            default: return 'Draw';
-        }
-    },
-    
-    /**
-     * Create error embed
-     */
-    createErrorEmbed(message) {
-        return new EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('❌ Raid Failed')
-            .setDescription(message)
-            .setTimestamp();
-    },
-    
-    /**
-     * Create rematch button
-     */
-    createRematchButton(winnerId, loserId) {
-        return new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`rematch_${winnerId}_${loserId}`)
-                    .setLabel('⚔️ Offer Rematch')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('🔄')
-            );
-    },
-    
-    /**
-     * Setup rematch button collector
-     */
-    setupRematchCollector(interaction, winnerId, loserId) {
-        const message = interaction.fetchReply();
-        const collector = message.createMessageComponentCollector({ 
-            time: 300000 // 5 minutes
-        });
-        
-        collector.on('collect', async (buttonInteraction) => {
-            if (buttonInteraction.user.id !== winnerId) {
-                return buttonInteraction.reply({
-                    content: '❌ Only the winner can offer a rematch!',
-                    ephemeral: true
-                });
-            }
-            
-            // Check if rematch is still valid (cooldowns, etc.)
-            const target = await interaction.client.users.fetch(loserId).catch(() => null);
-            if (!target) {
-                return buttonInteraction.reply({
-                    content: '❌ Target user not found!',
-                    ephemeral: true
-                });
-            }
-            
-            const validation = await this.validateRaid(winnerId, target);
-            if (!validation.valid) {
-                return buttonInteraction.reply({
-                    content: `❌ Rematch not available: ${validation.reason}`,
-                    ephemeral: true
-                });
-            }
-            
-            // Disable the button and start new raid
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('rematch_used')
-                        .setLabel('⚔️ Rematch Starting...')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true)
-                );
-            
-            await buttonInteraction.update({ components: [disabledRow] });
-            
-            // Start new raid (simulate the command)
-            const newInteraction = { ...buttonInteraction };
-            newInteraction.options = {
-                getUser: () => target
-            };
-            
-            setTimeout(() => this.execute(newInteraction), 1000);
-        });
-        
-        collector.on('end', () => {
-            // Disable button when collector expires
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('rematch_expired')
-                        .setLabel('⚔️ Rematch Expired')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true)
-                );
-            
-            interaction.editReply({ components: [disabledRow] }).catch(() => {});
-        });
-    }
-};
