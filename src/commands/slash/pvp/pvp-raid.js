@@ -642,6 +642,48 @@ function determineBattleWinner(battleState) {
         const attackerPercent = attacker.currentHP / attacker.maxHP;
         const targetPercent = target.currentHP / target.maxHP;
         
+        if (attackerPercent > targetPercent) {
+            return { id: attacker.userId, reason: 'time_limit' };
+        } else if (targetPercent > attackerPercent) {
+            return { id: target.userId, reason: 'time_limit' };
+        } else {
+            return { id: null, reason: 'draw' };
+        }
+    }
+}
+
+/**
+ * Validate if raid can proceed
+ */
+async function validateRaid(attackerId, target) {
+    if (!target || target.bot) {
+        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
+    }
+    
+    if (attackerId === target.id) {
+        return { valid: false, reason: 'Cannot raid yourself!' };
+    }
+    
+    const lastRaid = raidCooldowns.get(attackerId);
+    if (lastRaid && (Date.now() - lastRaid) < RAID_CONFIG.COOLDOWN_TIME) {
+        const remainingTime = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000);
+        return { valid: false, reason: `Raid cooldown active! Wait ${remainingTime} more seconds.` };
+    }
+    
+    try {
+        const [attackerUser, targetUser] = await Promise.all([
+            DatabaseManager.getUser(attackerId),
+            DatabaseManager.getUser(target.id)
+        ]);
+        
+        if (!attackerUser) {
+            return { valid: false, reason: 'You need to use other commands first to initialize your account!' };
+        }
+        
+        if (!targetUser) {
+            return { valid: false, reason: 'Target user not found in the database!' };
+        }
+        
         if (attackerUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
             return { valid: false, reason: `You need at least ${RAID_CONFIG.MIN_CP_REQUIRED} CP to raid!` };
         }
@@ -880,14 +922,6 @@ async function setupRematchCollector(interaction, winnerId, loserId) {
     } catch (error) {
         console.error('Error setting up enhanced rematch collector:', error);
     }
-}Percent > targetPercent) {
-            return { id: attacker.userId, reason: 'time_limit' };
-        } else if (targetPercent > attackerPercent) {
-            return { id: target.userId, reason: 'time_limit' };
-        } else {
-            return { id: null, reason: 'draw' };
-        }
-    }
 }
 
 /**
@@ -1014,41 +1048,3 @@ function createSkillUsageSummary(battleResult) {
     }
     
     return summary || null;
-}
-
-// Keep all the existing helper functions (validateRaid, processRaidRewards, etc.)
-// ... (Previous validation, rewards, and utility functions remain the same)
-
-/**
- * Validate if raid can proceed
- */
-async function validateRaid(attackerId, target) {
-    if (!target || target.bot) {
-        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
-    }
-    
-    if (attackerId === target.id) {
-        return { valid: false, reason: 'Cannot raid yourself!' };
-    }
-    
-    const lastRaid = raidCooldowns.get(attackerId);
-    if (lastRaid && (Date.now() - lastRaid) < RAID_CONFIG.COOLDOWN_TIME) {
-        const remainingTime = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000);
-        return { valid: false, reason: `Raid cooldown active! Wait ${remainingTime} more seconds.` };
-    }
-    
-    try {
-        const [attackerUser, targetUser] = await Promise.all([
-            DatabaseManager.getUser(attackerId),
-            DatabaseManager.getUser(target.id)
-        ]);
-        
-        if (!attackerUser) {
-            return { valid: false, reason: 'You need to use other commands first to initialize your account!' };
-        }
-        
-        if (!targetUser) {
-            return { valid: false, reason: 'Target user not found in the database!' };
-        }
-        
-        if (attacker
