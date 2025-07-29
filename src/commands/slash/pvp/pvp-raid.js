@@ -1048,3 +1048,4 @@ function createSkillUsageSummary(battleResult) {
     }
     
     return summary || null;
+}
