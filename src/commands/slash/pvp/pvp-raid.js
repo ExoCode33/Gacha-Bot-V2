@@ -1,4 +1,140 @@
-attackerData.currentHP = calculateMaxHP(attackerBestCP, attackerData.level);
+// src/commands/slash/pvp/pvp-raid.js - FIXED: Syntax Error Corrected
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const DatabaseManager = require('../../../database/DatabaseManager');
+const EconomyService = require('../../../services/EconomyService');
+const { getSkillData } = require('../../../data/DevilFruitSkills');
+const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
+
+// Enhanced raid configuration - Turn 1 Protection + NO DRAWS
+const RAID_CONFIG = {
+    COOLDOWN_TIME: 300000, // 5 minutes between raids
+    MIN_CP_REQUIRED: 500, // Minimum CP to participate
+    BERRY_STEAL_PERCENTAGE: 0.15, // 15% of opponent's berries
+    FRUIT_DROP_CHANCES: {
+        'divine': 0.01, 'mythical': 0.02, 'legendary': 0.05,
+        'epic': 0.08, 'rare': 0.12, 'uncommon': 0.18, 'common': 0.25
+    },
+    MAX_FRUIT_DROPS: 3,
+    MAX_BATTLE_TURNS: 75, // Reduced for faster resolution
+    MIN_BATTLE_TURNS: 5, // Minimum turns before early victory
+    TURN_DELAY: 2500, // 2.5 seconds between turns
+    DAMAGE_FLASH_DELAY: 800, // Damage flash duration
+    HP_BAR_LENGTH: 20, // Length of HP bar in squares
+    ANIMATION_FRAMES: 3, // Number of damage flash frames
+    DECISIVE_HP_THRESHOLD: 0.25, // 25% HP difference for decisive victory
+    // Turn 1 Protection System
+    TURN_1_DAMAGE_REDUCTION: 0.8, // 80% damage reduction
+    EARLY_TURN_DAMAGE_REDUCTION: 0.5, // 50% damage reduction turns 2-3
+    MID_TURN_DAMAGE_REDUCTION: 0.25 // 25% damage reduction turns 4-5
+};
+
+// Active raid cooldowns, battles, and fruit selections
+const raidCooldowns = new Map();
+const activeBattles = new Map();
+const activeSelections = new Map();
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('pvp-raid')
+        .setDescription('⚔️ Launch a raid with Turn 1 protection and guaranteed winner system!')
+        .addUserOption(option =>
+            option.setName('target')
+                .setDescription('The pirate you want to raid')
+                .setRequired(true)
+        ),
+    
+    category: 'pvp',
+    cooldown: 5,
+    
+    async execute(interaction) {
+        const attacker = interaction.user;
+        const target = interaction.options.getUser('target');
+        
+        try {
+            // Validation checks
+            const validationResult = await validateRaid(attacker.id, target);
+            if (!validationResult.valid) {
+                return interaction.reply({
+                    embeds: [createErrorEmbed(validationResult.reason)],
+                    ephemeral: true
+                });
+            }
+            
+            // Check if attacker has enough fruits for selection
+            const attackerFruits = await DatabaseManager.getUserDevilFruits(attacker.id);
+            if (attackerFruits.length < 5) {
+                return interaction.reply({
+                    embeds: [createErrorEmbed(`You need at least 5 Devil Fruits to raid! You have ${attackerFruits.length}.`)],
+                    ephemeral: true
+                });
+            }
+            
+            await interaction.deferReply();
+            
+            // Start fruit selection process for attacker
+            await startRaidFruitSelection(interaction, attacker, target);
+            
+        } catch (error) {
+            interaction.client.logger.error('PvP Raid error:', error);
+            
+            const errorResponse = {
+                embeds: [createErrorEmbed('An error occurred during the raid!')],
+                ephemeral: true
+            };
+            
+            if (interaction.deferred) {
+                await interaction.editReply(errorResponse);
+            } else {
+                await interaction.reply(errorResponse);
+            }
+        }
+    }
+};
+
+/**
+ * TURN 1 PROTECTION: Apply turn-based damage reduction
+ */
+function applyTurnBasedDamageReduction(damage, currentTurn) {
+    let originalDamage = damage;
+    
+    // Turn 1: 80% damage reduction (only 20% damage gets through)
+    if (currentTurn === 1) {
+        damage = Math.floor(damage * (1 - RAID_CONFIG.TURN_1_DAMAGE_REDUCTION));
+        console.log(`🛡️ Turn 1 protection: ${originalDamage} → ${damage} (80% reduced)`);
+        return damage;
+    }
+    
+    // Turn 2-3: 50% damage reduction
+    if (currentTurn <= 3) {
+        damage = Math.floor(damage * (1 - RAID_CONFIG.EARLY_TURN_DAMAGE_REDUCTION));
+        console.log(`🛡️ Early turn protection: ${originalDamage} → ${damage} (50% reduced)`);
+        return damage;
+    }
+    
+    // Turn 4-5: 25% damage reduction
+    if (currentTurn <= 5) {
+        damage = Math.floor(damage * (1 - RAID_CONFIG.MID_TURN_DAMAGE_REDUCTION));
+        console.log(`🛡️ Mid-early protection: ${originalDamage} → ${damage} (25% reduced)`);
+        return damage;
+    }
+    
+    // Turn 6+: Normal damage
+    console.log(`⚔️ Full damage: ${originalDamage} (no protection)`);
+    return damage;
+}
+
+/**
+ * FIXED: Execute enhanced turn-based battle with protection
+ */
+async function executeVisualBattle(interaction, attackerData, targetData) {
+    // Initialize battle state
+    const battleId = `raid_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+    
+    // Calculate HP based on individual fruit power
+    const attackerBestCP = Math.max(...attackerData.teamFruits.map(f => f.totalCP));
+    const targetBestCP = Math.max(...targetData.teamFruits.map(f => f.totalCP));
+    
+    attackerData.currentHP = calculateMaxHP(attackerBestCP, attackerData.level);
     attackerData.maxHP = attackerData.currentHP;
     targetData.currentHP = calculateMaxHP(targetBestCP, targetData.level);
     targetData.maxHP = targetData.currentHP;
@@ -28,7 +164,7 @@ attackerData.currentHP = calculateMaxHP(attackerBestCP, attackerData.level);
 }
 
 /**
- * TURN 1 PROTECTION: Execute automatic battle with protection system
+ * FIXED: Execute automatic battle with protection system
  */
 async function executeAutomaticBattleWithProtection(interaction, battleState) {
     let updateMessage = await interaction.editReply({
@@ -119,7 +255,7 @@ async function executeAutomaticBattleWithProtection(interaction, battleState) {
 }
 
 /**
- * TURN 1 PROTECTION: Execute a single turn of combat with protection
+ * FIXED: Execute a single turn of combat with protection
  */
 async function executeTurnWithProtection(battleState, currentPlayer, opponent) {
     // Process status effects first
@@ -157,7 +293,7 @@ async function executeTurnWithProtection(battleState, currentPlayer, opponent) {
 }
 
 /**
- * TURN 1 PROTECTION: Enhanced skill attack with turn-based damage reduction
+ * FIXED: Enhanced skill attack with turn-based damage reduction
  */
 function executeEnhancedSkillAttackWithProtection(battleState, attacker, defender) {
     const skill = attacker.skillData;
@@ -226,7 +362,7 @@ function executeEnhancedSkillAttackWithProtection(battleState, attacker, defende
 }
 
 /**
- * TURN 1 PROTECTION: Enhanced basic attack with turn-based damage reduction
+ * FIXED: Enhanced basic attack with turn-based damage reduction
  */
 function executeEnhancedBasicAttackWithProtection(battleState, attacker, defender) {
     // Basic attacks should be reliable but weaker
@@ -416,97 +552,244 @@ function calculateMaxHP(totalCP, level) {
 }
 
 /**
- * TURN 1 PROTECTION: Create detailed final result embed with protection stats
+ * NO DRAWS: Determine battle winner - GUARANTEED WINNER EVERY TIME
  */
-async function createDetailedResultEmbed(battleResult, rewards, attacker, target) {
-    const { winner, reason, totalTurns, finalHP } = battleResult;
+function determineBattleWinner(battleState) {
+    const { attacker, target } = battleState;
     
-    const winnerUser = winner === attacker.id ? attacker : target;
-    const loserUser = winner === attacker.id ? target : attacker;
+    console.log('🔍 Determining winner with no-draw system...');
+    
+    // Case 1: Clear knockout - one player has 0 HP
+    if (attacker.currentHP <= 0 && target.currentHP > 0) {
+        console.log('✅ Target wins by knockout');
+        return { id: target.userId, reason: 'knockout_victory' };
+    } else if (target.currentHP <= 0 && attacker.currentHP > 0) {
+        console.log('✅ Attacker wins by knockout');
+        return { id: attacker.userId, reason: 'knockout_victory' };
+    }
+    
+    // Case 2: Both players dead - ATTACKER ALWAYS WINS (no draws!)
+    else if (attacker.currentHP <= 0 && target.currentHP <= 0) {
+        console.log('✅ Both dead - Attacker wins by default');
+        return { id: attacker.userId, reason: 'mutual_destruction_attacker_wins' };
+    }
+    
+    // Case 3: Time limit/turn limit reached - use advanced tiebreakers
+    else {
+        console.log('⚖️ Using advanced tiebreaker system...');
+        return determineWinnerByAdvancedCriteria(battleState);
+    }
+}
+
+/**
+ * NO DRAWS: Advanced winner determination with multiple tiebreakers
+ */
+function determineWinnerByAdvancedCriteria(battleState) {
+    const { attacker, target } = battleState;
+    
+    console.log('🔍 Advanced criteria check started');
+    console.log(`Attacker HP: ${attacker.currentHP}/${attacker.maxHP}`);
+    console.log(`Target HP: ${target.currentHP}/${target.maxHP}`);
+    
+    // Tiebreaker 1: HP Percentage (1% difference threshold)
+    const attackerHPPercent = attacker.currentHP / attacker.maxHP;
+    const targetHPPercent = target.currentHP / target.maxHP;
+    
+    console.log(`HP Percentages - Attacker: ${(attackerHPPercent * 100).toFixed(2)}%, Target: ${(targetHPPercent * 100).toFixed(2)}%`);
+    
+    if (Math.abs(attackerHPPercent - targetHPPercent) > 0.01) {
+        const winner = attackerHPPercent > targetHPPercent ? attacker.userId : target.userId;
+        const reason = 'hp_superiority';
+        console.log(`✅ Winner by HP: ${winner} (${reason})`);
+        return { id: winner, reason };
+    }
+    
+    // Tiebreaker 2: Total Damage Dealt
+    const attackerDamage = target.maxHP - target.currentHP;
+    const targetDamage = attacker.maxHP - attacker.currentHP;
+    
+    console.log(`Damage dealt - Attacker: ${attackerDamage}, Target: ${targetDamage}`);
+    
+    if (attackerDamage !== targetDamage) {
+        const winner = attackerDamage > targetDamage ? attacker.userId : target.userId;
+        const reason = 'damage_dominance';
+        console.log(`✅ Winner by damage: ${winner} (${reason})`);
+        return { id: winner, reason };
+    }
+    
+    // Tiebreaker 3: Devil Fruit Power (Total CP)
+    console.log(`Total CP - Attacker: ${attacker.totalCP}, Target: ${target.totalCP}`);
+    
+    if (attacker.totalCP !== target.totalCP) {
+        const winner = attacker.totalCP > target.totalCP ? attacker.userId : target.userId;
+        const reason = 'power_advantage';
+        console.log(`✅ Winner by CP: ${winner} (${reason})`);
+        return { id: winner, reason };
+    }
+    
+    // Tiebreaker 4: Experience Level
+    console.log(`Levels - Attacker: ${attacker.level}, Target: ${target.level}`);
+    
+    if (attacker.level !== target.level) {
+        const winner = attacker.level > target.level ? attacker.userId : target.userId;
+        const reason = 'experience_edge';
+        console.log(`✅ Winner by level: ${winner} (${reason})`);
+        return { id: winner, reason };
+    }
+    
+    // Final Tiebreaker: Simple coin flip with timestamp
+    const randomSeed = (Date.now() % 2);
+    const winner = randomSeed === 0 ? attacker.userId : target.userId;
+    const reason = randomSeed === 0 ? 'fortune_favors_bold' : 'destiny_defied';
+    
+    console.log(`✅ Final tiebreaker - Winner: ${winner} (${reason})`);
+    
+    return { id: winner, reason };
+}
+
+/**
+ * NO DRAWS + TURN 1 PROTECTION: Enhanced battle end check
+ */
+function checkBattleEndNoDraws(battleState) {
+    const { attacker, target, turn } = battleState;
+    
+    // Immediate knockout
+    if (attacker.currentHP <= 0 || target.currentHP <= 0) {
+        const winner = determineBattleWinner(battleState);
+        return { ended: true, winner: winner.id, reason: winner.reason };
+    }
+    
+    // Minimum turn requirement (let battles develop with protection)
+    if (turn < RAID_CONFIG.MIN_BATTLE_TURNS) {
+        return { ended: false };
+    }
+    
+    // Decisive HP advantage (25%+ difference) - but only after protection ends
+    if (turn > 5) { // Only check after protection ends
+        const attackerHPPercent = attacker.currentHP / attacker.maxHP;
+        const targetHPPercent = target.currentHP / target.maxHP;
+        
+        if (Math.abs(attackerHPPercent - targetHPPercent) >= RAID_CONFIG.DECISIVE_HP_THRESHOLD) {
+            const winner = determineBattleWinner(battleState);
+            return { ended: true, winner: winner.id, reason: winner.reason };
+        }
+    }
+    
+    // Force end at turn limit with guaranteed winner
+    if (turn >= RAID_CONFIG.MAX_BATTLE_TURNS) {
+        const winner = determineBattleWinner(battleState);
+        return { ended: true, winner: winner.id, reason: winner.reason };
+    }
+    
+    return { ended: false };
+}
+
+/**
+ * Create visual battle embed with protection indicators
+ */
+function createVisualBattleEmbed(battleState, turnResult = null, animationFrame = 0) {
+    const { attacker, target, turn } = battleState;
+    
+    // Check if turn protection is active
+    const turnProtection = turn <= 5;
+    
+    // Calculate HP percentages
+    const attackerHPPercent = Math.round((attacker.currentHP / attacker.maxHP) * 100);
+    const targetHPPercent = Math.round((target.currentHP / target.maxHP) * 100);
     
     const embed = new EmbedBuilder()
-        .setTitle('🏆 PROTECTED BATTLE VICTORY!')
-        .setDescription(`**${winnerUser.username}** emerges victorious against **${loserUser.username}** after ${totalTurns} turns of protected combat!`)
-        .setColor(RARITY_COLORS.legendary)
+        .setTitle('⚔️ PROTECTED RAID BATTLE')
+        .setColor(turnProtection ? RARITY_COLORS.epic : RARITY_COLORS.legendary)
+        .setDescription(createBattleHeader(battleState, turnResult, animationFrame))
         .addFields(
             {
-                name: '👑 Victory Details',
-                value: [
-                    `**Champion:** ${winnerUser.username}`,
-                    `**Victory Type:** ${getReasonText(reason)}`,
-                    `**Turns Fought:** ${totalTurns}/${RAID_CONFIG.MAX_BATTLE_TURNS}`,
-                    `**Protection System:** Turn 1-5 Damage Reduction`,
-                    `**Combat Type:** No-Draw Guaranteed Winner`
-                ].join('\n'),
-                inline: false
+                name: '🏴‍☠️ ATTACKER',
+                value: `**${attacker.username}**\n💗 ${attacker.currentHP}/${attacker.maxHP} HP (${attackerHPPercent}%)`,
+                inline: true
             },
             {
-                name: '🛡️ Protection Summary',
-                value: [
-                    `**Turn 1:** 80% damage reduction applied`,
-                    `**Turn 2-3:** 50% damage reduction applied`,
-                    `**Turn 4-5:** 25% damage reduction applied`,
-                    `**Turn 6+:** Full damage combat`
-                ].join('\n'),
-                inline: false
+                name: '🛡️ DEFENDER',
+                value: `**${target.username}**\n💗 ${target.currentHP}/${target.maxHP} HP (${targetHPPercent}%)`,
+                inline: true
             },
             {
-                name: '💗 Final Health Status',
-                value: [
-                    `**${attacker.username}:** ${finalHP.attacker}/${battleResult.attacker.maxHP} HP`,
-                    `**${target.username}:** ${finalHP.target}/${battleResult.target.maxHP} HP`
-                ].join('\n'),
-                inline: false
+                name: '📊 BATTLE INFO',
+                value: `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}\n**Protection:** ${getProtectionStatus(turn)}\n**System:** NO DRAWS`,
+                inline: true
             }
-        );
-    
-    // Add skill usage summary
-    const skillSummary = createSkillUsageSummary(battleResult);
-    if (skillSummary) {
-        embed.addFields({
-            name: '⚡ Combat Skills Used',
-            value: skillSummary,
-            inline: false
-        });
-    }
-    
-    // Add rewards section
-    if (rewards.berries !== 0 || rewards.fruitsStolen.length > 0) {
-        let rewardsText = '';
-        
-        if (rewards.berries > 0) {
-            rewardsText += `💰 **Berries Stolen:** ${rewards.berries.toLocaleString()}\n`;
-        } else if (rewards.berries < 0) {
-            rewardsText += `💸 **Defense Bonus:** ${Math.abs(rewards.berries).toLocaleString()}\n`;
-        }
-        
-        if (rewards.fruitsStolen.length > 0) {
-            rewardsText += `🍈 **Fruits Stolen:** ${rewards.fruitsStolen.length}\n`;
-            rewards.fruitsStolen.forEach(fruit => {
-                const emoji = RARITY_EMOJIS[fruit.fruit_rarity] || '⚪';
-                rewardsText += `   ${emoji} ${fruit.fruit_name}\n`;
-            });
-        }
-        
-        if (rewards.experienceGained > 0) {
-            rewardsText += `⭐ **Experience:** +${rewards.experienceGained}`;
-        }
-        
-        if (rewardsText) {
-            embed.addFields({
-                name: '🎁 Victory Spoils',
-                value: rewardsText,
-                inline: false
-            });
-        }
-    }
-    
-    embed.setFooter({ 
-        text: `Protected Combat completed in ${totalTurns} turns | Turn 1 Protection + No-Draw System v4.2` 
-    })
-    .setTimestamp();
+        )
+        .setFooter({ text: `Battle ID: ${battleState.id} | Turn 1 Protection + No-Draw System v4.2` })
+        .setTimestamp();
     
     return embed;
+}
+
+/**
+ * Get protection status for display
+ */
+function getProtectionStatus(turn) {
+    if (turn === 1) return '🛡️🛡️🛡️ 80% DR';
+    if (turn <= 3) return '🛡️🛡️ 50% DR';
+    if (turn <= 5) return '🛡️ 25% DR';
+    return '⚔️ Full DMG';
+}
+
+/**
+ * Create battle header
+ */
+function createBattleHeader(battleState, turnResult, animationFrame = 0) {
+    if (!turnResult) {
+        let protectionText = '';
+        if (battleState.turn === 1) {
+            protectionText = '\n🛡️🛡️🛡️ **TURN 1 PROTECTION:** 80% damage reduction active!';
+        } else if (battleState.turn <= 3) {
+            protectionText = '\n🛡️🛡️ **EARLY PROTECTION:** 50% damage reduction active!';
+        } else if (battleState.turn <= 5) {
+            protectionText = '\n🛡️ **SCALING PROTECTION:** 25% damage reduction active!';
+        } else {
+            protectionText = '\n⚔️ **FULL COMBAT:** Protection removed - full damage!';
+        }
+        
+        return `⚡ **PROTECTED RAID BATTLE** ⚡\n*Every battle guarantees a winner with fair protection!*${protectionText}`;
+    }
+    
+    let header = '';
+    
+    // Animation indicator
+    if (animationFrame > 0) {
+        header += '💥 **DAMAGE IMPACT!** 💥\n';
+    }
+    
+    // Turn protection indicator
+    if (turnResult.turnProtection) {
+        if (battleState.turn === 1) {
+            header += '🛡️🛡️🛡️ **TURN 1 PROTECTION** (80% DR) 🛡️🛡️🛡️\n';
+        } else if (battleState.turn <= 3) {
+            header += '🛡️🛡️ **EARLY PROTECTION** (50% DR) 🛡️🛡️\n';
+        } else if (battleState.turn <= 5) {
+            header += '🛡️ **SCALING PROTECTION** (25% DR) 🛡️\n';
+        }
+    }
+    
+    // Main action description
+    if (turnResult.type === 'skill_attack') {
+        const skillEmoji = '✨';
+        header += `${skillEmoji} **SKILL USED:** ${turnResult.skillName}\n`;
+        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}`;
+        if (turnResult.turnProtection) {
+            header += ' *[Protected]*';
+        }
+        header += '\n';
+    } else if (turnResult.type === 'basic_attack') {
+        header += `⚔️ **BASIC ATTACK**\n`;
+        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}`;
+        if (turnResult.turnProtection) {
+            header += ' *[Protected]*';
+        }
+        header += '\n';
+    }
+    
+    return header || '*Preparing for protected combat...*';
 }
 
 /**
@@ -893,7 +1176,7 @@ async function handleClearSelection(interaction, selectionId) {
 }
 
 /**
- * TURN 1 PROTECTION: Handle confirm raid with protection system
+ * Handle confirm protected raid
  */
 async function handleConfirmProtectedRaid(interaction, selectionId, originalInteraction) {
     const selection = activeSelections.get(selectionId);
@@ -958,19 +1241,9 @@ async function handleConfirmProtectedRaid(interaction, selectionId, originalInte
             // Create final result embed
             const resultEmbed = await createDetailedResultEmbed(battleResult, rewards, attacker, target);
             
-            // Add rematch button for winner
-            const components = battleResult.winner === attacker.id ? 
-                [createRematchButton(attacker.id, target.id)] : [];
-            
             await originalInteraction.editReply({ 
-                embeds: [resultEmbed], 
-                components 
+                embeds: [resultEmbed]
             });
-            
-            // Setup button collector for rematch
-            if (components.length > 0) {
-                await setupRematchCollector(originalInteraction, attacker.id, target.id);
-            }
             
         } catch (error) {
             console.error('Error starting protected raid battle:', error);
@@ -1147,15 +1420,11 @@ async function processRaidRewards(battleResult, attackerData, targetData) {
         const berriesStolen = Math.floor(targetData.berries * RAID_CONFIG.BERRY_STEAL_PERCENTAGE);
         
         if (berriesStolen > 0) {
-            await EconomyService.transferBerries(targetData.userId, attackerData.userId, berriesStolen, 'protected_raid_victory');
+            await DatabaseManager.updateUserBerries(attackerData.userId, berriesStolen, 'protected_raid_victory');
+            await DatabaseManager.updateUserBerries(targetData.userId, -berriesStolen, 'protected_raid_loss');
             rewards.berries = berriesStolen;
         }
         
-        // Try to steal fruits
-        const stolenFruits = await stealRandomFruits(targetData, attackerData.userId);
-        rewards.fruitsStolen = stolenFruits;
-        
-        // Experience for winner
         rewards.experienceGained = Math.floor(targetData.totalCP / 100);
         
     } else if (battleResult.winner === targetData.userId) {
@@ -1163,7 +1432,7 @@ async function processRaidRewards(battleResult, attackerData, targetData) {
         const defenseBonus = Math.floor(attackerData.berries * 0.05);
         
         if (defenseBonus > 0) {
-            await EconomyService.addBerries(targetData.userId, defenseBonus, 'protected_raid_defense');
+            await DatabaseManager.updateUserBerries(targetData.userId, defenseBonus, 'protected_raid_defense');
             rewards.berries = -defenseBonus;
         }
         
@@ -1174,545 +1443,79 @@ async function processRaidRewards(battleResult, attackerData, targetData) {
 }
 
 /**
- * Steal random fruits from target
+ * Create detailed final result embed with protection stats
  */
-async function stealRandomFruits(targetData, attackerId) {
-    const stolenFruits = [];
+async function createDetailedResultEmbed(battleResult, rewards, attacker, target) {
+    const { winner, reason, totalTurns, finalHP } = battleResult;
     
-    // Get actual fruits from database
-    const targetFruits = await DatabaseManager.getUserDevilFruits(targetData.userId);
-    if (targetFruits.length === 0) return stolenFruits;
+    const winnerUser = winner === attacker.id ? attacker : target;
+    const loserUser = winner === attacker.id ? target : attacker;
     
-    // Sort by rarity (easier to steal common fruits)
-    const availableFruits = [...targetFruits].sort((a, b) => {
-        const rarityOrder = { 'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4, 'legendary': 5, 'mythical': 6, 'divine': 7 };
-        return (rarityOrder[a.fruit_rarity] || 1) - (rarityOrder[b.fruit_rarity] || 1);
-    });
-    
-    for (let attempt = 0; attempt < RAID_CONFIG.MAX_FRUIT_DROPS && availableFruits.length > 0 && stolenFruits.length < RAID_CONFIG.MAX_FRUIT_DROPS; attempt++) {
-        const randomFruit = availableFruits[Math.floor(Math.random() * availableFruits.length)];
-        const rarity = randomFruit.fruit_rarity || 'common';
-        const dropChance = RAID_CONFIG.FRUIT_DROP_CHANCES[rarity] || 0.1;
-        
-        if (Math.random() < dropChance) {
-            try {
-                await transferFruit(randomFruit, targetData.userId, attackerId);
-                stolenFruits.push(randomFruit);
-                
-                const index = availableFruits.indexOf(randomFruit);
-                if (index > -1) {
-                    availableFruits.splice(index, 1);
-                }
-                
-            } catch (error) {
-                console.error('Error transferring stolen fruit:', error);
+    const embed = new EmbedBuilder()
+        .setTitle('🏆 PROTECTED BATTLE VICTORY!')
+        .setDescription(`**${winnerUser.username}** emerges victorious against **${loserUser.username}** after ${totalTurns} turns of protected combat!`)
+        .setColor(RARITY_COLORS.legendary)
+        .addFields(
+            {
+                name: '👑 Victory Details',
+                value: [
+                    `**Champion:** ${winnerUser.username}`,
+                    `**Victory Type:** ${getReasonText(reason)}`,
+                    `**Turns Fought:** ${totalTurns}/${RAID_CONFIG.MAX_BATTLE_TURNS}`,
+                    `**Protection System:** Turn 1-5 Damage Reduction`,
+                    `**Combat Type:** No-Draw Guaranteed Winner`
+                ].join('\n'),
+                inline: false
+            },
+            {
+                name: '🛡️ Protection Summary',
+                value: [
+                    `**Turn 1:** 80% damage reduction applied`,
+                    `**Turn 2-3:** 50% damage reduction applied`,
+                    `**Turn 4-5:** 25% damage reduction applied`,
+                    `**Turn 6+:** Full damage combat`
+                ].join('\n'),
+                inline: false
+            },
+            {
+                name: '💗 Final Health Status',
+                value: [
+                    `**${attacker.username}:** ${finalHP.attacker}/${battleResult.attacker.maxHP} HP`,
+                    `**${target.username}:** ${finalHP.target}/${battleResult.target.maxHP} HP`
+                ].join('\n'),
+                inline: false
             }
-        }
-    }
-    
-    return stolenFruits;
-}
-
-/**
- * Transfer a fruit from one user to another
- */
-async function transferFruit(fruit, fromUserId, toUserId) {
-    // Remove one copy from the original owner
-    await DatabaseManager.query(`
-        DELETE FROM user_devil_fruits 
-        WHERE user_id = $1 AND fruit_id = $2 
-        AND id = (
-            SELECT id FROM user_devil_fruits 
-            WHERE user_id = $1 AND fruit_id = $2 
-            LIMIT 1
-        )
-    `, [fromUserId, fruit.fruit_id]);
-    
-    // Add to new owner
-    await DatabaseManager.addDevilFruit(toUserId, {
-        id: fruit.fruit_id,
-        name: fruit.fruit_name,
-        type: fruit.fruit_type,
-        rarity: fruit.fruit_rarity,
-        multiplier: (fruit.base_cp / 100).toFixed(1),
-        description: fruit.fruit_description
-    });
-    
-    // Recalculate CP for both users
-    await Promise.all([
-        DatabaseManager.recalculateUserCP(fromUserId),
-        DatabaseManager.recalculateUserCP(toUserId)
-    ]);
-}
-
-/**
- * Create skill usage summary
- */
-function createSkillUsageSummary(battleResult) {
-    const attackerSkills = new Map();
-    const targetSkills = new Map();
-    
-    battleResult.battleLog.forEach(action => {
-        if (action.type === 'skill_attack') {
-            const isAttacker = action.attacker === battleResult.attacker.username;
-            const skillMap = isAttacker ? attackerSkills : targetSkills;
-            const skillName = action.skillName;
-            
-            skillMap.set(skillName, (skillMap.get(skillName) || 0) + 1);
-        }
-    });
-    
-    let summary = '';
-    
-    if (attackerSkills.size > 0) {
-        summary += `**${battleResult.attacker.username}:**\n`;
-        attackerSkills.forEach((count, skill) => {
-            const emoji = RARITY_EMOJIS[battleResult.attacker.bestFruit?.fruit_rarity] || '⚡';
-            summary += `${emoji} ${skill} (${count}x)\n`;
-        });
-        summary += '\n';
-    }
-    
-    if (targetSkills.size > 0) {
-        summary += `**${battleResult.target.username}:**\n`;
-        targetSkills.forEach((count, skill) => {
-            const emoji = RARITY_EMOJIS[battleResult.target.bestFruit?.fruit_rarity] || '⚡';
-            summary += `${emoji} ${skill} (${count}x)\n`;
-        });
-    }
-    
-    return summary.trim() || null;
-}
-
-/**
- * Create error embed
- */
-function createErrorEmbed(message) {
-    return new EmbedBuilder()
-        .setColor('#FF0000')
-        .setTitle('❌ Protected Raid Failed')
-        .setDescription(message)
-        .setTimestamp();
-}
-
-/**
- * Create rematch button
- */
-function createRematchButton(winnerId, loserId) {
-    return new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId(`rematch_${winnerId}_${loserId}`)
-                .setLabel('🛡️ Offer Protected Rematch')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('🔄')
         );
-}
-
-/**
- * Setup rematch button collector
- */
-async function setupRematchCollector(interaction, winnerId, loserId) {
-    try {
-        const message = await interaction.fetchReply();
+    
+    // Add rewards section
+    if (rewards.berries !== 0 || rewards.experienceGained > 0) {
+        let rewardsText = '';
         
-        const collector = message.createMessageComponentCollector({ 
-            time: 300000 // 5 minutes
-        });
+        if (rewards.berries > 0) {
+            rewardsText += `💰 **Berries Stolen:** ${rewards.berries.toLocaleString()}\n`;
+        } else if (rewards.berries < 0) {
+            rewardsText += `💸 **Defense Bonus:** ${Math.abs(rewards.berries).toLocaleString()}\n`;
+        }
         
-        collector.on('collect', async (buttonInteraction) => {
-            if (buttonInteraction.user.id !== winnerId) {
-                return buttonInteraction.reply({
-                    content: '❌ Only the winner can offer a rematch!',
-                    ephemeral: true
-                });
-            }
-            
-            const target = await interaction.client.users.fetch(loserId).catch(() => null);
-            if (!target) {
-                return buttonInteraction.reply({
-                    content: '❌ Target user not found!',
-                    ephemeral: true
-                });
-            }
-            
-            const validation = await validateRaid(winnerId, target);
-            if (!validation.valid) {
-                return buttonInteraction.reply({
-                    content: `❌ Protected rematch not available: ${validation.reason}`,
-                    ephemeral: true
-                });
-            }
-            
-            const disabledRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('rematch_used')
-                        .setLabel('🛡️ Protected Rematch Requested!')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(true)
-                );
-            
-            await buttonInteraction.update({ components: [disabledRow] });
-            
-            await buttonInteraction.followUp({
-                content: `🔄 **Protected Rematch Requested!** ${target.username} can now raid you back with \`/pvp-raid @${buttonInteraction.user.username}\` for another guaranteed-winner battle with Turn 1 protection!`,
-                ephemeral: false
+        if (rewards.experienceGained > 0) {
+            rewardsText += `⭐ **Experience:** +${rewards.experienceGained}`;
+        }
+        
+        if (rewardsText) {
+            embed.addFields({
+                name: '🎁 Victory Spoils',
+                value: rewardsText,
+                inline: false
             });
-        });
-        
-        collector.on('end', async () => {
-            try {
-                const disabledRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('rematch_expired')
-                            .setLabel('🛡️ Protected Rematch Expired')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(true)
-                    );
-                
-                await interaction.editReply({ components: [disabledRow] });
-            } catch (error) {
-                console.log('Failed to disable protected rematch button:', error.message);
-            }
-        });
-        
-    } catch (error) {
-        console.error('Error setting up protected rematch collector:', error);
-    }
-}// src/commands/slash/pvp/pvp-raid.js - COMPLETE FILE: Turn 1 Protection + No Draws System
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-const DatabaseManager = require('../../../database/DatabaseManager');
-const EconomyService = require('../../../services/EconomyService');
-const { getSkillData } = require('../../../data/DevilFruitSkills');
-const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
-
-// Enhanced raid configuration - Turn 1 Protection + NO DRAWS
-const RAID_CONFIG = {
-    COOLDOWN_TIME: 300000, // 5 minutes between raids
-    MIN_CP_REQUIRED: 500, // Minimum CP to participate
-    BERRY_STEAL_PERCENTAGE: 0.15, // 15% of opponent's berries
-    FRUIT_DROP_CHANCES: {
-        'divine': 0.01, 'mythical': 0.02, 'legendary': 0.05,
-        'epic': 0.08, 'rare': 0.12, 'uncommon': 0.18, 'common': 0.25
-    },
-    MAX_FRUIT_DROPS: 3,
-    MAX_BATTLE_TURNS: 75, // Reduced for faster resolution
-    MIN_BATTLE_TURNS: 5, // Minimum turns before early victory
-    TURN_DELAY: 2500, // 2.5 seconds between turns
-    DAMAGE_FLASH_DELAY: 800, // Damage flash duration
-    HP_BAR_LENGTH: 20, // Length of HP bar in squares
-    ANIMATION_FRAMES: 3, // Number of damage flash frames
-    DECISIVE_HP_THRESHOLD: 0.25, // 25% HP difference for decisive victory
-    // Turn 1 Protection System
-    TURN_1_DAMAGE_REDUCTION: 0.8, // 80% damage reduction
-    EARLY_TURN_DAMAGE_REDUCTION: 0.5, // 50% damage reduction turns 2-3
-    MID_TURN_DAMAGE_REDUCTION: 0.25 // 25% damage reduction turns 4-5
-};
-
-// Active raid cooldowns, battles, and fruit selections
-const raidCooldowns = new Map();
-const activeBattles = new Map();
-const activeSelections = new Map();
-
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('pvp-raid')
-        .setDescription('⚔️ Launch a raid with Turn 1 protection and guaranteed winner system!')
-        .addUserOption(option =>
-            option.setName('target')
-                .setDescription('The pirate you want to raid')
-                .setRequired(true)
-        ),
-    
-    category: 'pvp',
-    cooldown: 5,
-    
-    async execute(interaction) {
-        const attacker = interaction.user;
-        const target = interaction.options.getUser('target');
-        
-        try {
-            // Validation checks
-            const validationResult = await validateRaid(attacker.id, target);
-            if (!validationResult.valid) {
-                return interaction.reply({
-                    embeds: [createErrorEmbed(validationResult.reason)],
-                    ephemeral: true
-                });
-            }
-            
-            // Check if attacker has enough fruits for selection
-            const attackerFruits = await DatabaseManager.getUserDevilFruits(attacker.id);
-            if (attackerFruits.length < 5) {
-                return interaction.reply({
-                    embeds: [createErrorEmbed(`You need at least 5 Devil Fruits to raid! You have ${attackerFruits.length}.`)],
-                    ephemeral: true
-                });
-            }
-            
-            await interaction.deferReply();
-            
-            // Start fruit selection process for attacker
-            await startRaidFruitSelection(interaction, attacker, target);
-            
-        } catch (error) {
-            interaction.client.logger.error('PvP Raid error:', error);
-            
-            const errorResponse = {
-                embeds: [createErrorEmbed('An error occurred during the raid!')],
-                ephemeral: true
-            };
-            
-            if (interaction.deferred) {
-                await interaction.editReply(errorResponse);
-            } else {
-                await interaction.reply(errorResponse);
-            }
-        }
-    }
-};
-
-/**
- * TURN 1 PROTECTION: Apply turn-based damage reduction
- */
-function applyTurnBasedDamageReduction(damage, currentTurn) {
-    let originalDamage = damage;
-    
-    // Turn 1: 80% damage reduction (only 20% damage gets through)
-    if (currentTurn === 1) {
-        damage = Math.floor(damage * (1 - RAID_CONFIG.TURN_1_DAMAGE_REDUCTION));
-        console.log(`🛡️ Turn 1 protection: ${originalDamage} → ${damage} (80% reduced)`);
-        return damage;
-    }
-    
-    // Turn 2-3: 50% damage reduction
-    if (currentTurn <= 3) {
-        damage = Math.floor(damage * (1 - RAID_CONFIG.EARLY_TURN_DAMAGE_REDUCTION));
-        console.log(`🛡️ Early turn protection: ${originalDamage} → ${damage} (50% reduced)`);
-        return damage;
-    }
-    
-    // Turn 4-5: 25% damage reduction
-    if (currentTurn <= 5) {
-        damage = Math.floor(damage * (1 - RAID_CONFIG.MID_TURN_DAMAGE_REDUCTION));
-        console.log(`🛡️ Mid-early protection: ${originalDamage} → ${damage} (25% reduced)`);
-        return damage;
-    }
-    
-    // Turn 6+: Normal damage
-    console.log(`⚔️ Full damage: ${originalDamage} (no protection)`);
-    return damage;
-}
-
-/**
- * Get protection status for display
- */
-function getProtectionStatus(turn) {
-    if (turn === 1) return '🛡️🛡️🛡️ 80% DR';
-    if (turn <= 3) return '🛡️🛡️ 50% DR';
-    if (turn <= 5) return '🛡️ 25% DR';
-    return '⚔️ Full DMG';
-}
-
-/**
- * Get protection description
- */
-function getProtectionDescription(turn) {
-    if (turn === 1) return 'Turn 1 Protection Active';
-    if (turn <= 3) return 'Early Battle Protection';
-    if (turn <= 5) return 'Scaling Protection';
-    return 'Full Combat';
-}
-
-/**
- * TURN 1 PROTECTION: Create visual HP bar with protection indicators
- */
-function createVisualHPBar(currentHP, maxHP, recentDamage = 0, animationFrame = 0, turnProtection = false) {
-    const totalBars = RAID_CONFIG.HP_BAR_LENGTH;
-    const hpPercent = Math.max(0, Math.min(1, currentHP / maxHP));
-    const fullBars = Math.floor(hpPercent * totalBars);
-    const emptyBars = totalBars - fullBars;
-    
-    // Calculate damage bars for animation
-    let damageBars = 0;
-    let animatedBars = 0;
-    
-    if (recentDamage > 0 && animationFrame > 0) {
-        const damagePercent = Math.min(recentDamage / maxHP, 1);
-        damageBars = Math.min(Math.ceil(damagePercent * totalBars), emptyBars);
-        
-        // Animate damaged squares (flash based on protection)
-        if (animationFrame <= RAID_CONFIG.ANIMATION_FRAMES) {
-            animatedBars = damageBars;
         }
     }
     
-    // Build HP bar with colors
-    let hpBar = '';
+    embed.setFooter({ 
+        text: `Protected Combat completed in ${totalTurns} turns | Turn 1 Protection + No-Draw System v4.2` 
+    })
+    .setTimestamp();
     
-    // Green squares for current HP (blue if protected)
-    const healthSquare = turnProtection ? '🟦' : '🟩'; // Blue during protection
-    hpBar += healthSquare.repeat(fullBars);
-    
-    // Animated damage squares
-    if (animatedBars > 0) {
-        // Different flash colors for protected vs unprotected
-        const flashSquare1 = turnProtection ? '🟨' : '🟨'; // Yellow flash
-        const flashSquare2 = turnProtection ? '🟧' : '🟧'; // Orange flash
-        const flashSquare = animationFrame % 2 === 0 ? flashSquare1 : flashSquare2;
-        hpBar += flashSquare.repeat(animatedBars);
-        hpBar += '⬜'.repeat(emptyBars - animatedBars);
-    } else {
-        // White squares for lost HP
-        hpBar += '⬜'.repeat(emptyBars);
-    }
-    
-    return hpBar;
-}
-
-/**
- * NO DRAWS: Determine battle winner - GUARANTEED WINNER EVERY TIME
- */
-function determineBattleWinner(battleState) {
-    const { attacker, target } = battleState;
-    
-    console.log('🔍 Determining winner with no-draw system...');
-    
-    // Case 1: Clear knockout - one player has 0 HP
-    if (attacker.currentHP <= 0 && target.currentHP > 0) {
-        console.log('✅ Target wins by knockout');
-        return { id: target.userId, reason: 'knockout_victory' };
-    } else if (target.currentHP <= 0 && attacker.currentHP > 0) {
-        console.log('✅ Attacker wins by knockout');
-        return { id: attacker.userId, reason: 'knockout_victory' };
-    }
-    
-    // Case 2: Both players dead - ATTACKER ALWAYS WINS (no draws!)
-    else if (attacker.currentHP <= 0 && target.currentHP <= 0) {
-        console.log('✅ Both dead - Attacker wins by default');
-        return { id: attacker.userId, reason: 'mutual_destruction_attacker_wins' };
-    }
-    
-    // Case 3: Time limit/turn limit reached - use advanced tiebreakers
-    else {
-        console.log('⚖️ Using advanced tiebreaker system...');
-        return determineWinnerByAdvancedCriteria(battleState);
-    }
-}
-
-/**
- * NO DRAWS: Advanced winner determination with multiple tiebreakers
- */
-function determineWinnerByAdvancedCriteria(battleState) {
-    const { attacker, target } = battleState;
-    
-    console.log('🔍 Advanced criteria check started');
-    console.log(`Attacker HP: ${attacker.currentHP}/${attacker.maxHP}`);
-    console.log(`Target HP: ${target.currentHP}/${target.maxHP}`);
-    
-    // Tiebreaker 1: HP Percentage (1% difference threshold)
-    const attackerHPPercent = attacker.currentHP / attacker.maxHP;
-    const targetHPPercent = target.currentHP / target.maxHP;
-    
-    console.log(`HP Percentages - Attacker: ${(attackerHPPercent * 100).toFixed(2)}%, Target: ${(targetHPPercent * 100).toFixed(2)}%`);
-    
-    if (Math.abs(attackerHPPercent - targetHPPercent) > 0.01) {
-        const winner = attackerHPPercent > targetHPPercent ? attacker.userId : target.userId;
-        const reason = 'hp_superiority';
-        console.log(`✅ Winner by HP: ${winner} (${reason})`);
-        return { id: winner, reason };
-    }
-    
-    // Tiebreaker 2: Total Damage Dealt
-    const attackerDamage = target.maxHP - target.currentHP;
-    const targetDamage = attacker.maxHP - attacker.currentHP;
-    
-    console.log(`Damage dealt - Attacker: ${attackerDamage}, Target: ${targetDamage}`);
-    
-    if (attackerDamage !== targetDamage) {
-        const winner = attackerDamage > targetDamage ? attacker.userId : target.userId;
-        const reason = 'damage_dominance';
-        console.log(`✅ Winner by damage: ${winner} (${reason})`);
-        return { id: winner, reason };
-    }
-    
-    // Tiebreaker 3: Devil Fruit Power (Total CP)
-    console.log(`Total CP - Attacker: ${attacker.totalCP}, Target: ${target.totalCP}`);
-    
-    if (attacker.totalCP !== target.totalCP) {
-        const winner = attacker.totalCP > target.totalCP ? attacker.userId : target.userId;
-        const reason = 'power_advantage';
-        console.log(`✅ Winner by CP: ${winner} (${reason})`);
-        return { id: winner, reason };
-    }
-    
-    // Tiebreaker 4: Experience Level
-    console.log(`Levels - Attacker: ${attacker.level}, Target: ${target.level}`);
-    
-    if (attacker.level !== target.level) {
-        const winner = attacker.level > target.level ? attacker.userId : target.userId;
-        const reason = 'experience_edge';
-        console.log(`✅ Winner by level: ${winner} (${reason})`);
-        return { id: winner, reason };
-    }
-    
-    // Tiebreaker 5: Fruit Rarity Value
-    const attackerRarity = getRarityValue(attacker.bestFruit?.fruit_rarity || 'common');
-    const targetRarity = getRarityValue(target.bestFruit?.fruit_rarity || 'common');
-    
-    console.log(`Rarity values - Attacker: ${attackerRarity}, Target: ${targetRarity}`);
-    
-    if (attackerRarity !== targetRarity) {
-        const winner = attackerRarity > targetRarity ? attacker.userId : target.userId;
-        const reason = 'legendary_superiority';
-        console.log(`✅ Winner by rarity: ${winner} (${reason})`);
-        return { id: winner, reason };
-    }
-    
-    // Tiebreaker 6: Total Fruits Collection
-    console.log(`Fruit counts - Attacker: ${attacker.fruits}, Target: ${target.fruits}`);
-    
-    if (attacker.fruits !== target.fruits) {
-        const winner = attacker.fruits > target.fruits ? attacker.userId : target.userId;
-        const reason = 'collection_mastery';
-        console.log(`✅ Winner by collection: ${winner} (${reason})`);
-        return { id: winner, reason };
-    }
-    
-    // Tiebreaker 7: User ID Hash (deterministic)
-    const attackerIdSum = attacker.userId.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const targetIdSum = target.userId.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    
-    console.log(`ID sums - Attacker: ${attackerIdSum}, Target: ${targetIdSum}`);
-    
-    if (attackerIdSum !== targetIdSum) {
-        const winner = attackerIdSum > targetIdSum ? attacker.userId : target.userId;
-        const reason = 'cosmic_alignment';
-        console.log(`✅ Winner by ID hash: ${winner} (${reason})`);
-        return { id: winner, reason };
-    }
-    
-    // Final Tiebreaker: Simple coin flip with timestamp
-    const randomSeed = (Date.now() % 2);
-    const winner = randomSeed === 0 ? attacker.userId : target.userId;
-    const reason = randomSeed === 0 ? 'fortune_favors_bold' : 'destiny_defied';
-    
-    console.log(`✅ Final tiebreaker - Winner: ${winner} (${reason})`);
-    
-    return { id: winner, reason };
-}
-
-/**
- * Get rarity numeric value for comparison
- */
-function getRarityValue(rarity) {
-    const values = {
-        'common': 1, 'uncommon': 2, 'rare': 3, 'epic': 4,
-        'legendary': 5, 'mythical': 6, 'divine': 7
-    };
-    return values[rarity] || 1;
+    return embed;
 }
 
 /**
@@ -1736,294 +1539,12 @@ function getReasonText(reason) {
 }
 
 /**
- * NO DRAWS + TURN 1 PROTECTION: Enhanced battle end check
+ * Create error embed
  */
-function checkBattleEndNoDraws(battleState) {
-    const { attacker, target, turn } = battleState;
-    
-    // Immediate knockout
-    if (attacker.currentHP <= 0 || target.currentHP <= 0) {
-        const winner = determineBattleWinner(battleState);
-        return { ended: true, winner: winner.id, reason: winner.reason };
-    }
-    
-    // Minimum turn requirement (let battles develop with protection)
-    if (turn < RAID_CONFIG.MIN_BATTLE_TURNS) {
-        return { ended: false };
-    }
-    
-    // Decisive HP advantage (25%+ difference) - but only after protection ends
-    if (turn > 5) { // Only check after protection ends
-        const attackerHPPercent = attacker.currentHP / attacker.maxHP;
-        const targetHPPercent = target.currentHP / target.maxHP;
-        
-        if (Math.abs(attackerHPPercent - targetHPPercent) >= RAID_CONFIG.DECISIVE_HP_THRESHOLD) {
-            const winner = determineBattleWinner(battleState);
-            return { ended: true, winner: winner.id, reason: winner.reason };
-        }
-    }
-    
-    // Force end at turn limit with guaranteed winner
-    if (turn >= RAID_CONFIG.MAX_BATTLE_TURNS) {
-        const winner = determineBattleWinner(battleState);
-        return { ended: true, winner: winner.id, reason: winner.reason };
-    }
-    
-    return { ended: false };
-}
-
-/**
- * TURN 1 PROTECTION: Create professional battle embed with visual HP system
- */
-function createVisualBattleEmbed(battleState, turnResult = null, animationFrame = 0) {
-    const { attacker, target, turn } = battleState;
-    
-    // Check if turn protection is active
-    const turnProtection = turn <= 5;
-    
-    // Calculate HP percentages
-    const attackerHPPercent = Math.round((attacker.currentHP / attacker.maxHP) * 100);
-    const targetHPPercent = Math.round((target.currentHP / target.maxHP) * 100);
-    
-    // Get recent damage for animation
-    const attackerDamage = turnResult && turnResult.defender === attacker.username ? turnResult.damage : 0;
-    const targetDamage = turnResult && turnResult.defender === target.username ? turnResult.damage : 0;
-    
-    // Create animated HP bars with protection indicators
-    const attackerHPBar = createVisualHPBar(attacker.currentHP, attacker.maxHP, attackerDamage, animationFrame, turnProtection);
-    const targetHPBar = createVisualHPBar(target.currentHP, target.maxHP, targetDamage, animationFrame, turnProtection);
-    
-    // Professional status display
-    const attackerStatus = createEnhancedPlayerStatus(attacker);
-    const targetStatus = createEnhancedPlayerStatus(target);
-    
-    const embed = new EmbedBuilder()
-        .setTitle('⚔️ PROTECTED RAID BATTLE')
-        .setColor(turnProtection ? RARITY_COLORS.epic : RARITY_COLORS.legendary)
-        .setDescription(createBattleHeader(battleState, turnResult, animationFrame))
+function createErrorEmbed(message) {
+    return new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Protected Raid Failed')
+        .setDescription(message)
         .setTimestamp();
-    
-    // HP displays with protection status
-    const attackerHPText = turnProtection ? 
-        `**${attacker.username}** 🛡️\n${attackerHPBar}\n**${attacker.currentHP}** / **${attacker.maxHP}** HP (**${attackerHPPercent}%**)` :
-        `**${attacker.username}**\n${attackerHPBar}\n**${attacker.currentHP}** / **${attacker.maxHP}** HP (**${attackerHPPercent}%**)`;
-    
-    const targetHPText = turnProtection ? 
-        `**${target.username}** 🛡️\n${targetHPBar}\n**${target.currentHP}** / **${target.maxHP}** HP (**${targetHPPercent}%**)` :
-        `**${target.username}**\n${targetHPBar}\n**${target.currentHP}** / **${target.maxHP}** HP (**${targetHPPercent}%**)`;
-    
-    embed.addFields(
-        {
-            name: '🏴‍☠️ ATTACKER HP',
-            value: attackerHPText,
-            inline: false
-        },
-        {
-            name: '🛡️ DEFENDER HP', 
-            value: targetHPText,
-            inline: false
-        }
-    );
-    
-    // Add player details in columns
-    embed.addFields(
-        {
-            name: '⚔️ ATTACKER STATUS',
-            value: attackerStatus,
-            inline: true
-        },
-        {
-            name: '🛡️ DEFENDER STATUS',
-            value: targetStatus,
-            inline: true
-        },
-        {
-            name: '📊 BATTLE INFO',
-            value: `**Turn:** ${turn}/${RAID_CONFIG.MAX_BATTLE_TURNS}\n**Protection:** ${getProtectionStatus(turn)}\n**System:** NO DRAWS\n**Duration:** ${Math.floor((Date.now() - battleState.startTime) / 1000)}s`,
-            inline: true
-        }
-    );
-    
-    // Battle logs for each player
-    const battleLogSection = createSeparatedBattleLogs(battleState, turnResult);
-    if (battleLogSection) {
-        embed.addFields({
-            name: '📜 BATTLE LOG',
-            value: battleLogSection,
-            inline: false
-        });
-    }
-    
-    embed.setFooter({ 
-        text: `Battle ID: ${battleState.id} | Turn 1 Protection + No-Draw System v4.2${animationFrame > 0 ? ' | Damage Animation' : ''}` 
-    });
-    
-    return embed;
 }
-
-/**
- * TURN 1 PROTECTION: Create enhanced battle header with protection info
- */
-function createBattleHeader(battleState, turnResult, animationFrame = 0) {
-    if (!turnResult) {
-        let protectionText = '';
-        if (battleState.turn === 1) {
-            protectionText = '\n🛡️🛡️🛡️ **TURN 1 PROTECTION:** 80% damage reduction active!';
-        } else if (battleState.turn <= 3) {
-            protectionText = '\n🛡️🛡️ **EARLY PROTECTION:** 50% damage reduction active!';
-        } else if (battleState.turn <= 5) {
-            protectionText = '\n🛡️ **SCALING PROTECTION:** 25% damage reduction active!';
-        } else {
-            protectionText = '\n⚔️ **FULL COMBAT:** Protection removed - full damage!';
-        }
-        
-        return `⚡ **PROTECTED RAID BATTLE** ⚡\n*Every battle guarantees a winner with fair protection!*${protectionText}`;
-    }
-    
-    let header = '';
-    
-    // Animation indicator
-    if (animationFrame > 0) {
-        header += '💥 **DAMAGE IMPACT!** 💥\n';
-    }
-    
-    // Turn protection indicator
-    if (turnResult.turnProtection) {
-        if (battleState.turn === 1) {
-            header += '🛡️🛡️🛡️ **TURN 1 PROTECTION** (80% DR) 🛡️🛡️🛡️\n';
-        } else if (battleState.turn <= 3) {
-            header += '🛡️🛡️ **EARLY PROTECTION** (50% DR) 🛡️🛡️\n';
-        } else if (battleState.turn <= 5) {
-            header += '🛡️ **SCALING PROTECTION** (25% DR) 🛡️\n';
-        }
-    }
-    
-    // Main action description
-    if (turnResult.type === 'skill_attack') {
-        const skillEmoji = '✨';
-        header += `${skillEmoji} **SKILL USED:** ${turnResult.skillName}\n`;
-        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}`;
-        if (turnResult.turnProtection) {
-            header += ' *[Protected]*';
-        }
-        header += '\n';
-    } else if (turnResult.type === 'basic_attack') {
-        header += `⚔️ **BASIC ATTACK**\n`;
-        header += `💥 **DAMAGE:** ${turnResult.damage}${turnResult.isCritical ? ' (CRITICAL!)' : ''}`;
-        if (turnResult.turnProtection) {
-            header += ' *[Protected]*';
-        }
-        header += '\n';
-    }
-    
-    // Additional effects
-    if (turnResult.effects && turnResult.effects.length > 0) {
-        header += `🔮 **EFFECTS:** ${turnResult.effects.join(', ')}\n`;
-    }
-    
-    // Status effects results
-    if (turnResult.statusResults && turnResult.statusResults.length > 0) {
-        const statusText = turnResult.statusResults.map(sr => sr.message).join(', ');
-        header += `🌟 **STATUS:** ${statusText}\n`;
-    }
-    
-    return header || '*Preparing for protected combat...*';
-}
-
-/**
- * Create enhanced player status with better formatting
- */
-function createEnhancedPlayerStatus(player) {
-    let status = '';
-    
-    // Devil Fruit info with better spacing
-    if (player.bestFruit && player.skillData) {
-        const fruitEmoji = RARITY_EMOJIS[player.bestFruit.fruit_rarity] || '🍈';
-        const skillCooldown = player.skillCooldowns[player.skillData.name] || 0;
-        const skillStatus = skillCooldown > 0 ? `🔄 ${skillCooldown}` : '✅';
-        
-        status += `${fruitEmoji} **${player.bestFruit.fruit_name}**\n`;
-        status += `⚡ ${player.skillData.name} ${skillStatus}\n`;
-        status += `💪 **${player.totalCP.toLocaleString()}** CP\n`;
-        status += `🏆 Level **${player.level}**`;
-    }
-    
-    // Status effects (enhanced display)
-    if (player.statusEffects && player.statusEffects.length > 0) {
-        const effects = player.statusEffects.map(effect => {
-            const emoji = getStatusEffectEmoji(effect.type);
-            return `${emoji}${effect.duration}`;
-        }).join(' ');
-        status += `\n🔮 ${effects}`;
-    }
-    
-    return status;
-}
-
-/**
- * Create separated battle logs for cleaner display
- */
-function createSeparatedBattleLogs(battleState, turnResult) {
-    if (!battleState.battleLog || battleState.battleLog.length === 0) {
-        return '*Battle starting with turn protection...*';
-    }
-    
-    // Get last 3 actions for compact display
-    const recentActions = battleState.battleLog.slice(-3);
-    
-    const attackerActions = [];
-    const targetActions = [];
-    
-    recentActions.forEach((action, index) => {
-        const actionNumber = battleState.battleLog.length - recentActions.length + index + 1;
-        const isAttacker = action.attacker === battleState.attacker.username;
-        
-        let actionText = '';
-        const protectionIndicator = action.turnProtection ? '🛡️' : '';
-        
-        if (action.type === 'skill_attack') {
-            const critText = action.isCritical ? '💥' : '';
-            actionText = `\`${actionNumber}.\` **${action.skillName}** → ${action.damage} DMG${critText}${protectionIndicator}`;
-        } else if (action.type === 'basic_attack') {
-            const critText = action.isCritical ? '💥' : '';
-            actionText = `\`${actionNumber}.\` **Basic Attack** → ${action.damage} DMG${critText}${protectionIndicator}`;
-        } else {
-            actionText = `\`${actionNumber}.\` ${action.message || 'Action performed'}${protectionIndicator}`;
-        }
-        
-        if (isAttacker) {
-            attackerActions.push(actionText);
-        } else {
-            targetActions.push(actionText);
-        }
-    });
-    
-    // Create separated log display
-    let logDisplay = '';
-    
-    if (attackerActions.length > 0) {
-        logDisplay += `**🏴‍☠️ ${battleState.attacker.username}:**\n${attackerActions.join('\n')}\n\n`;
-    }
-    
-    if (targetActions.length > 0) {
-        logDisplay += `**🛡️ ${battleState.target.username}:**\n${targetActions.join('\n')}`;
-    }
-    
-    return logDisplay || '*No recent actions*';
-}
-
-/**
- * TURN 1 PROTECTION: Execute enhanced turn-based battle with protection
- */
-async function executeVisualBattle(interaction, attackerData, targetData) {
-    // Initialize battle state
-    const battleId = `raid_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-    
-    // Calculate HP based on individual fruit power
-    const attackerBestCP = Math.max(...attackerData.teamFruits.map(f => f.totalCP));
-    const targetBestCP = Math.max(...targetData.teamFruits.map(f => f.totalCP));
-    
-    attackerData.currentHP = calculateMaxHP(attackerBestCP, attackerData.level);
-    attackerData.maxHP = attackerData.currentHP;
-    targetData.currentHP = calculateMaxHP(targetBestCP, targetData.level);
-    targetData.maxHP = targetData.current
