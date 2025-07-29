@@ -1,5 +1,5 @@
 // src/commands/slash/pvp/pvp-raid.js - ENHANCED: Visual HP System & Cleaner Battle Display
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const EconomyService = require('../../../services/EconomyService');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
@@ -22,9 +22,10 @@ const RAID_CONFIG = {
     ANIMATION_FRAMES: 3 // Number of damage flash frames
 };
 
-// Active raid cooldowns and battles
+// Active raid cooldowns, battles, and fruit selections
 const raidCooldowns = new Map();
 const activeBattles = new Map();
+const activeSelections = new Map();
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -53,39 +54,19 @@ module.exports = {
                 });
             }
             
+            // Check if attacker has enough fruits for selection
+            const attackerFruits = await DatabaseManager.getUserDevilFruits(attacker.id);
+            if (attackerFruits.length < 5) {
+                return interaction.reply({
+                    embeds: [createErrorEmbed(`You need at least 5 Devil Fruits to raid! You have ${attackerFruits.length}.`)],
+                    ephemeral: true
+                });
+            }
+            
             await interaction.deferReply();
             
-            // Get enhanced participant data with skills
-            const [attackerData, targetData] = await Promise.all([
-                getEnhancedParticipantData(attacker.id),
-                getEnhancedParticipantData(target.id)
-            ]);
-            
-            // Start the enhanced turn-based battle with visual HP system
-            const battleResult = await executeVisualBattle(interaction, attackerData, targetData);
-            
-            // Process rewards and penalties
-            const rewards = await processRaidRewards(battleResult, attackerData, targetData);
-            
-            // Set raid cooldown
-            raidCooldowns.set(attacker.id, Date.now());
-            
-            // Create final result embed
-            const resultEmbed = await createDetailedResultEmbed(battleResult, rewards, attacker, target);
-            
-            // Add rematch button for winner
-            const components = battleResult.winner === attacker.id ? 
-                [createRematchButton(attacker.id, target.id)] : [];
-            
-            await interaction.editReply({ 
-                embeds: [resultEmbed], 
-                components 
-            });
-            
-            // Setup button collector for rematch
-            if (components.length > 0) {
-                await setupRematchCollector(interaction, attacker.id, target.id);
-            }
+            // Start fruit selection process for attacker
+            await startRaidFruitSelection(interaction, attacker, target);
             
         } catch (error) {
             interaction.client.logger.error('Enhanced PvP Raid error:', error);
@@ -464,6 +445,426 @@ function createBattleHeader(battleState, turnResult, animationFrame = 0) {
 }
 
 /**
+ * START FRUIT SELECTION SYSTEM
+ */
+
+/**
+ * Start raid fruit selection process for attacker
+ */
+async function startRaidFruitSelection(interaction, attacker, target) {
+    // Get attacker's fruits for selection
+    const attackerFruits = await getRaidFruitOptions(attacker.id);
+    
+    if (attackerFruits.length < 5) {
+        return interaction.editReply({
+            embeds: [createErrorEmbed(`You need at least 5 Devil Fruits to raid! You have ${attackerFruits.length}.`)]
+        });
+    }
+    
+    // Create selection session
+    const selectionId = `raid_select_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const selectionData = {
+        attackerId: attacker.id,
+        targetId: target.id,
+        attackerFruits,
+        selectedFruits: [],
+        currentPage: 0,
+        createdAt: Date.now()
+    };
+    
+    activeSelections.set(selectionId, selectionData);
+    
+    // Send selection interface
+    const embed = createFruitSelectionEmbed(selectionData, attacker, target);
+    const components = createFruitSelectionComponents(selectionId, selectionData);
+    
+    await interaction.editReply({ embeds: [embed], components });
+    
+    // Setup selection collector
+    setupFruitSelectionCollector(interaction, selectionId);
+}
+
+/**
+ * Get raid fruit options for user (formatted for selection)
+ */
+async function getRaidFruitOptions(userId) {
+    const fruits = await DatabaseManager.getUserDevilFruits(userId);
+    
+    // Group by fruit_id and get best version of each
+    const fruitGroups = {};
+    fruits.forEach(fruit => {
+        const key = fruit.fruit_id;
+        if (!fruitGroups[key] || fruit.total_cp > fruitGroups[key].total_cp) {
+            fruitGroups[key] = {
+                id: fruit.fruit_id,
+                name: fruit.fruit_name,
+                type: fruit.fruit_type,
+                rarity: fruit.fruit_rarity,
+                description: fruit.fruit_description,
+                totalCP: fruit.total_cp,
+                baseCP: fruit.base_cp,
+                emoji: RARITY_EMOJIS[fruit.fruit_rarity] || '⚪',
+                skillData: null // Will be populated when needed
+            };
+        }
+    });
+    
+    // Sort by CP (highest first) then by rarity
+    return Object.values(fruitGroups).sort((a, b) => {
+        if (b.totalCP !== a.totalCP) {
+            return b.totalCP - a.totalCP; // Higher CP first
+        }
+        const rarityOrder = { 'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4, 'rare': 3, 'uncommon': 2, 'common': 1 };
+        return (rarityOrder[b.rarity] || 1) - (rarityOrder[a.rarity] || 1);
+    });
+}
+
+/**
+ * Create fruit selection embed
+ */
+function createFruitSelectionEmbed(selectionData, attacker, target) {
+    const { selectedFruits, currentPage, attackerFruits } = selectionData;
+    const fruitsPerPage = 10;
+    const totalPages = Math.ceil(attackerFruits.length / fruitsPerPage);
+    
+    const embed = new EmbedBuilder()
+        .setColor(RARITY_COLORS.legendary)
+        .setTitle(`⚔️ Select Your Raid Team (${selectedFruits.length}/5)`)
+        .setDescription(`**${attacker.username}** vs **${target.username}**\n\nChoose 5 Devil Fruits for your raid attack!\n*Defender will automatically use their 5 strongest fruits.*`)
+        .setFooter({ text: `Page ${currentPage + 1}/${totalPages} • Select fruits below` })
+        .setTimestamp();
+    
+    // Show selected fruits
+    if (selectedFruits.length > 0) {
+        const selectedText = selectedFruits
+            .map((fruit, index) => `${index + 1}. ${fruit.emoji} **${fruit.name}** (${fruit.totalCP.toLocaleString()} CP)`)
+            .join('\n');
+        
+        embed.addFields({
+            name: '✅ Selected Raid Team',
+            value: selectedText,
+            inline: false
+        });
+    }
+    
+    // Show available fruits for current page
+    const startIndex = currentPage * fruitsPerPage;
+    const endIndex = startIndex + fruitsPerPage;
+    const pageFruits = attackerFruits.slice(startIndex, endIndex);
+    
+    if (pageFruits.length > 0) {
+        const availableText = pageFruits
+            .map((fruit, index) => {
+                const globalIndex = startIndex + index;
+                const isSelected = selectedFruits.some(s => s.id === fruit.id);
+                const status = isSelected ? '✅' : `${globalIndex + 1}.`;
+                return `${status} ${fruit.emoji} **${fruit.name}** (${fruit.rarity}, ${fruit.totalCP.toLocaleString()} CP)`;
+            })
+            .join('\n');
+        
+        embed.addFields({
+            name: '🍈 Available Devil Fruits',
+            value: availableText.length > 1000 ? availableText.substring(0, 997) + '...' : availableText,
+            inline: false
+        });
+    }
+    
+    return embed;
+}
+
+/**
+ * Create fruit selection components
+ */
+function createFruitSelectionComponents(selectionId, selectionData) {
+    const { selectedFruits, currentPage, attackerFruits } = selectionData;
+    const components = [];
+    const fruitsPerPage = 10;
+    const totalPages = Math.ceil(attackerFruits.length / fruitsPerPage);
+    
+    // Navigation buttons
+    const navRow = new ActionRowBuilder();
+    
+    if (currentPage > 0) {
+        navRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`raid_prev_${selectionId}`)
+                .setLabel('⬅️ Previous')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+    
+    if (currentPage < totalPages - 1) {
+        navRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`raid_next_${selectionId}`)
+                .setLabel('➡️ Next')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+    
+    if (navRow.components.length > 0) {
+        components.push(navRow);
+    }
+    
+    // Fruit selection dropdown
+    const startIndex = currentPage * fruitsPerPage;
+    const endIndex = startIndex + fruitsPerPage;
+    const pageFruits = attackerFruits.slice(startIndex, endIndex);
+    
+    if (pageFruits.length > 0 && selectedFruits.length < 5) {
+        const options = pageFruits
+            .filter(fruit => !selectedFruits.some(s => s.id === fruit.id))
+            .map((fruit, index) => {
+                const globalIndex = startIndex + index;
+                return {
+                    label: `${fruit.name}`.substring(0, 100),
+                    description: `${fruit.rarity} • ${fruit.totalCP.toLocaleString()} CP`.substring(0, 100),
+                    value: `fruit_${globalIndex}`,
+                    emoji: fruit.emoji
+                };
+            });
+        
+        if (options.length > 0) {
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`raid_select_${selectionId}`)
+                .setPlaceholder('Select Devil Fruits for your raid team...')
+                .setMinValues(0)
+                .setMaxValues(Math.min(options.length, 5 - selectedFruits.length))
+                .addOptions(options);
+            
+            components.push(new ActionRowBuilder().addComponents(selectMenu));
+        }
+    }
+    
+    // Action buttons
+    const actionRow = new ActionRowBuilder();
+    
+    if (selectedFruits.length > 0) {
+        actionRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`raid_clear_${selectionId}`)
+                .setLabel('🗑️ Clear Selection')
+                .setStyle(ButtonStyle.Danger)
+        );
+    }
+    
+    if (selectedFruits.length === 5) {
+        actionRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`raid_confirm_${selectionId}`)
+                .setLabel('⚔️ Start Raid!')
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('🏴‍☠️')
+        );
+    }
+    
+    if (actionRow.components.length > 0) {
+        components.push(actionRow);
+    }
+    
+    return components;
+}
+
+/**
+ * Setup fruit selection collector
+ */
+function setupFruitSelectionCollector(interaction, selectionId) {
+    const collector = interaction.channel.createMessageComponentCollector({
+        time: 300000 // 5 minutes to select
+    });
+    
+    collector.on('collect', async (componentInteraction) => {
+        const selection = activeSelections.get(selectionId);
+        if (!selection) {
+            return componentInteraction.reply({ 
+                content: '❌ Selection session expired!', 
+                ephemeral: true 
+            });
+        }
+        
+        if (componentInteraction.user.id !== selection.attackerId) {
+            return componentInteraction.reply({
+                content: '❌ Only the raid attacker can select fruits!',
+                ephemeral: true
+            });
+        }
+        
+        const customId = componentInteraction.customId;
+        
+        try {
+            if (customId.startsWith('raid_prev_')) {
+                await handlePageNavigation(componentInteraction, selectionId, 'prev');
+            } else if (customId.startsWith('raid_next_')) {
+                await handlePageNavigation(componentInteraction, selectionId, 'next');
+            } else if (customId.startsWith('raid_select_')) {
+                await handleFruitSelection(componentInteraction, selectionId);
+            } else if (customId.startsWith('raid_clear_')) {
+                await handleClearSelection(componentInteraction, selectionId);
+            } else if (customId.startsWith('raid_confirm_')) {
+                await handleConfirmRaid(componentInteraction, selectionId, interaction);
+                collector.stop();
+            }
+        } catch (error) {
+            console.error('Fruit selection interaction error:', error);
+            await componentInteraction.reply({
+                content: '❌ An error occurred during selection!',
+                ephemeral: true
+            });
+        }
+    });
+    
+    collector.on('end', () => {
+        activeSelections.delete(selectionId);
+    });
+}
+
+/**
+ * Handle page navigation
+ */
+async function handlePageNavigation(interaction, selectionId, direction) {
+    const selection = activeSelections.get(selectionId);
+    const fruitsPerPage = 10;
+    const totalPages = Math.ceil(selection.attackerFruits.length / fruitsPerPage);
+    
+    if (direction === 'prev' && selection.currentPage > 0) {
+        selection.currentPage--;
+    } else if (direction === 'next' && selection.currentPage < totalPages - 1) {
+        selection.currentPage++;
+    }
+    
+    const attacker = await interaction.client.users.fetch(selection.attackerId);
+    const target = await interaction.client.users.fetch(selection.targetId);
+    
+    const embed = createFruitSelectionEmbed(selection, attacker, target);
+    const components = createFruitSelectionComponents(selectionId, selection);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+/**
+ * Handle fruit selection from dropdown
+ */
+async function handleFruitSelection(interaction, selectionId) {
+    const selection = activeSelections.get(selectionId);
+    const selectedValues = interaction.values;
+    
+    selectedValues.forEach(value => {
+        const fruitIndex = parseInt(value.split('_')[1]);
+        const fruit = selection.attackerFruits[fruitIndex];
+        
+        if (fruit && !selection.selectedFruits.some(s => s.id === fruit.id)) {
+            if (selection.selectedFruits.length < 5) {
+                selection.selectedFruits.push(fruit);
+            }
+        }
+    });
+    
+    const attacker = await interaction.client.users.fetch(selection.attackerId);
+    const target = await interaction.client.users.fetch(selection.targetId);
+    
+    const embed = createFruitSelectionEmbed(selection, attacker, target);
+    const components = createFruitSelectionComponents(selectionId, selection);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+/**
+ * Handle clear selection
+ */
+async function handleClearSelection(interaction, selectionId) {
+    const selection = activeSelections.get(selectionId);
+    selection.selectedFruits = [];
+    
+    const attacker = await interaction.client.users.fetch(selection.attackerId);
+    const target = await interaction.client.users.fetch(selection.targetId);
+    
+    const embed = createFruitSelectionEmbed(selection, attacker, target);
+    const components = createFruitSelectionComponents(selectionId, selection);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+/**
+ * Handle confirm raid (start battle with selected fruits)
+ */
+async function handleConfirmRaid(interaction, selectionId, originalInteraction) {
+    const selection = activeSelections.get(selectionId);
+    
+    if (selection.selectedFruits.length !== 5) {
+        return interaction.reply({
+            content: '❌ You must select exactly 5 Devil Fruits!',
+            ephemeral: true
+        });
+    }
+    
+    // Confirm selection
+    const confirmEmbed = new EmbedBuilder()
+        .setColor(RARITY_COLORS.epic)
+        .setTitle('⚔️ Raid Team Confirmed!')
+        .setDescription('Starting enhanced visual battle...')
+        .addFields({
+            name: '🏴‍☠️ Your Raid Team',
+            value: selection.selectedFruits
+                .map((fruit, index) => `${index + 1}. ${fruit.emoji} **${fruit.name}** (${fruit.totalCP.toLocaleString()} CP)`)
+                .join('\n'),
+            inline: false
+        })
+        .setTimestamp();
+    
+    await interaction.update({ embeds: [confirmEmbed], components: [] });
+    
+    // Start battle with selected fruits
+    setTimeout(async () => {
+        try {
+            const attacker = await originalInteraction.client.users.fetch(selection.attackerId);
+            const target = await originalInteraction.client.users.fetch(selection.targetId);
+            
+            // Get enhanced participant data with selected fruits
+            const [attackerData, targetData] = await Promise.all([
+                getEnhancedParticipantDataWithSelectedFruits(selection.attackerId, selection.selectedFruits),
+                getEnhancedParticipantDataWithTopFruits(selection.targetId) // Auto-select top 5 for defender
+            ]);
+            
+            // Start the enhanced turn-based battle with visual HP system
+            const battleResult = await executeVisualBattle(originalInteraction, attackerData, targetData);
+            
+            // Process rewards and penalties
+            const rewards = await processRaidRewards(battleResult, attackerData, targetData);
+            
+            // Set raid cooldown
+            raidCooldowns.set(attacker.id, Date.now());
+            
+            // Create final result embed
+            const resultEmbed = await createDetailedResultEmbed(battleResult, rewards, attacker, target);
+            
+            // Add rematch button for winner
+            const components = battleResult.winner === attacker.id ? 
+                [createRematchButton(attacker.id, target.id)] : [];
+            
+            await originalInteraction.editReply({ 
+                embeds: [resultEmbed], 
+                components 
+            });
+            
+            // Setup button collector for rematch
+            if (components.length > 0) {
+                await setupRematchCollector(originalInteraction, attacker.id, target.id);
+            }
+            
+        } catch (error) {
+            console.error('Error starting raid battle:', error);
+            await originalInteraction.editReply({
+                embeds: [createErrorEmbed('An error occurred starting the battle!')]
+            });
+        }
+    }, 2000);
+}
+
+/**
+ * END FRUIT SELECTION SYSTEM
+ */
+
+/**
  * Validate if raid can proceed
  */
 async function validateRaid(attackerId, target) {
@@ -511,55 +912,141 @@ async function validateRaid(attackerId, target) {
 }
 
 /**
- * Get enhanced participant data with devil fruit skills
+ * Get enhanced participant data with user-selected fruits (for attacker)
  */
-async function getEnhancedParticipantData(userId) {
+async function getEnhancedParticipantDataWithSelectedFruits(userId, selectedFruits) {
     const user = await DatabaseManager.getUser(userId);
-    const fruits = await DatabaseManager.getUserDevilFruits(userId);
     
-    // Get the best fruit for battle (highest CP with skill data)
-    let bestFruit = null;
-    let highestCP = 0;
+    // Calculate team stats from selected fruits
+    let totalTeamCP = 0;
+    let teamFruits = [];
     
-    for (const fruit of fruits) {
-        const totalCP = fruit.total_cp || fruit.base_cp || 100;
-        if (totalCP > highestCP) {
-            highestCP = totalCP;
-            bestFruit = fruit;
-        }
-    }
-    
-    // Get skill data for the best fruit
-    let skillData = null;
-    if (bestFruit) {
-        skillData = getSkillData(bestFruit.fruit_id, bestFruit.fruit_rarity);
+    for (const fruit of selectedFruits) {
+        // Get skill data for each fruit
+        const skillData = getSkillData(fruit.id, fruit.rarity) || {
+            name: `${fruit.name} Power`,
+            damage: Math.floor(50 + (fruit.totalCP / 20)),
+            cooldown: 2,
+            effect: 'basic_attack',
+            description: `Harness the power of the ${fruit.name}`,
+            type: 'attack',
+            range: 'single'
+        };
         
-        // Fallback skill if none found
-        if (!skillData) {
-            skillData = {
-                name: `${bestFruit.fruit_name} Power`,
-                damage: Math.floor(50 + (highestCP / 20)),
-                cooldown: 2,
-                effect: 'basic_attack',
-                description: `Harness the power of the ${bestFruit.fruit_name}`,
-                type: 'attack',
-                range: 'single'
-            };
-        }
+        teamFruits.push({
+            ...fruit,
+            skillData
+        });
+        
+        totalTeamCP += fruit.totalCP;
     }
+    
+    // Use the strongest fruit as the "active" fruit for battle calculations
+    const bestFruit = teamFruits.reduce((best, current) => 
+        current.totalCP > best.totalCP ? current : best
+    );
     
     return {
         userId,
         username: user.username,
-        totalCP: user.total_cp,
+        totalCP: totalTeamCP, // Use team CP instead of user total CP
         berries: user.berries,
         level: user.level,
-        bestFruit,
-        skillData,
-        fruits: fruits.length,
-        uniqueFruits: new Set(fruits.map(f => f.fruit_id)).size,
+        bestFruit: {
+            fruit_id: bestFruit.id,
+            fruit_name: bestFruit.name,
+            fruit_type: bestFruit.type,
+            fruit_rarity: bestFruit.rarity,
+            fruit_description: bestFruit.description,
+            total_cp: bestFruit.totalCP,
+            base_cp: bestFruit.baseCP
+        },
+        skillData: bestFruit.skillData,
+        teamFruits: teamFruits, // Store all 5 selected fruits
+        fruits: selectedFruits.length,
+        uniqueFruits: selectedFruits.length,
         // Battle stats
-        maxHP: calculateMaxHP(user.total_cp, user.level),
+        maxHP: calculateMaxHP(totalTeamCP, user.level),
+        currentHP: 0, // Will be set to maxHP at battle start
+        statusEffects: [],
+        skillCooldowns: {},
+        lastAction: null
+    };
+}
+
+/**
+ * Get enhanced participant data with top 5 strongest fruits (for defender)
+ */
+async function getEnhancedParticipantDataWithTopFruits(userId) {
+    const user = await DatabaseManager.getUser(userId);
+    const allFruits = await DatabaseManager.getUserDevilFruits(userId);
+    
+    // Get top 5 strongest fruits (by total CP)
+    const topFruits = allFruits
+        .sort((a, b) => (b.total_cp || 0) - (a.total_cp || 0))
+        .slice(0, 5);
+    
+    // If user has less than 5 fruits, use what they have
+    if (topFruits.length === 0) {
+        // Fallback for users with no fruits
+        return getEnhancedParticipantData(userId);
+    }
+    
+    // Calculate team stats from top fruits
+    let totalTeamCP = 0;
+    let teamFruits = [];
+    
+    for (const fruit of topFruits) {
+        // Get skill data for each fruit
+        const skillData = getSkillData(fruit.fruit_id, fruit.fruit_rarity) || {
+            name: `${fruit.fruit_name} Power`,
+            damage: Math.floor(50 + (fruit.total_cp / 20)),
+            cooldown: 2,
+            effect: 'basic_attack',
+            description: `Harness the power of the ${fruit.fruit_name}`,
+            type: 'attack',
+            range: 'single'
+        };
+        
+        teamFruits.push({
+            id: fruit.fruit_id,
+            name: fruit.fruit_name,
+            type: fruit.fruit_type,
+            rarity: fruit.fruit_rarity,
+            description: fruit.fruit_description,
+            totalCP: fruit.total_cp,
+            baseCP: fruit.base_cp,
+            emoji: RARITY_EMOJIS[fruit.fruit_rarity] || '⚪',
+            skillData
+        });
+        
+        totalTeamCP += fruit.total_cp;
+    }
+    
+    // Use the strongest fruit as the "active" fruit for battle calculations
+    const bestFruit = teamFruits[0]; // Already sorted by CP
+    
+    return {
+        userId,
+        username: user.username,
+        totalCP: totalTeamCP, // Use team CP instead of user total CP
+        berries: user.berries,
+        level: user.level,
+        bestFruit: {
+            fruit_id: bestFruit.id,
+            fruit_name: bestFruit.name,
+            fruit_type: bestFruit.type,
+            fruit_rarity: bestFruit.rarity,
+            fruit_description: bestFruit.description,
+            total_cp: bestFruit.totalCP,
+            base_cp: bestFruit.baseCP
+        },
+        skillData: bestFruit.skillData,
+        teamFruits: teamFruits, // Store all defender's top fruits
+        fruits: topFruits.length,
+        uniqueFruits: topFruits.length,
+        // Battle stats
+        maxHP: calculateMaxHP(totalTeamCP, user.level),
         currentHP: 0, // Will be set to maxHP at battle start
         statusEffects: [],
         skillCooldowns: {},
