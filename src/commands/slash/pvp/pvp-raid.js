@@ -1,4 +1,4 @@
-// src/commands/slash/pvp/pvp-raid.js - CLEAN: Interactive Fruit Selection & Turn-Based Combat
+// src/commands/slash/pvp/pvp-raid.js - COMPLETE: All Improvements Applied
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
@@ -381,8 +381,8 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
             username: attackerUser.username,
             team: attackerTeam.map(fruit => ({
                 ...fruit,
-                currentHP: Math.floor(fruit.totalCP * 1.5),
-                maxHP: Math.floor(fruit.totalCP * 1.5),
+                currentHP: 500, // FIXED: Flat 500 HP for all fruits
+                maxHP: 500,     // FIXED: Flat 500 HP for all fruits
                 cooldown: 0
             })),
             activeFruitIndex: 0
@@ -392,8 +392,8 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
             username: defenderUser.username,
             team: defenderTeam.map(fruit => ({
                 ...fruit,
-                currentHP: Math.floor(fruit.totalCP * 1.5),
-                maxHP: Math.floor(fruit.totalCP * 1.5),
+                currentHP: 500, // FIXED: Flat 500 HP for all fruits
+                maxHP: 500,     // FIXED: Flat 500 HP for all fruits
                 cooldown: 0
             })),
             activeFruitIndex: 0
@@ -410,6 +410,35 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
 }
 
 async function showBattleInterface(interaction, raidState) {
+    // IMPROVED: Check for auto-skip before showing interface
+    const availableFruits = raidState.attacker.team
+        .filter(fruit => fruit.currentHP > 0 && fruit.cooldown === 0);
+    
+    if (availableFruits.length === 0) {
+        // Auto-skip attacker turn
+        raidState.battleLog.push(`⏭️ ${raidState.attacker.username} has no available fruits - turn skipped!`);
+        
+        // Process AI turn immediately
+        await processAITurn(raidState);
+        
+        // Check if battle ended after AI turn
+        const battleResult = checkBattleEnd(raidState);
+        if (battleResult.ended) {
+            await endBattle(interaction, raidState, battleResult);
+            return;
+        }
+        
+        // Reduce cooldowns and continue
+        reduceCooldowns(raidState.attacker);
+        reduceCooldowns(raidState.defender);
+        raidState.turn++;
+        raidState.currentPlayer = 'attacker';
+        
+        // Recursive call to check again (in case still no fruits available)
+        await showBattleInterface(interaction, raidState);
+        return;
+    }
+    
     const embed = createBattleEmbed(raidState);
     const components = createBattleComponents(raidState);
     
@@ -455,10 +484,11 @@ function createBattleEmbed(raidState) {
         inline: true
     });
     
+    // IMPROVED: Show longer battle log (last 8 actions instead of 3)
     if (raidState.battleLog.length > 0) {
-        const lastActions = raidState.battleLog.slice(-3).join('\n');
+        const lastActions = raidState.battleLog.slice(-8).join('\n');
         embed.addFields({
-            name: '📜 Recent Actions',
+            name: '📜 Battle Log',
             value: lastActions.length > 1000 ? lastActions.substring(0, 997) + '...' : lastActions,
             inline: false
         });
@@ -490,21 +520,25 @@ function createBattleComponents(raidState) {
         }))
         .filter(item => item.canUse);
     
-    if (availableFruits.length > 0) {
-        const options = availableFruits.map(({ fruit, index }) => ({
-            label: `${fruit.name}`.substring(0, 100),
-            description: `${fruit.currentHP}/${fruit.maxHP} HP • ${fruit.totalCP.toLocaleString()} CP`.substring(0, 100),
-            value: `attack_${index}`,
-            emoji: fruit.emoji
-        }));
-        
-        const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId(`battle_attack_${raidState.id}`)
-            .setPlaceholder('Choose a Devil Fruit to attack with...')
-            .addOptions(options);
-        
-        components.push(new ActionRowBuilder().addComponents(selectMenu));
+    // IMPROVED: Auto-skip turn if no fruits available
+    if (availableFruits.length === 0) {
+        // No fruits available - turn will be auto-skipped
+        return [];
     }
+    
+    const options = availableFruits.map(({ fruit, index }) => ({
+        label: `${fruit.name}`.substring(0, 100),
+        description: `${fruit.currentHP}/${fruit.maxHP} HP • ${fruit.totalCP.toLocaleString()} CP`.substring(0, 100),
+        value: `attack_${index}`,
+        emoji: fruit.emoji
+    }));
+    
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId(`battle_attack_${raidState.id}`)
+        .setPlaceholder('Choose a Devil Fruit to attack with...')
+        .addOptions(options);
+    
+    components.push(new ActionRowBuilder().addComponents(selectMenu));
     
     return components;
 }
@@ -568,13 +602,8 @@ async function handleBattleAction(componentInteraction, raidState, originalInter
     raidState.turn++;
     raidState.currentPlayer = 'attacker';
     
-    const embed = createBattleEmbed(raidState);
-    const components = createBattleComponents(raidState);
-    
-    await originalInteraction.editReply({
-        embeds: [embed],
-        components
-    });
+    // IMPROVED: Use showBattleInterface to handle auto-skip logic
+    await showBattleInterface(originalInteraction, raidState);
 }
 
 async function executeAttack(raidState, attackerFruitIndex) {
@@ -590,21 +619,45 @@ async function executeAttack(raidState, attackerFruitIndex) {
     let damage = skillData.damage || Math.floor(attackingFruit.totalCP / 20);
     damage = Math.floor(damage * (0.8 + Math.random() * 0.4));
     
+    // IMPROVED: Damage the attacking fruit first (before dealing damage)
+    const selfDamage = Math.floor(damage * 0.1); // 10% of damage dealt as self-damage
+    attackingFruit.currentHP = Math.max(0, attackingFruit.currentHP - selfDamage);
+    
+    // Apply damage to defender
     const originalHP = defendingFruit.currentHP;
     defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - damage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
     attackingFruit.cooldown = skillData.cooldown || 2;
     
-    raidState.battleLog.push(`${raidState.attacker.username} uses ${attackingFruit.name} → ${actualDamage} damage to ${defendingFruit.name}!`);
+    // IMPROVED: More detailed battle log
+    raidState.battleLog.push(`⚔️ ${raidState.attacker.username} uses ${attackingFruit.name}!`);
+    raidState.battleLog.push(`💥 Deals ${actualDamage} damage to ${defendingFruit.name} (${defendingFruit.currentHP}/${defendingFruit.maxHP} HP left)`);
+    if (selfDamage > 0) {
+        raidState.battleLog.push(`🩸 ${attackingFruit.name} takes ${selfDamage} recoil damage (${attackingFruit.currentHP}/${attackingFruit.maxHP} HP left)`);
+    }
     
+    // Check if attacking fruit defeated itself
+    if (attackingFruit.currentHP === 0) {
+        raidState.battleLog.push(`💀 ${attackingFruit.name} was defeated by recoil damage!`);
+        const nextAttackerFruit = raidState.attacker.team.findIndex((fruit, index) => 
+            index !== attackerFruitIndex && fruit.currentHP > 0
+        );
+        if (nextAttackerFruit !== -1) {
+            raidState.attacker.activeFruitIndex = nextAttackerFruit;
+            raidState.battleLog.push(`🔄 ${raidState.attacker.team[nextAttackerFruit].name} is now active for ${raidState.attacker.username}!`);
+        }
+    }
+    
+    // Check if defending fruit is defeated
     if (defendingFruit.currentHP === 0) {
+        raidState.battleLog.push(`💀 ${defendingFruit.name} was defeated!`);
         const nextFruit = raidState.defender.team.findIndex((fruit, index) => 
             index !== raidState.defender.activeFruitIndex && fruit.currentHP > 0
         );
         if (nextFruit !== -1) {
             raidState.defender.activeFruitIndex = nextFruit;
-            raidState.battleLog.push(`${defendingFruit.name} was defeated! ${raidState.defender.team[nextFruit].name} enters the battle!`);
+            raidState.battleLog.push(`🔄 ${raidState.defender.team[nextFruit].name} enters the battle for ${raidState.defender.username}!`);
         }
     }
     
@@ -616,7 +669,11 @@ async function processAITurn(raidState) {
         .map((fruit, index) => ({ fruit, index }))
         .filter(({ fruit }) => fruit.currentHP > 0 && fruit.cooldown === 0);
     
-    if (availableFruits.length === 0) return;
+    if (availableFruits.length === 0) {
+        // AI has no available fruits - skip turn
+        raidState.battleLog.push(`⏭️ ${raidState.defender.username} has no available fruits - turn skipped!`);
+        return;
+    }
     
     const { fruit: attackingFruit, index: fruitIndex } = availableFruits[Math.floor(Math.random() * availableFruits.length)];
     const defendingFruit = raidState.attacker.team[raidState.attacker.activeFruitIndex];
@@ -630,21 +687,44 @@ async function processAITurn(raidState) {
     let damage = skillData.damage || Math.floor(attackingFruit.totalCP / 20);
     damage = Math.floor(damage * (0.8 + Math.random() * 0.4));
     
+    // IMPROVED: AI fruit also takes recoil damage
+    const selfDamage = Math.floor(damage * 0.1); // 10% of damage dealt as self-damage
+    attackingFruit.currentHP = Math.max(0, attackingFruit.currentHP - selfDamage);
+    
     const originalHP = defendingFruit.currentHP;
     defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - damage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
     attackingFruit.cooldown = skillData.cooldown || 2;
     
-    raidState.battleLog.push(`${raidState.defender.username} uses ${attackingFruit.name} → ${actualDamage} damage to ${defendingFruit.name}!`);
+    // IMPROVED: More detailed AI battle log
+    raidState.battleLog.push(`🤖 ${raidState.defender.username} uses ${attackingFruit.name}!`);
+    raidState.battleLog.push(`💥 Deals ${actualDamage} damage to ${defendingFruit.name} (${defendingFruit.currentHP}/${defendingFruit.maxHP} HP left)`);
+    if (selfDamage > 0) {
+        raidState.battleLog.push(`🩸 ${attackingFruit.name} takes ${selfDamage} recoil damage (${attackingFruit.currentHP}/${attackingFruit.maxHP} HP left)`);
+    }
     
+    // Check if AI fruit defeated itself
+    if (attackingFruit.currentHP === 0) {
+        raidState.battleLog.push(`💀 ${attackingFruit.name} was defeated by recoil damage!`);
+        const nextDefenderFruit = raidState.defender.team.findIndex((fruit, index) => 
+            index !== fruitIndex && fruit.currentHP > 0
+        );
+        if (nextDefenderFruit !== -1) {
+            raidState.defender.activeFruitIndex = nextDefenderFruit;
+            raidState.battleLog.push(`🔄 ${raidState.defender.team[nextDefenderFruit].name} is now active for ${raidState.defender.username}!`);
+        }
+    }
+    
+    // Check if player's fruit is defeated
     if (defendingFruit.currentHP === 0) {
+        raidState.battleLog.push(`💀 ${defendingFruit.name} was defeated!`);
         const nextFruit = raidState.attacker.team.findIndex((fruit, index) => 
             index !== raidState.attacker.activeFruitIndex && fruit.currentHP > 0
         );
         if (nextFruit !== -1) {
             raidState.attacker.activeFruitIndex = nextFruit;
-            raidState.battleLog.push(`${defendingFruit.name} was defeated! ${raidState.attacker.team[nextFruit].name} enters the battle!`);
+            raidState.battleLog.push(`🔄 ${raidState.attacker.team[nextFruit].name} enters the battle for ${raidState.attacker.username}!`);
         }
     }
 }
@@ -733,8 +813,9 @@ function createBattleResultEmbed(raidState, battleResult, rewards) {
         }
     );
     
+    // IMPROVED: Show longer battle log (last 10 actions instead of 5)
     if (raidState.battleLog.length > 0) {
-        const battleLog = raidState.battleLog.slice(-5).join('\n');
+        const battleLog = raidState.battleLog.slice(-10).join('\n');
         embed.addFields({
             name: '📜 Battle Log',
             value: battleLog.length > 1000 ? battleLog.substring(0, 997) + '...' : battleLog,
