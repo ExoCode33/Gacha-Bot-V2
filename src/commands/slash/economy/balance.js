@@ -21,9 +21,8 @@ module.exports = {
         const userId = targetUser.id;
         
         try {
-            // Ensure user exists and give starting berries if needed
+            // Ensure user exists (now automatically gives starting berries)
             await DatabaseManager.ensureUser(userId, targetUser.username, interaction.guildId);
-            await EconomyService.ensureStartingBerries(userId);
             
             // Get user data
             const user = await DatabaseManager.getUser(userId);
