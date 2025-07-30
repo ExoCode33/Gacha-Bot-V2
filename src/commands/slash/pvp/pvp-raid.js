@@ -618,18 +618,18 @@ async function showBattleInterface(interaction, raidState) {
 }
 
 /**
- * ENHANCED: Create battle embed with status effects and clear team labels
+ * ENHANCED: Create battle embed with status effects and clear team labels + WIDER DESIGN
  */
 function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
     const { attacker, defender, turn } = raidState;
     
     const embed = new EmbedBuilder()
         .setTitle('⚔️ Enhanced Devil Fruit Battle!')
-        .setDescription(`**Turn ${turn}** - ${attacker.username} (YOU) vs ${defender.username} (AI)`)
+        .setDescription(`**Turn ${turn}** - ${attacker.username} (YOU) vs ${defender.username} (AI)\n\n═══════════════════════════════════════════════════════`)
         .setColor(RARITY_COLORS.legendary)
         .setTimestamp();
     
-    // Show YOUR team status (attacker = player)
+    // Show YOUR team status (attacker = player) - WIDER FORMAT
     const attackerTeamText = attacker.team.map((fruit, index) => {
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
         const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
@@ -644,16 +644,25 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
             statusText = ` [${activeEffects}]`;
         }
         
-        return `${statusIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}${statusText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const fruitLine = `${statusIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}${statusText}`;
+        const hpLine = `${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${fruitLine}\n${hpLine}`;
     }).join('\n\n');
     
     embed.addFields({
         name: `⚔️ YOUR Team (${attacker.username})`,
-        value: attackerTeamText,
-        inline: true
+        value: attackerTeamText || 'No fruits remaining',
+        inline: false  // WIDER: Changed from true to false for full width
     });
     
-    // Show AI team status (defender = AI)
+    // Separator line for better visual separation
+    embed.addFields({
+        name: '\u200B', // Zero-width space for spacing
+        value: '═══════════════════════════════════════════════════════',
+        inline: false
+    });
+    
+    // Show AI team status (defender = AI) - WIDER FORMAT
     const defenderTeamText = defender.team.map((fruit, index) => {
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
         const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
@@ -667,24 +676,37 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
             statusText = ` [${activeEffects}]`;
         }
         
-        return `${statusIcon} ${fruit.emoji} **${fruit.name}**${statusText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const fruitLine = `${statusIcon} ${fruit.emoji} **${fruit.name}**${statusText}`;
+        const hpLine = `${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${fruitLine}\n${hpLine}`;
     }).join('\n\n');
     
     embed.addFields({
         name: `🤖 AI Team (${defender.username})`,
-        value: defenderTeamText,
-        inline: true
+        value: defenderTeamText || 'No fruits remaining',
+        inline: false  // WIDER: Changed from true to false for full width
     });
     
-    // Enhanced battle log with status effects (last 8 actions for readability)
+    // Enhanced battle log with status effects (last 6 actions for readability in wider format)
     if (raidState.battleLog.length > 0) {
-        const lastActions = raidState.battleLog.slice(-8).join('\n');
+        const lastActions = raidState.battleLog.slice(-6).join('\n');
         embed.addFields({
-            name: '⏰ Your Turn',
-            value: instructionText,
-            inline: false
+            name: '📜 Battle Log (Recent Actions)',
+            value: lastActions.length > 1000 ? lastActions.substring(0, 997) + '...' : lastActions,
+            inline: false  // WIDER: Full width for better readability
         });
     }
+    
+    // Turn instructions with wider format
+    const instructionText = selectedSkill ? 
+        `✅ **Skill Selected!** Now choose your target from the AI team below.` :
+        `🎯 **Your Turn!** Select a skill/attack from the dropdown, then choose your target.`;
+    
+    embed.addFields({
+        name: '⏰ Turn Instructions',
+        value: instructionText,
+        inline: false
+    });
     
     return embed;
 }
@@ -980,7 +1002,7 @@ async function endBattle(interaction, raidState, battleResult) {
 }
 
 /**
- * ENHANCED: Create detailed battle result embed
+ * ENHANCED: Create detailed battle result embed with wider format
  */
 function createEnhancedBattleResultEmbed(raidState, battleResult, rewards) {
     const { attacker, defender } = raidState;
@@ -991,11 +1013,11 @@ function createEnhancedBattleResultEmbed(raidState, battleResult, rewards) {
     
     const embed = new EmbedBuilder()
         .setTitle('🏆 Enhanced Battle Complete!')
-        .setDescription(`**${winnerName}** defeats **${loserName}** with devil fruit mastery!`)
+        .setDescription(`**${winnerName}** defeats **${loserName}** with devil fruit mastery!\n\n═══════════════════════════════════════════════════════`)
         .setColor(winner === attacker.userId ? 0x00FF00 : 0xFF0000)
         .setTimestamp();
     
-    // Show final team status with effects
+    // Show final team status with effects - WIDER FORMAT
     const attackerStatus = attacker.team.map(fruit => {
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
         const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
@@ -1026,12 +1048,12 @@ function createEnhancedBattleResultEmbed(raidState, battleResult, rewards) {
         {
             name: `⚔️ ${attacker.username}'s Final Team`,
             value: attackerStatus,
-            inline: true
+            inline: false  // WIDER: Changed to false for full width
         },
         {
             name: `🛡️ ${defender.username}'s Final Team`,
             value: defenderStatus,
-            inline: true
+            inline: false  // WIDER: Changed to false for full width
         },
         {
             name: '📊 Battle Summary',
@@ -1046,17 +1068,17 @@ function createEnhancedBattleResultEmbed(raidState, battleResult, rewards) {
         }
     );
     
-    // Enhanced battle log with skill effects (last 12 actions)
+    // Enhanced battle log with skill effects (last 12 actions) - WIDER
     if (raidState.battleLog.length > 0) {
         const battleLog = raidState.battleLog.slice(-12).join('\n');
         embed.addFields({
             name: '📜 Enhanced Battle Log',
             value: battleLog.length > 1000 ? battleLog.substring(0, 997) + '...' : battleLog,
-            inline: false
+            inline: false  // WIDER: Full width for better readability
         });
     }
     
-    // Show rewards
+    // Show rewards - WIDER
     if (rewards.berries > 0 || rewards.fruitsStolen.length > 0) {
         let rewardsText = '';
         
@@ -1079,7 +1101,7 @@ function createEnhancedBattleResultEmbed(raidState, battleResult, rewards) {
             embed.addFields({
                 name: '🎁 Battle Rewards',
                 value: rewardsText,
-                inline: false
+                inline: false  // WIDER: Full width
             });
         }
     }
@@ -1369,6 +1391,35 @@ function setupFruitSelectionCollector(interaction, selectionId, target) {
 
 // ===== REMAINING HELPER FUNCTIONS =====
 
+async function validateRaid(attackerId, target) {
+    if (!target || target.bot) {
+        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
+    }
+    
+    if (attackerId === target.id) {
+        return { valid: false, reason: 'Cannot raid yourself!' };
+    }
+    
+    // Check cooldown
+    const lastRaid = raidCooldowns.get(attackerId);
+    if (lastRaid && Date.now() - lastRaid < RAID_CONFIG.COOLDOWN_TIME) {
+        const timeLeft = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000 / 60);
+        return { valid: false, reason: `Raid cooldown active! Wait ${timeLeft} more minutes.` };
+    }
+    
+    // Check if target has sufficient CP
+    try {
+        const targetUser = await DatabaseManager.getUser(target.id);
+        if (!targetUser || targetUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
+            return { valid: false, reason: `Target must have at least ${RAID_CONFIG.MIN_CP_REQUIRED} CP to be raided!` };
+        }
+    } catch (error) {
+        return { valid: false, reason: 'Could not verify target information!' };
+    }
+    
+    return { valid: true };
+}
+
 async function getUserFruitsForSelection(userId) {
     const fruits = await DatabaseManager.getUserDevilFruits(userId);
     
@@ -1424,6 +1475,9 @@ async function calculateRewards(raidState, winnerId) {
         rewards.fruitsStolen = stolenFruits;
         
         rewards.experience = Math.floor(defenderUser.total_cp / 100);
+        
+        // Set cooldown
+        raidCooldowns.set(raidState.attacker.userId, Date.now());
     }
     
     return rewards;
@@ -1483,31 +1537,258 @@ async function transferFruit(fruit, fromUserId, toUserId) {
             description: fruit.fruit_description
         });
         
-        await📜 Battle Log',
-            value: lastActions.length > 1000 ? lastActions.substring(0, 997) + '...' : lastActions,
-            inline: false
+        await DatabaseManager.recalculateUserCP(fromUserId);
+        await DatabaseManager.recalculateUserCP(toUserId);
+        
+    } catch (error) {
+        console.error('Error transferring fruit:', error);
+    }
+}
+
+// ===== FRUIT SELECTION UI FUNCTIONS =====
+
+function createFruitSelectionEmbed(allFruits, selectedFruits, currentPage) {
+    const selectedCount = selectedFruits.length;
+    const remainingSlots = RAID_CONFIG.TEAM_SIZE - selectedCount;
+    
+    const embed = new EmbedBuilder()
+        .setColor(RARITY_COLORS.legendary)
+        .setTitle(`🍈 Select Your Raid Team (${selectedCount}/${RAID_CONFIG.TEAM_SIZE})`)
+        .setDescription(`Choose ${remainingSlots} more Devil Fruit${remainingSlots !== 1 ? 's' : ''} for your raid team!\n\n═══════════════════════════════════════════════════════`)
+        .setFooter({ text: `Page ${currentPage + 1} • Use buttons to navigate and select` })
+        .setTimestamp();
+    
+    // Show current selections - WIDER FORMAT
+    if (selectedFruits.length > 0) {
+        const selectedText = selectedFruits
+            .map((fruit, index) => `${index + 1}. ${fruit.emoji} **${fruit.name}** (${fruit.totalCP} CP)`)
+            .join('\n');
+        
+        embed.addFields({
+            name: '✅ Selected Team',
+            value: selectedText,
+            inline: false  // WIDER: Full width
         });
     }
     
-    // Turn instructions with skill preview
-    if (raidState.currentPlayer === 'attacker') {
-        let instructionText = '⚔️ **Step 1:** Choose which fruit and skill to use';
-        if (selectedSkill) {
-            const [skillType, fruitIndex] = selectedSkill.split('_');
-            const fruit = attacker.team[parseInt(fruitIndex)];
-            const skillData = getSkillData(fruit.id, fruit.rarity);
-            const skillName = skillType === 'skill' && skillData ? skillData.name : 'Basic Attack';
-            
-            let effectPreview = '';
-            if (skillType === 'skill' && skillData && skillData.effect) {
-                const effectData = SkillEffectService.getEffectData(skillData.effect);
-                if (effectData) {
-                    effectPreview = ` (${effectData.name} ${effectData.icon})`;
-                }
-            }
-            
-            instructionText = `✅ **Selected:** ${fruit.name} - ${skillName}${effectPreview}\n🎯 **Step 2:** Choose your target from AI team!`;
-        }
+    // Show available fruits for current page - WIDER FORMAT
+    const startIndex = currentPage * RAID_CONFIG.FRUITS_PER_PAGE;
+    const endIndex = startIndex + RAID_CONFIG.FRUITS_PER_PAGE;
+    const pageFruits = allFruits.slice(startIndex, endIndex);
+    
+    if (pageFruits.length > 0) {
+        const availableText = pageFruits
+            .map((fruit, index) => {
+                const globalIndex = startIndex + index;
+                const isSelected = selectedFruits.some(s => s.id === fruit.id);
+                const status = isSelected ? '✅' : `${globalIndex + 1}.`;
+                return `${status} ${fruit.emoji} **${fruit.name}** (${fruit.rarity}, ${fruit.totalCP} CP)`;
+            })
+            .join('\n');
         
         embed.addFields({
-            name: '
+            name: '🍈 Available Fruits',
+            value: availableText.length > 1000 ? availableText.substring(0, 997) + '...' : availableText,
+            inline: false  // WIDER: Full width for better readability
+        });
+    }
+    
+    return embed;
+}
+
+function createFruitSelectionComponents(selectionId, allFruits, selectedFruits, currentPage) {
+    const components = [];
+    
+    // Navigation buttons
+    const navRow = new ActionRowBuilder();
+    const totalPages = Math.ceil(allFruits.length / RAID_CONFIG.FRUITS_PER_PAGE);
+    
+    if (currentPage > 0) {
+        navRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_prev_${selectionId}`)
+                .setLabel('⬅️ Previous')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+    
+    if (currentPage < totalPages - 1) {
+        navRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_next_${selectionId}`)
+                .setLabel('➡️ Next')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+    
+    if (navRow.components.length > 0) {
+        components.push(navRow);
+    }
+    
+    // Fruit selection dropdown
+    const startIndex = currentPage * RAID_CONFIG.FRUITS_PER_PAGE;
+    const endIndex = startIndex + RAID_CONFIG.FRUITS_PER_PAGE;
+    const pageFruits = allFruits.slice(startIndex, endIndex);
+    
+    if (pageFruits.length > 0 && selectedFruits.length < RAID_CONFIG.TEAM_SIZE) {
+        const options = pageFruits.map((fruit, index) => {
+            const globalIndex = startIndex + index;
+            const isSelected = selectedFruits.some(s => s.id === fruit.id);
+            
+            return {
+                label: `${fruit.name} (${fruit.totalCP} CP)`.substring(0, 100),
+                description: `${fruit.rarity} • ${fruit.type}`.substring(0, 100),
+                value: `fruit_${globalIndex}`,
+                emoji: fruit.emoji,
+                default: isSelected
+            };
+        });
+        
+        const remainingSlots = RAID_CONFIG.TEAM_SIZE - selectedFruits.length;
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`fruit_select_${selectionId}`)
+            .setPlaceholder('Select fruits for your raid team...')
+            .setMinValues(0)
+            .setMaxValues(Math.min(options.length, remainingSlots))
+            .addOptions(options);
+        
+        components.push(new ActionRowBuilder().addComponents(selectMenu));
+    }
+    
+    // Action buttons
+    const actionRow = new ActionRowBuilder();
+    
+    if (selectedFruits.length > 0) {
+        actionRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_clear_${selectionId}`)
+                .setLabel('🗑️ Clear All')
+                .setStyle(ButtonStyle.Danger)
+        );
+    }
+    
+    if (selectedFruits.length === RAID_CONFIG.TEAM_SIZE) {
+        actionRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_confirm_${selectionId}`)
+                .setLabel('⚔️ Start Raid!')
+                .setStyle(ButtonStyle.Success)
+        );
+    }
+    
+    if (actionRow.components.length > 0) {
+        components.push(actionRow);
+    }
+    
+    return components;
+}
+
+// ===== SELECTION HANDLERS =====
+
+async function handlePageNavigation(interaction, selectionId, direction) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    const totalPages = Math.ceil(selection.attackerFruits.length / RAID_CONFIG.FRUITS_PER_PAGE);
+    
+    if (direction === 'prev' && selection.currentPage > 0) {
+        selection.currentPage--;
+    } else if (direction === 'next' && selection.currentPage < totalPages - 1) {
+        selection.currentPage++;
+    }
+    
+    const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+async function handleFruitSelection(interaction, selectionId) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    const selectedValues = interaction.values;
+    
+    selectedValues.forEach(value => {
+        const fruitIndex = parseInt(value.split('_')[1]);
+        const fruit = selection.attackerFruits[fruitIndex];
+        
+        if (fruit && !selection.selectedFruits.some(s => s.id === fruit.id)) {
+            if (selection.selectedFruits.length < RAID_CONFIG.TEAM_SIZE) {
+                selection.selectedFruits.push(fruit);
+            }
+        }
+    });
+    
+    const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+async function handleClearSelection(interaction, selectionId) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    selection.selectedFruits = [];
+    
+    const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+async function handleConfirmSelection(interaction, selectionId, target) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    if (selection.selectedFruits.length !== RAID_CONFIG.TEAM_SIZE) {
+        return interaction.reply({ 
+            content: `❌ You must select exactly ${RAID_CONFIG.TEAM_SIZE} fruits!`, 
+            ephemeral: true 
+        });
+    }
+    
+    await interaction.update({
+        embeds: [new EmbedBuilder()
+            .setColor(RARITY_COLORS.epic)
+            .setTitle('⚔️ Starting Raid Battle!')
+            .setDescription('Preparing for battle... Selecting AI team and initializing combat system!')
+            .setTimestamp()],
+        components: []
+    });
+    
+    // Get defender team
+    const defenderFruits = await getDefenderStrongestFruits(target.id);
+    
+    // Start the battle
+    await startBattle(interaction, selection.attackerId, selection.targetId, selection.selectedFruits, defenderFruits);
+    
+    fruitSelections.delete(selectionId);
+}
+
+// ===== UTILITY FUNCTIONS =====
+
+function createErrorEmbed(message) {
+    return new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Raid Error')
+        .setDescription(message)
+        .setTimestamp();
+}
+
+function generateRaidId() {
+    return `raid_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
+
+function generateSelectionId() {
+    return `selection_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
