@@ -1,4 +1,4 @@
-// src/config/Config.js - FIXED CPU-Optimized Railway Configuration
+// src/config/Config.js - UPDATED: Added STARTING_BERRIES and FULL_INCOME configuration
 const path = require('path');
 const fs = require('fs');
 
@@ -108,11 +108,19 @@ class ConfigManager {
             maxSize: '10m' // Increased from 5m
         };
 
-        // GAME CONFIGURATION (unchanged)
+        // UPDATED GAME CONFIGURATION - FIXED INCOME SYSTEM
         this.config.game = {
             pullCost: parseInt(process.env.PULL_COST) || 1000,
-            baseIncome: parseInt(process.env.BASE_INCOME) || 50,
-            incomeRate: parseFloat(process.env.INCOME_RATE) || 0.1,
+            
+            // REMOVED: Old CP-based income settings
+            // baseIncome: parseInt(process.env.BASE_INCOME) || 50,
+            // incomeRate: parseFloat(process.env.INCOME_RATE) || 0.1,
+            
+            // NEW: Fruit-based income system
+            startingBerries: parseInt(process.env.STARTING_BERRIES) || 5000,    // NEW: Starting money for new users
+            fullIncome: parseInt(process.env.FULL_INCOME) || 6250,              // NEW: Full hourly income (5+ fruits)
+            
+            // Kept existing settings
             manualIncomeMultiplier: parseFloat(process.env.MANUAL_INCOME_MULTIPLIER) || 6,
             manualIncomeCooldown: parseInt(process.env.MANUAL_INCOME_COOLDOWN) || 60,
             autoIncomeInterval: parseInt(process.env.AUTO_INCOME_INTERVAL) || 10,
@@ -208,6 +216,15 @@ class ConfigManager {
             errors.push('Database URL should start with postgresql:// or postgres://');
         }
         
+        // Validate new game config values
+        if (this.config.game?.startingBerries && this.config.game.startingBerries < 0) {
+            errors.push('Starting berries must be positive');
+        }
+        
+        if (this.config.game?.fullIncome && this.config.game.fullIncome < 0) {
+            errors.push('Full income must be positive');
+        }
+        
         if (errors.length > 0) {
             throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
         }
@@ -221,6 +238,8 @@ class ConfigManager {
         console.log(`   Log Level: ${this.config.logging?.level || 'unknown'}`);
         console.log(`   Environment: ${this.environment}`);
         console.log(`   Monitoring: ${this.config.monitoring?.enabled ? 'Enabled' : 'Disabled'}`);
+        console.log(`   Starting Berries: ${this.config.game?.startingBerries || 5000}`);
+        console.log(`   Full Hourly Income: ${this.config.game?.fullIncome || 6250}`);
     }
 
     // Getters (simplified)
