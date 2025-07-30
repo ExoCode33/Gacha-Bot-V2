@@ -15,9 +15,8 @@ module.exports = {
         const userId = interaction.user.id;
         
         try {
-            // Ensure user exists and give starting berries if needed
+            // Ensure user exists (now automatically gives starting berries)
             await DatabaseManager.ensureUser(userId, interaction.user.username, interaction.guildId);
-            await EconomyService.ensureStartingBerries(userId);
             
             // Process automatic income first
             const automaticIncome = await EconomyService.processAutomaticIncome(userId);
