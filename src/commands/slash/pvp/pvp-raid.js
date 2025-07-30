@@ -39,22 +39,32 @@ const RAID_CONFIG = {
     STATUS_STACK_LIMIT: 3
 };
 
-// FIXED: Add missing skill effects
+// FIXED: Add missing skill effects with proper fruit object structure
 const SKILL_EFFECTS = {
     elemental_mastery: {
         name: "Elemental Mastery",
         description: "Complete control over elemental forces",
         duration: 3,
         type: "buff",
-        effect: (pokemon) => {
-            pokemon.stats.attack = Math.floor(pokemon.stats.attack * 1.3);
-            pokemon.stats.special_attack = Math.floor(pokemon.stats.special_attack * 1.3);
-            pokemon.elementalBoost = true;
+        effect: (fruit) => {
+            // Initialize stats if they don't exist
+            if (!fruit.stats) {
+                fruit.stats = {
+                    attack: fruit.totalCP || 1000,
+                    special_attack: fruit.totalCP || 1000,
+                    speed: fruit.totalCP || 1000
+                };
+            }
+            fruit.stats.attack = Math.floor(fruit.stats.attack * 1.3);
+            fruit.stats.special_attack = Math.floor(fruit.stats.special_attack * 1.3);
+            fruit.elementalBoost = true;
         },
-        remove: (pokemon) => {
-            pokemon.stats.attack = Math.floor(pokemon.stats.attack / 1.3);
-            pokemon.stats.special_attack = Math.floor(pokemon.stats.special_attack / 1.3);
-            pokemon.elementalBoost = false;
+        remove: (fruit) => {
+            if (fruit.stats) {
+                fruit.stats.attack = Math.floor(fruit.stats.attack / 1.3);
+                fruit.stats.special_attack = Math.floor(fruit.stats.special_attack / 1.3);
+            }
+            fruit.elementalBoost = false;
         }
     },
 
@@ -63,15 +73,25 @@ const SKILL_EFFECTS = {
         description: "Unleashes a barrage of light-speed attacks",
         duration: 2,
         type: "buff",
-        effect: (pokemon) => {
-            pokemon.stats.speed = Math.floor(pokemon.stats.speed * 2.0);
-            pokemon.stats.attack = Math.floor(pokemon.stats.attack * 1.2);
-            pokemon.multiHitChance = 0.6;
+        effect: (fruit) => {
+            // Initialize stats if they don't exist
+            if (!fruit.stats) {
+                fruit.stats = {
+                    attack: fruit.totalCP || 1000,
+                    special_attack: fruit.totalCP || 1000,
+                    speed: fruit.totalCP || 1000
+                };
+            }
+            fruit.stats.speed = Math.floor(fruit.stats.speed * 2.0);
+            fruit.stats.attack = Math.floor(fruit.stats.attack * 1.2);
+            fruit.multiHitChance = 0.6;
         },
-        remove: (pokemon) => {
-            pokemon.stats.speed = Math.floor(pokemon.stats.speed / 2.0);
-            pokemon.stats.attack = Math.floor(pokemon.stats.attack / 1.2);
-            pokemon.multiHitChance = 0;
+        remove: (fruit) => {
+            if (fruit.stats) {
+                fruit.stats.speed = Math.floor(fruit.stats.speed / 2.0);
+                fruit.stats.attack = Math.floor(fruit.stats.attack / 1.2);
+            }
+            fruit.multiHitChance = 0;
         }
     },
 
@@ -80,22 +100,42 @@ const SKILL_EFFECTS = {
         description: "Brings forth a freezing apocalypse",
         duration: 4,
         type: "field",
-        effect: (pokemon, battle) => {
+        effect: (fruit, battle) => {
             if (battle) battle.fieldEffects = battle.fieldEffects || {};
             if (battle) battle.fieldEffects.iceAge = true;
-            pokemon.stats.special_attack = Math.floor(pokemon.stats.special_attack * 1.4);
+            
+            // Initialize stats if they don't exist
+            if (!fruit.stats) {
+                fruit.stats = {
+                    attack: fruit.totalCP || 1000,
+                    special_attack: fruit.totalCP || 1000,
+                    speed: fruit.totalCP || 1000
+                };
+            }
+            fruit.stats.special_attack = Math.floor(fruit.stats.special_attack * 1.4);
+            
+            // Slow all enemies if battle context exists
             if (battle && battle.enemyTeam) {
                 battle.enemyTeam.forEach(enemy => {
-                    if (enemy.stats) {
-                        enemy.stats.speed = Math.floor(enemy.stats.speed * 0.5);
+                    if (!enemy.stats) {
+                        enemy.stats = {
+                            attack: enemy.totalCP || 1000,
+                            special_attack: enemy.totalCP || 1000,
+                            speed: enemy.totalCP || 1000
+                        };
                     }
+                    enemy.stats.speed = Math.floor(enemy.stats.speed * 0.5);
                 });
             }
         },
-        remove: (pokemon, battle) => {
+        remove: (fruit, battle) => {
             if (battle) battle.fieldEffects = battle.fieldEffects || {};
             if (battle) battle.fieldEffects.iceAge = false;
-            pokemon.stats.special_attack = Math.floor(pokemon.stats.special_attack / 1.4);
+            
+            if (fruit.stats) {
+                fruit.stats.special_attack = Math.floor(fruit.stats.special_attack / 1.4);
+            }
+            
             if (battle && battle.enemyTeam) {
                 battle.enemyTeam.forEach(enemy => {
                     if (enemy.stats) {
@@ -111,17 +151,41 @@ const SKILL_EFFECTS = {
         description: "Channels divine thunder and lightning",
         duration: 3,
         type: "buff",
-        effect: (pokemon) => {
-            pokemon.stats.special_attack = Math.floor(pokemon.stats.special_attack * 1.5);
-            pokemon.stats.speed = Math.floor(pokemon.stats.speed * 1.3);
-            pokemon.paralysisChance = 0.3;
-            pokemon.criticalHitBonus = 0.2;
+        effect: (fruit) => {
+            // Initialize stats if they don't exist
+            if (!fruit.stats) {
+                fruit.stats = {
+                    attack: fruit.totalCP || 1000,
+                    special_attack: fruit.totalCP || 1000,
+                    speed: fruit.totalCP || 1000
+                };
+            }
+            fruit.stats.special_attack = Math.floor(fruit.stats.special_attack * 1.5);
+            fruit.stats.speed = Math.floor(fruit.stats.speed * 1.3);
+            fruit.paralysisChance = 0.3;
+            fruit.criticalHitBonus = 0.2;
         },
-        remove: (pokemon) => {
-            pokemon.stats.special_attack = Math.floor(pokemon.stats.special_attack / 1.5);
-            pokemon.stats.speed = Math.floor(pokemon.stats.speed / 1.3);
-            pokemon.paralysisChance = 0;
-            pokemon.criticalHitBonus = 0;
+        remove: (fruit) => {
+            if (fruit.stats) {
+                fruit.stats.special_attack = Math.floor(fruit.stats.special_attack / 1.5);
+                fruit.stats.speed = Math.floor(fruit.stats.speed / 1.3);
+            }
+            fruit.paralysisChance = 0;
+            fruit.criticalHitBonus = 0;
+        }
+    },
+
+    // Add the missing reality_bend effect
+    reality_bend: {
+        name: "Reality Bend",
+        description: "Warps reality itself",
+        duration: 1,
+        type: "special",
+        effect: (fruit) => {
+            fruit.realityBend = true;
+        },
+        remove: (fruit) => {
+            fruit.realityBend = false;
         }
     }
 };
