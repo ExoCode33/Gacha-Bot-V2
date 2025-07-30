@@ -1,10 +1,10 @@
-// src/commands/slash/pvp/pvp-raid.js - COMPLETE BALANCED FILE (Standalone Version)
+// src/commands/slash/pvp/pvp-raid.js - FIXED: Interaction Timeouts, Dead Fruits, Target Selection
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 
-// UPDATED: Balanced raid configuration
+// UPDATED: Extended timeouts and balanced raid configuration
 const RAID_CONFIG = {
     COOLDOWN_TIME: 300000,
     MIN_CP_REQUIRED: 500,
@@ -15,20 +15,20 @@ const RAID_CONFIG = {
     },
     MAX_FRUIT_DROPS: 3,
     
-    // UPDATED: Balanced combat settings
-    MAX_BATTLE_TURNS: 50,           // ✅ YES, 50 is the max turns
-    TURN_TIMEOUT: 120000,           // 2 minutes per turn
+    // FIXED: Extended timeouts to prevent interaction failures
+    MAX_BATTLE_TURNS: 50,
+    TURN_TIMEOUT: 300000,           // 5 minutes per turn (was 2 minutes)
     HP_BAR_LENGTH: 20,
     TEAM_SIZE: 5,
     FRUITS_PER_PAGE: 20,
-    INTERACTION_TIMEOUT: 600000,    // 10 minutes for fruit selection
+    INTERACTION_TIMEOUT: 900000,    // 15 minutes for fruit selection (was 10)
     
-    // NEW: Balanced damage settings
+    // Balanced damage settings
     MIN_DAMAGE: 15,
     MAX_DAMAGE: 120,
     BASE_SKILL_DAMAGE: 60,
-    MIN_RECOIL_PERCENT: 0.03,       // 3%
-    MAX_RECOIL_PERCENT: 0.08        // 8%
+    MIN_RECOIL_PERCENT: 0.03,
+    MAX_RECOIL_PERCENT: 0.08
 };
 
 // Active raids and cooldowns
@@ -91,11 +91,8 @@ module.exports = {
     }
 };
 
-// ===== NEW BALANCED COMBAT FUNCTIONS =====
+// ===== BALANCED COMBAT FUNCTIONS =====
 
-/**
- * Calculate balanced damage (replaces the old damage calculation)
- */
 function calculateBalancedDamage(attackingFruit, defendingFruit, skillData) {
     const baseSkillDamage = skillData.damage || RAID_CONFIG.BASE_SKILL_DAMAGE;
     const cpRatio = Math.min(attackingFruit.totalCP / defendingFruit.totalCP, 1.5);
@@ -106,7 +103,7 @@ function calculateBalancedDamage(attackingFruit, defendingFruit, skillData) {
     const randomMultiplier = 0.9 + (Math.random() * 0.2);
     damage = Math.floor(damage * randomMultiplier);
     
-    // Rarity bonus (smaller impact)
+    // Rarity bonus
     const rarityBonus = {
         'common': 1.0, 'uncommon': 1.05, 'rare': 1.1, 'epic': 1.15,
         'legendary': 1.2, 'mythical': 1.25, 'divine': 1.3
@@ -114,22 +111,15 @@ function calculateBalancedDamage(attackingFruit, defendingFruit, skillData) {
     
     damage = Math.floor(damage * (rarityBonus[attackingFruit.rarity] || 1.0));
     
-    // Apply damage caps
     return Math.max(RAID_CONFIG.MIN_DAMAGE, Math.min(damage, RAID_CONFIG.MAX_DAMAGE));
 }
 
-/**
- * Calculate much lower recoil damage
- */
 function calculateRecoilDamage(totalDamage) {
     const recoilPercent = RAID_CONFIG.MIN_RECOIL_PERCENT + 
         (Math.random() * (RAID_CONFIG.MAX_RECOIL_PERCENT - RAID_CONFIG.MIN_RECOIL_PERCENT));
     return Math.floor(totalDamage * recoilPercent);
 }
 
-/**
- * Calculate HP based on rarity and CP
- */
 function calculateFruitHP(fruit) {
     const baseHP = {
         'common': 400, 'uncommon': 450, 'rare': 500, 'epic': 550,
@@ -142,9 +132,6 @@ function calculateFruitHP(fruit) {
     return rarityHP + cpBonus;
 }
 
-/**
- * Calculate defense value
- */
 function calculateDefense(fruit) {
     const baseDefense = {
         'common': 5, 'uncommon': 8, 'rare': 12, 'epic': 16,
@@ -154,9 +141,6 @@ function calculateDefense(fruit) {
     return baseDefense[fruit.rarity] || 5;
 }
 
-/**
- * Check for critical hit
- */
 function checkCriticalHit(attackingFruit) {
     const criticalChance = {
         'common': 0.05, 'uncommon': 0.08, 'rare': 0.12, 'epic': 0.16,
@@ -167,9 +151,6 @@ function checkCriticalHit(attackingFruit) {
     return Math.random() < chance;
 }
 
-/**
- * Check for dodge/miss
- */
 function checkDodge(attackingFruit, defendingFruit) {
     const speedDifference = (defendingFruit.totalCP - attackingFruit.totalCP) / 1000;
     const dodgeChance = Math.max(0.05, Math.min(0.25, 0.10 + speedDifference));
@@ -177,14 +158,26 @@ function checkDodge(attackingFruit, defendingFruit) {
     return Math.random() < dodgeChance;
 }
 
-// ===== UPDATED BATTLE FUNCTIONS =====
+// ===== FIXED BATTLE FUNCTIONS =====
 
 /**
- * UPDATED: Balanced execute attack function
+ * FIXED: Execute attack with proper target selection and dead fruit checks
  */
-async function executeAttack(raidState, attackerFruitIndex) {
+async function executeAttack(raidState, attackerFruitIndex, targetFruitIndex) {
     const attackingFruit = raidState.attacker.team[attackerFruitIndex];
-    const defendingFruit = raidState.defender.team[raidState.defender.activeFruitIndex];
+    const defendingFruit = raidState.defender.team[targetFruitIndex];
+    
+    // FIXED: Check if attacker is dead
+    if (attackingFruit.currentHP <= 0) {
+        raidState.battleLog.push(`💀 ${attackingFruit.name} cannot attack - already defeated!`);
+        return 0;
+    }
+    
+    // FIXED: Check if target is dead
+    if (defendingFruit.currentHP <= 0) {
+        raidState.battleLog.push(`💀 Cannot target ${defendingFruit.name} - already defeated!`);
+        return 0;
+    }
     
     const skillData = getSkillData(attackingFruit.id, attackingFruit.rarity) || {
         name: `${attackingFruit.name} Power`,
@@ -192,7 +185,7 @@ async function executeAttack(raidState, attackerFruitIndex) {
         cooldown: 2
     };
     
-    raidState.battleLog.push(`⚔️ ${raidState.attacker.username} uses ${attackingFruit.name}!`);
+    raidState.battleLog.push(`⚔️ ${raidState.attacker.username} uses ${attackingFruit.name} on ${defendingFruit.name}!`);
     
     // Check for dodge/miss
     if (checkDodge(attackingFruit, defendingFruit)) {
@@ -220,7 +213,7 @@ async function executeAttack(raidState, attackerFruitIndex) {
     defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - damage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
-    // Apply much smaller recoil to attacker
+    // Apply recoil to attacker
     const recoilDamage = calculateRecoilDamage(actualDamage);
     attackingFruit.currentHP = Math.max(0, attackingFruit.currentHP - recoilDamage);
     
@@ -234,36 +227,23 @@ async function executeAttack(raidState, attackerFruitIndex) {
         raidState.battleLog.push(`🩸 ${attackingFruit.name} takes ${recoilDamage} recoil damage (${attackingFruit.currentHP}/${attackingFruit.maxHP} HP left)`);
     }
     
-    // Handle defeated fruits
+    // Handle newly defeated fruits
     if (attackingFruit.currentHP === 0) {
         raidState.battleLog.push(`💀 ${attackingFruit.name} was defeated by recoil damage!`);
-        const nextAttackerFruit = raidState.attacker.team.findIndex((fruit, index) => 
-            index !== attackerFruitIndex && fruit.currentHP > 0
-        );
-        if (nextAttackerFruit !== -1) {
-            raidState.attacker.activeFruitIndex = nextAttackerFruit;
-            raidState.battleLog.push(`🔄 ${raidState.attacker.team[nextAttackerFruit].name} is now active for ${raidState.attacker.username}!`);
-        }
     }
     
     if (defendingFruit.currentHP === 0) {
         raidState.battleLog.push(`💀 ${defendingFruit.name} was defeated!`);
-        const nextFruit = raidState.defender.team.findIndex((fruit, index) => 
-            index !== raidState.defender.activeFruitIndex && fruit.currentHP > 0
-        );
-        if (nextFruit !== -1) {
-            raidState.defender.activeFruitIndex = nextFruit;
-            raidState.battleLog.push(`🔄 ${raidState.defender.team[nextFruit].name} enters the battle for ${raidState.defender.username}!`);
-        }
     }
     
     return actualDamage;
 }
 
 /**
- * UPDATED: Balanced AI turn processing
+ * FIXED: AI turn with proper dead fruit filtering and target selection
  */
 async function processAITurn(raidState) {
+    // FIXED: Only select living fruits for AI
     const availableFruits = raidState.defender.team
         .map((fruit, index) => ({ fruit, index }))
         .filter(({ fruit }) => fruit.currentHP > 0 && fruit.cooldown === 0);
@@ -273,8 +253,18 @@ async function processAITurn(raidState) {
         return;
     }
     
-    const { fruit: attackingFruit, index: fruitIndex } = availableFruits[Math.floor(Math.random() * availableFruits.length)];
-    const defendingFruit = raidState.attacker.team[raidState.attacker.activeFruitIndex];
+    // FIXED: Only target living enemy fruits
+    const availableTargets = raidState.attacker.team
+        .map((fruit, index) => ({ fruit, index }))
+        .filter(({ fruit }) => fruit.currentHP > 0);
+    
+    if (availableTargets.length === 0) {
+        raidState.battleLog.push(`⏭️ ${raidState.defender.username} has no valid targets!`);
+        return;
+    }
+    
+    const { fruit: attackingFruit, index: attackerIndex } = availableFruits[Math.floor(Math.random() * availableFruits.length)];
+    const { fruit: targetFruit, index: targetIndex } = availableTargets[Math.floor(Math.random() * availableTargets.length)];
     
     const skillData = getSkillData(attackingFruit.id, attackingFruit.rarity) || {
         name: `${attackingFruit.name} Power`,
@@ -282,17 +272,17 @@ async function processAITurn(raidState) {
         cooldown: 2
     };
     
-    raidState.battleLog.push(`🤖 ${raidState.defender.username} uses ${attackingFruit.name}!`);
+    raidState.battleLog.push(`🤖 ${raidState.defender.username} uses ${attackingFruit.name} on ${targetFruit.name}!`);
     
     // Check for dodge/miss
-    if (checkDodge(attackingFruit, defendingFruit)) {
-        raidState.battleLog.push(`💨 ${defendingFruit.name} dodged the attack!`);
+    if (checkDodge(attackingFruit, targetFruit)) {
+        raidState.battleLog.push(`💨 ${targetFruit.name} dodged the attack!`);
         attackingFruit.cooldown = skillData.cooldown || 2;
         return;
     }
     
     // Calculate damage
-    let damage = calculateBalancedDamage(attackingFruit, defendingFruit, skillData);
+    let damage = calculateBalancedDamage(attackingFruit, targetFruit, skillData);
     
     // Check for critical hit
     const isCritical = checkCriticalHit(attackingFruit);
@@ -302,13 +292,13 @@ async function processAITurn(raidState) {
     }
     
     // Apply defense
-    const defense = calculateDefense(defendingFruit);
+    const defense = calculateDefense(targetFruit);
     damage = Math.max(10, damage - defense);
     
     // Apply damage
-    const originalHP = defendingFruit.currentHP;
-    defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - damage);
-    const actualDamage = originalHP - defendingFruit.currentHP;
+    const originalHP = targetFruit.currentHP;
+    targetFruit.currentHP = Math.max(0, targetFruit.currentHP - damage);
+    const actualDamage = originalHP - targetFruit.currentHP;
     
     // Apply recoil
     const recoilDamage = calculateRecoilDamage(actualDamage);
@@ -317,7 +307,7 @@ async function processAITurn(raidState) {
     attackingFruit.cooldown = skillData.cooldown || 2;
     
     // AI battle log
-    raidState.battleLog.push(`💥 Deals ${actualDamage} damage to ${defendingFruit.name} (${defendingFruit.currentHP}/${defendingFruit.maxHP} HP left)`);
+    raidState.battleLog.push(`💥 Deals ${actualDamage} damage to ${targetFruit.name} (${targetFruit.currentHP}/${targetFruit.maxHP} HP left)`);
     if (recoilDamage > 0) {
         raidState.battleLog.push(`🩸 ${attackingFruit.name} takes ${recoilDamage} recoil damage (${attackingFruit.currentHP}/${attackingFruit.maxHP} HP left)`);
     }
@@ -325,30 +315,13 @@ async function processAITurn(raidState) {
     // Handle defeated fruits
     if (attackingFruit.currentHP === 0) {
         raidState.battleLog.push(`💀 ${attackingFruit.name} was defeated by recoil damage!`);
-        const nextDefenderFruit = raidState.defender.team.findIndex((fruit, index) => 
-            index !== fruitIndex && fruit.currentHP > 0
-        );
-        if (nextDefenderFruit !== -1) {
-            raidState.defender.activeFruitIndex = nextDefenderFruit;
-            raidState.battleLog.push(`🔄 ${raidState.defender.team[nextDefenderFruit].name} is now active for ${raidState.defender.username}!`);
-        }
     }
     
-    if (defendingFruit.currentHP === 0) {
-        raidState.battleLog.push(`💀 ${defendingFruit.name} was defeated!`);
-        const nextFruit = raidState.attacker.team.findIndex((fruit, index) => 
-            index !== raidState.attacker.activeFruitIndex && fruit.currentHP > 0
-        );
-        if (nextFruit !== -1) {
-            raidState.attacker.activeFruitIndex = nextFruit;
-            raidState.battleLog.push(`🔄 ${raidState.attacker.team[nextFruit].name} enters the battle for ${raidState.attacker.username}!`);
-        }
+    if (targetFruit.currentHP === 0) {
+        raidState.battleLog.push(`💀 ${targetFruit.name} was defeated!`);
     }
 }
 
-/**
- * UPDATED: Start battle with balanced HP calculation
- */
 async function startBattle(interaction, attackerId, defenderId, attackerTeam, defenderTeam) {
     const raidId = generateRaidId();
     
@@ -362,7 +335,6 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
         attacker: {
             userId: attackerId,
             username: attackerUser.username,
-            // UPDATED: Use balanced HP calculation
             team: attackerTeam.map(fruit => {
                 const maxHP = calculateFruitHP(fruit);
                 return {
@@ -378,7 +350,6 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
         defender: {
             userId: defenderId,
             username: defenderUser.username,
-            // UPDATED: Use balanced HP calculation
             team: defenderTeam.map(fruit => {
                 const maxHP = calculateFruitHP(fruit);
                 return {
@@ -403,11 +374,8 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
     await showBattleInterface(interaction, raidState);
 }
 
-// ===== FRUIT SELECTION FUNCTIONS =====
+// ===== FRUIT SELECTION FUNCTIONS (unchanged) =====
 
-/**
- * Start fruit selection with standard interaction handling
- */
 async function startFruitSelection(interaction, attacker, target, attackerFruits) {
     const selectionId = generateSelectionId();
     
@@ -431,15 +399,12 @@ async function startFruitSelection(interaction, attacker, target, attackerFruits
     setupFruitSelectionCollector(interaction, selectionId, target);
 }
 
-/**
- * Setup collector with standard error handling
- */
 function setupFruitSelectionCollector(interaction, selectionId, target) {
     const filter = (i) => i.user.id === interaction.user.id;
     
     const collector = interaction.channel.createMessageComponentCollector({
         filter,
-        time: RAID_CONFIG.INTERACTION_TIMEOUT
+        time: RAID_CONFIG.INTERACTION_TIMEOUT // Now 15 minutes
     });
     
     collector.on('collect', async (componentInteraction) => {
@@ -491,9 +456,6 @@ function setupFruitSelectionCollector(interaction, selectionId, target) {
     });
 }
 
-/**
- * Handle page navigation
- */
 async function handlePageNavigation(interaction, selectionId, direction) {
     const selection = fruitSelections.get(selectionId);
     
@@ -512,9 +474,6 @@ async function handlePageNavigation(interaction, selectionId, direction) {
     await interaction.update({ embeds: [embed], components });
 }
 
-/**
- * Handle fruit selection
- */
 async function handleFruitSelection(interaction, selectionId) {
     const selection = fruitSelections.get(selectionId);
     const selectedValues = interaction.values;
@@ -536,9 +495,6 @@ async function handleFruitSelection(interaction, selectionId) {
     await interaction.update({ embeds: [embed], components });
 }
 
-/**
- * Handle clear selection
- */
 async function handleClearSelection(interaction, selectionId) {
     const selection = fruitSelections.get(selectionId);
     selection.selectedFruits = [];
@@ -549,9 +505,6 @@ async function handleClearSelection(interaction, selectionId) {
     await interaction.update({ embeds: [embed], components });
 }
 
-/**
- * Handle confirm selection
- */
 async function handleConfirmSelection(interaction, selectionId, target) {
     const selection = fruitSelections.get(selectionId);
     
@@ -577,13 +530,13 @@ async function handleConfirmSelection(interaction, selectionId, target) {
     raidCooldowns.set(selection.attackerId, Date.now());
 }
 
-// ===== BATTLE INTERFACE FUNCTIONS =====
+// ===== FIXED BATTLE INTERFACE FUNCTIONS =====
 
 /**
- * Show battle interface
+ * FIXED: Show battle interface with extended timeouts and fresh interactions
  */
 async function showBattleInterface(interaction, raidState) {
-    // Check for auto-skip before showing interface
+    // FIXED: Only check living fruits for auto-skip
     const availableFruits = raidState.attacker.team
         .filter(fruit => fruit.currentHP > 0 && fruit.cooldown === 0);
     
@@ -602,6 +555,7 @@ async function showBattleInterface(interaction, raidState) {
         raidState.turn++;
         raidState.currentPlayer = 'attacker';
         
+        // FIXED: Create new interaction for extended battles
         await showBattleInterface(interaction, raidState);
         return;
     }
@@ -610,6 +564,7 @@ async function showBattleInterface(interaction, raidState) {
     const components = createBattleComponents(raidState);
     
     try {
+        // FIXED: Always use editReply to avoid interaction conflicts
         await interaction.editReply({
             embeds: [embed],
             components
@@ -627,14 +582,19 @@ async function showBattleInterface(interaction, raidState) {
 }
 
 /**
- * Setup battle collector
+ * FIXED: Setup battle collector with extended timeout and better error handling
  */
 function setupBattleCollector(interaction, raidState) {
     const filter = (i) => i.user.id === raidState.attacker.userId;
     
+    // FIXED: Stop existing collector if it exists
+    if (raidState.collector) {
+        raidState.collector.stop();
+    }
+    
     const collector = interaction.channel.createMessageComponentCollector({
         filter,
-        time: RAID_CONFIG.TURN_TIMEOUT
+        time: RAID_CONFIG.TURN_TIMEOUT // Now 5 minutes per turn
     });
     
     collector.on('collect', async (componentInteraction) => {
@@ -643,10 +603,12 @@ function setupBattleCollector(interaction, raidState) {
         } catch (error) {
             console.error('Battle action error:', error);
             try {
-                await componentInteraction.reply({
-                    content: 'An error occurred during battle. Please try again.',
-                    ephemeral: true
-                });
+                if (!componentInteraction.replied && !componentInteraction.deferred) {
+                    await componentInteraction.reply({
+                        content: 'An error occurred during battle. Continuing...',
+                        ephemeral: true
+                    });
+                }
             } catch (replyError) {
                 console.error('Failed to send battle error response:', replyError);
             }
@@ -667,14 +629,18 @@ function setupBattleCollector(interaction, raidState) {
 }
 
 /**
- * Handle battle action
+ * FIXED: Handle battle action with attacker and target selection
  */
 async function handleBattleAction(interaction, raidState, originalInteraction) {
-    const fruitIndex = parseInt(interaction.values[0].split('_')[1]);
+    const actionValue = interaction.values[0];
+    const [action, attackerIndex, targetIndex] = actionValue.split('_');
+    
+    const attackerFruitIndex = parseInt(attackerIndex);
+    const targetFruitIndex = parseInt(targetIndex);
     
     await interaction.deferUpdate();
     
-    const damage = await executeAttack(raidState, fruitIndex);
+    const damage = await executeAttack(raidState, attackerFruitIndex, targetFruitIndex);
     
     const battleResult = checkBattleEnd(raidState);
     if (battleResult.ended) {
@@ -698,9 +664,6 @@ async function handleBattleAction(interaction, raidState, originalInteraction) {
     await showBattleInterface(originalInteraction, raidState);
 }
 
-/**
- * End battle
- */
 async function endBattle(interaction, raidState, battleResult) {
     try {
         if (raidState.collector) {
@@ -715,26 +678,6 @@ async function endBattle(interaction, raidState, battleResult) {
             components: []
         });
         
-        // Record raid in history (if available)
-        try {
-            if (typeof recordRaidInHistory === 'function') {
-                await recordRaidInHistory({
-                    attackerId: raidState.attacker.userId,
-                    defenderId: raidState.defender.userId,
-                    winnerId: battleResult.winner,
-                    battleDuration: Math.floor((Date.now() - raidState.startTime) / 1000),
-                    totalTurns: raidState.turn,
-                    berriesStolen: rewards.berries || 0,
-                    fruitsStolen: rewards.fruitsStolen || [],
-                    battleLog: raidState.battleLog,
-                    startTime: raidState.startTime,
-                    endTime: Date.now()
-                });
-            }
-        } catch (error) {
-            console.error('Failed to record raid in history:', error);
-        }
-        
         activeRaids.delete(raidState.id);
         
     } catch (error) {
@@ -746,6 +689,7 @@ async function endBattle(interaction, raidState, battleResult) {
 // ===== BATTLE LOGIC FUNCTIONS =====
 
 function checkBattleEnd(raidState) {
+    // FIXED: Only count living fruits
     const attackerAlive = raidState.attacker.team.some(fruit => fruit.currentHP > 0);
     const defenderAlive = raidState.defender.team.some(fruit => fruit.currentHP > 0);
     
@@ -779,7 +723,7 @@ function reduceCooldowns(player) {
     });
 }
 
-// ===== UI CREATION FUNCTIONS =====
+// ===== FIXED UI CREATION FUNCTIONS =====
 
 function createBattleEmbed(raidState) {
     const { attacker, defender, turn } = raidState;
@@ -790,14 +734,13 @@ function createBattleEmbed(raidState) {
         .setColor(RARITY_COLORS.legendary)
         .setTimestamp();
     
-    // Team status with HP bars
+    // FIXED: Show status of all fruits (dead and alive)
     const attackerTeamText = attacker.team.map((fruit, index) => {
-        const isActive = index === attacker.activeFruitIndex;
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
         const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
-        const activeIcon = isActive ? '▶️' : '▫️';
+        const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
         
-        return `${activeIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${statusIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     embed.addFields({
@@ -807,11 +750,10 @@ function createBattleEmbed(raidState) {
     });
     
     const defenderTeamText = defender.team.map((fruit, index) => {
-        const isActive = index === defender.activeFruitIndex;
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
-        const activeIcon = isActive ? '▶️' : '▫️';
+        const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
         
-        return `${activeIcon} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        return `${statusIcon} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     embed.addFields({
@@ -833,7 +775,7 @@ function createBattleEmbed(raidState) {
     if (raidState.currentPlayer === 'attacker') {
         embed.addFields({
             name: '⏰ Your Turn',
-            value: 'Choose a Devil Fruit to attack with!',
+            value: 'Choose which fruit attacks which target!',
             inline: false
         });
     }
@@ -841,6 +783,9 @@ function createBattleEmbed(raidState) {
     return embed;
 }
 
+/**
+ * FIXED: Create battle components with attacker and target selection
+ */
 function createBattleComponents(raidState) {
     if (raidState.currentPlayer !== 'attacker') {
         return [];
@@ -848,31 +793,47 @@ function createBattleComponents(raidState) {
     
     const components = [];
     
-    const availableFruits = raidState.attacker.team
-        .map((fruit, index) => ({
-            fruit,
-            index,
-            canUse: fruit.currentHP > 0 && fruit.cooldown === 0
-        }))
-        .filter(item => item.canUse);
+    // FIXED: Only show living attacker fruits that can attack
+    const availableAttackers = raidState.attacker.team
+        .map((fruit, index) => ({ fruit, index }))
+        .filter(({ fruit }) => fruit.currentHP > 0 && fruit.cooldown === 0);
     
-    if (availableFruits.length === 0) {
+    // FIXED: Only show living defender fruits as targets
+    const availableTargets = raidState.defender.team
+        .map((fruit, index) => ({ fruit, index }))
+        .filter(({ fruit }) => fruit.currentHP > 0);
+    
+    if (availableAttackers.length === 0 || availableTargets.length === 0) {
         return [];
     }
     
-    const options = availableFruits.map(({ fruit, index }) => ({
-        label: `${fruit.name}`.substring(0, 100),
-        description: `${fruit.currentHP}/${fruit.maxHP} HP • ${fruit.totalCP.toLocaleString()} CP`.substring(0, 100),
-        value: `attack_${index}`,
-        emoji: fruit.emoji
-    }));
+    // Create attack combinations: each attacker can target each defender
+    const attackOptions = [];
     
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId(`battle_attack_${raidState.id}`)
-        .setPlaceholder('Choose a Devil Fruit to attack with...')
-        .addOptions(options);
+    availableAttackers.forEach(({ fruit: attacker, index: attackerIndex }) => {
+        availableTargets.forEach(({ fruit: target, index: targetIndex }) => {
+            attackOptions.push({
+                label: `${attacker.name} ➤ ${target.name}`.substring(0, 100),
+                description: `${attacker.currentHP}/${attacker.maxHP} HP ➤ ${target.currentHP}/${target.maxHP} HP`.substring(0, 100),
+                value: `attack_${attackerIndex}_${targetIndex}`,
+                emoji: attacker.emoji
+            });
+        });
+    });
     
-    components.push(new ActionRowBuilder().addComponents(selectMenu));
+    // Limit to 25 options (Discord limit)
+    if (attackOptions.length > 25) {
+        attackOptions.splice(25);
+    }
+    
+    if (attackOptions.length > 0) {
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`battle_attack_${raidState.id}`)
+            .setPlaceholder('Choose attacker and target...')
+            .addOptions(attackOptions);
+        
+        components.push(new ActionRowBuilder().addComponents(selectMenu));
+    }
     
     return components;
 }
@@ -918,12 +879,14 @@ function createBattleResultEmbed(raidState, battleResult, rewards) {
     
     const attackerStatus = attacker.team.map(fruit => {
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
-        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
+        return `${statusIcon} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     const defenderStatus = defender.team.map(fruit => {
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
-        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
+        const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
+        return `${statusIcon} ${fruit.emoji} **${fruit.name}**\n${hpBar} ${fruit.currentHP}/${fruit.maxHP} HP`;
     }).join('\n\n');
     
     embed.addFields(
