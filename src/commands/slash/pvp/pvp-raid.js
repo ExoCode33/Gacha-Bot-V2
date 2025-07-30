@@ -185,24 +185,30 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
             damage
         );
         
-        if (effectResults && effectResults.messages.length > 0) {
-            effectResults.messages.forEach(msg => raidState.battleLog.push(msg));
-        }
-        
-        // Apply damage modifiers from effects
-        if (effectResults.damageMultiplier) {
-            damage = Math.floor(damage * effectResults.damageMultiplier);
-        }
-        
-        if (effectResults.armorPierce) {
-            // Armor piercing bypasses some defense
-            const bypassAmount = Math.floor(damage * effectResults.armorPierce);
-            damage += bypassAmount;
-            raidState.battleLog.push(`🗡️ Armor piercing adds ${bypassAmount} damage!`);
-        }
-        
-        if (effectResults.undodgeable) {
-            raidState.battleLog.push(`⚡ This attack cannot be dodged!`);
+        // FIXED: Null check for effectResults
+        if (effectResults) {
+            if (effectResults.messages && effectResults.messages.length > 0) {
+                effectResults.messages.forEach(msg => raidState.battleLog.push(msg));
+            }
+            
+            // Apply damage modifiers from effects
+            if (effectResults.damageMultiplier) {
+                damage = Math.floor(damage * effectResults.damageMultiplier);
+            }
+            
+            if (effectResults.armorPierce) {
+                // Armor piercing bypasses some defense
+                const bypassAmount = Math.floor(damage * effectResults.armorPierce);
+                damage += bypassAmount;
+                raidState.battleLog.push(`🗡️ Armor piercing adds ${bypassAmount} damage!`);
+            }
+            
+            if (effectResults.undodgeable) {
+                raidState.battleLog.push(`⚡ This attack cannot be dodged!`);
+            }
+        } else {
+            // Fallback for unknown effects
+            raidState.battleLog.push(`✨ ${skillName} activates with mysterious power!`);
         }
     }
     
@@ -625,7 +631,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
     
     const embed = new EmbedBuilder()
         .setTitle('⚔️ Enhanced Devil Fruit Battle!')
-        .setDescription(`**Turn ${turn}** - ${attacker.username} (YOU) vs ${defender.username} (AI)\n\n═══════════════════════════════════════════════════════`)
+        .setDescription(`**Turn ${turn}** - ${attacker.username} (YOU) vs ${defender.username} (AI)\n\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬`)
         .setColor(RARITY_COLORS.legendary)
         .setTimestamp();
     
@@ -658,7 +664,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
     // Separator line for better visual separation
     embed.addFields({
         name: '\u200B', // Zero-width space for spacing
-        value: '═══════════════════════════════════════════════════════',
+        value: '▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬',
         inline: false
     });
     
@@ -1013,7 +1019,7 @@ function createEnhancedBattleResultEmbed(raidState, battleResult, rewards) {
     
     const embed = new EmbedBuilder()
         .setTitle('🏆 Enhanced Battle Complete!')
-        .setDescription(`**${winnerName}** defeats **${loserName}** with devil fruit mastery!\n\n═══════════════════════════════════════════════════════`)
+        .setDescription(`**${winnerName}** defeats **${loserName}** with devil fruit mastery!\n\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬`)
         .setColor(winner === attacker.userId ? 0x00FF00 : 0xFF0000)
         .setTimestamp();
     
@@ -1554,7 +1560,7 @@ function createFruitSelectionEmbed(allFruits, selectedFruits, currentPage) {
     const embed = new EmbedBuilder()
         .setColor(RARITY_COLORS.legendary)
         .setTitle(`🍈 Select Your Raid Team (${selectedCount}/${RAID_CONFIG.TEAM_SIZE})`)
-        .setDescription(`Choose ${remainingSlots} more Devil Fruit${remainingSlots !== 1 ? 's' : ''} for your raid team!\n\n═══════════════════════════════════════════════════════`)
+        .setDescription(`Choose ${remainingSlots} more Devil Fruit${remainingSlots !== 1 ? 's' : ''} for your raid team!\n\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬`)
         .setFooter({ text: `Page ${currentPage + 1} • Use buttons to navigate and select` })
         .setTimestamp();
     
