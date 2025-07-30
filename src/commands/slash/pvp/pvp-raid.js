@@ -1,10 +1,8 @@
-// src/commands/slash/pvp/pvp-raid.js - COMPLETE BALANCED FILE
+// src/commands/slash/pvp/pvp-raid.js - COMPLETE BALANCED FILE (Standalone Version)
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
-const { recordRaidInHistory } = require('./pvp-raid-history');
-const InteractionHandler = require('../../../utils/InteractionHandler');
 
 // UPDATED: Balanced raid configuration
 const RAID_CONFIG = {
@@ -58,21 +56,19 @@ module.exports = {
         try {
             const validation = await validateRaid(attacker.id, target);
             if (!validation.valid) {
-                return InteractionHandler.safeReply(interaction, {
+                return interaction.reply({
                     embeds: [createErrorEmbed(validation.reason)],
                     ephemeral: true
                 });
             }
             
-            // Use safe defer
-            await InteractionHandler.safeDefer(interaction);
+            await interaction.deferReply();
             
             const attackerFruits = await getUserFruitsForSelection(attacker.id);
             
             if (attackerFruits.length < RAID_CONFIG.TEAM_SIZE) {
-                return InteractionHandler.safeReply(interaction, {
-                    embeds: [createErrorEmbed(`You need at least ${RAID_CONFIG.TEAM_SIZE} Devil Fruits to raid!`)],
-                    ephemeral: true
+                return interaction.editReply({
+                    embeds: [createErrorEmbed(`You need at least ${RAID_CONFIG.TEAM_SIZE} Devil Fruits to raid!`)]
                 });
             }
             
@@ -81,10 +77,16 @@ module.exports = {
         } catch (error) {
             interaction.client.logger.error('PvP Raid error:', error);
             
-            await InteractionHandler.safeReply(interaction, {
+            const errorResponse = {
                 embeds: [createErrorEmbed('An error occurred during the raid!')],
                 ephemeral: true
-            });
+            };
+            
+            if (interaction.deferred) {
+                await interaction.editReply(errorResponse);
+            } else {
+                await interaction.reply(errorResponse);
+            }
         }
     }
 };
@@ -404,7 +406,7 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
 // ===== FRUIT SELECTION FUNCTIONS =====
 
 /**
- * Start fruit selection with improved interaction handling
+ * Start fruit selection with standard interaction handling
  */
 async function startFruitSelection(interaction, attacker, target, attackerFruits) {
     const selectionId = generateSelectionId();
@@ -421,7 +423,7 @@ async function startFruitSelection(interaction, attacker, target, attackerFruits
     const embed = createFruitSelectionEmbed(attackerFruits, [], 0);
     const components = createFruitSelectionComponents(selectionId, attackerFruits, [], 0);
     
-    await InteractionHandler.safeReply(interaction, {
+    await interaction.editReply({
         embeds: [embed],
         components
     });
@@ -430,49 +432,56 @@ async function startFruitSelection(interaction, attacker, target, attackerFruits
 }
 
 /**
- * Setup collector with improved error handling
+ * Setup collector with standard error handling
  */
 function setupFruitSelectionCollector(interaction, selectionId, target) {
-    const filter = (i) => {
-        if (i.user.id !== interaction.user.id) return false;
-        return InteractionHandler.isInteractionValid(i);
-    };
+    const filter = (i) => i.user.id === interaction.user.id;
     
-    const collector = InteractionHandler.createSafeCollector(
-        interaction.channel, 
-        {
-            filter,
-            time: RAID_CONFIG.INTERACTION_TIMEOUT
-        }
-    );
+    const collector = interaction.channel.createMessageComponentCollector({
+        filter,
+        time: RAID_CONFIG.INTERACTION_TIMEOUT
+    });
     
     collector.on('collect', async (componentInteraction) => {
-        await InteractionHandler.handleComponentInteraction(componentInteraction, async (compInt) => {
+        try {
             const selection = fruitSelections.get(selectionId);
             if (!selection) {
-                throw new Error('Selection session expired!');
+                return componentInteraction.reply({
+                    content: 'Selection session expired!',
+                    ephemeral: true
+                });
             }
             
-            const customId = compInt.customId;
+            const customId = componentInteraction.customId;
             
             if (customId.startsWith('fruit_prev_')) {
-                await handlePageNavigation(compInt, selectionId, 'prev');
+                await handlePageNavigation(componentInteraction, selectionId, 'prev');
             } else if (customId.startsWith('fruit_next_')) {
-                await handlePageNavigation(compInt, selectionId, 'next');
+                await handlePageNavigation(componentInteraction, selectionId, 'next');
             } else if (customId.startsWith('fruit_select_')) {
-                await handleFruitSelection(compInt, selectionId);
+                await handleFruitSelection(componentInteraction, selectionId);
             } else if (customId.startsWith('fruit_clear_')) {
-                await handleClearSelection(compInt, selectionId);
+                await handleClearSelection(componentInteraction, selectionId);
             } else if (customId.startsWith('fruit_confirm_')) {
-                await handleConfirmSelection(compInt, selectionId, target);
+                await handleConfirmSelection(componentInteraction, selectionId, target);
                 collector.stop('confirmed');
             }
-        });
+        } catch (error) {
+            console.error('Fruit selection error:', error);
+            try {
+                await componentInteraction.reply({
+                    content: 'An error occurred. Please try again.',
+                    ephemeral: true
+                });
+            } catch (replyError) {
+                console.error('Failed to send error response:', replyError);
+            }
+        }
     });
     
     collector.on('end', (collected, reason) => {
         if (reason === 'time') {
-            InteractionHandler.safeReply(interaction, {
+            interaction.followUp({
                 embeds: [createErrorEmbed('Fruit selection timed out!')],
                 ephemeral: true
             }).catch(() => {});
@@ -483,7 +492,7 @@ function setupFruitSelectionCollector(interaction, selectionId, target) {
 }
 
 /**
- * Handle page navigation with safe interaction handling
+ * Handle page navigation
  */
 async function handlePageNavigation(interaction, selectionId, direction) {
     const selection = fruitSelections.get(selectionId);
@@ -500,11 +509,11 @@ async function handlePageNavigation(interaction, selectionId, direction) {
     const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
     const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
     
-    await InteractionHandler.safeUpdate(interaction, { embeds: [embed], components });
+    await interaction.update({ embeds: [embed], components });
 }
 
 /**
- * Handle fruit selection with safe interaction handling
+ * Handle fruit selection
  */
 async function handleFruitSelection(interaction, selectionId) {
     const selection = fruitSelections.get(selectionId);
@@ -524,11 +533,11 @@ async function handleFruitSelection(interaction, selectionId) {
     const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
     const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
     
-    await InteractionHandler.safeUpdate(interaction, { embeds: [embed], components });
+    await interaction.update({ embeds: [embed], components });
 }
 
 /**
- * Handle clear selection with safe interaction handling
+ * Handle clear selection
  */
 async function handleClearSelection(interaction, selectionId) {
     const selection = fruitSelections.get(selectionId);
@@ -537,20 +546,23 @@ async function handleClearSelection(interaction, selectionId) {
     const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
     const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
     
-    await InteractionHandler.safeUpdate(interaction, { embeds: [embed], components });
+    await interaction.update({ embeds: [embed], components });
 }
 
 /**
- * Handle confirm selection with safe interaction handling
+ * Handle confirm selection
  */
 async function handleConfirmSelection(interaction, selectionId, target) {
     const selection = fruitSelections.get(selectionId);
     
     if (selection.selectedFruits.length !== RAID_CONFIG.TEAM_SIZE) {
-        throw new Error(`You must select exactly ${RAID_CONFIG.TEAM_SIZE} fruits!`);
+        return interaction.reply({
+            content: `You must select exactly ${RAID_CONFIG.TEAM_SIZE} fruits!`,
+            ephemeral: true
+        });
     }
     
-    await InteractionHandler.safeUpdate(interaction, {
+    await interaction.update({
         embeds: [new EmbedBuilder()
             .setTitle('⚔️ Preparing Battle...')
             .setDescription('Getting defender team and starting combat!')
@@ -568,7 +580,7 @@ async function handleConfirmSelection(interaction, selectionId, target) {
 // ===== BATTLE INTERFACE FUNCTIONS =====
 
 /**
- * Show battle interface with safe interaction handling
+ * Show battle interface
  */
 async function showBattleInterface(interaction, raidState) {
     // Check for auto-skip before showing interface
@@ -597,14 +609,15 @@ async function showBattleInterface(interaction, raidState) {
     const embed = createBattleEmbed(raidState);
     const components = createBattleComponents(raidState);
     
-    const success = await InteractionHandler.safeReply(interaction, {
-        embeds: [embed],
-        components
-    });
-    
-    if (success) {
+    try {
+        await interaction.editReply({
+            embeds: [embed],
+            components
+        });
+        
         setupBattleCollector(interaction, raidState);
-    } else {
+    } catch (error) {
+        console.error('Failed to show battle interface:', error);
         await endBattle(interaction, raidState, { 
             ended: true, 
             winner: raidState.defender.userId, 
@@ -614,26 +627,30 @@ async function showBattleInterface(interaction, raidState) {
 }
 
 /**
- * Setup battle collector with improved error handling
+ * Setup battle collector
  */
 function setupBattleCollector(interaction, raidState) {
-    const filter = (i) => {
-        if (i.user.id !== raidState.attacker.userId) return false;
-        return InteractionHandler.isInteractionValid(i);
-    };
+    const filter = (i) => i.user.id === raidState.attacker.userId;
     
-    const collector = InteractionHandler.createSafeCollector(
-        interaction.channel,
-        {
-            filter,
-            time: RAID_CONFIG.TURN_TIMEOUT
-        }
-    );
+    const collector = interaction.channel.createMessageComponentCollector({
+        filter,
+        time: RAID_CONFIG.TURN_TIMEOUT
+    });
     
     collector.on('collect', async (componentInteraction) => {
-        await InteractionHandler.handleComponentInteraction(componentInteraction, async (compInt) => {
-            await handleBattleAction(compInt, raidState, interaction);
-        });
+        try {
+            await handleBattleAction(componentInteraction, raidState, interaction);
+        } catch (error) {
+            console.error('Battle action error:', error);
+            try {
+                await componentInteraction.reply({
+                    content: 'An error occurred during battle. Please try again.',
+                    ephemeral: true
+                });
+            } catch (replyError) {
+                console.error('Failed to send battle error response:', replyError);
+            }
+        }
     });
     
     collector.on('end', async (collected, reason) => {
@@ -650,16 +667,14 @@ function setupBattleCollector(interaction, raidState) {
 }
 
 /**
- * Handle battle action with safe interaction handling
+ * Handle battle action
  */
 async function handleBattleAction(interaction, raidState, originalInteraction) {
     const fruitIndex = parseInt(interaction.values[0].split('_')[1]);
-    const attackingFruit = raidState.attacker.team[fruitIndex];
     
-    await InteractionHandler.safeDefer(interaction);
+    await interaction.deferUpdate();
     
     const damage = await executeAttack(raidState, fruitIndex);
-    raidState.battleLog.push(`⚔️ ${attackingFruit.name} attacks for ${damage} damage!`);
     
     const battleResult = checkBattleEnd(raidState);
     if (battleResult.ended) {
@@ -684,7 +699,7 @@ async function handleBattleAction(interaction, raidState, originalInteraction) {
 }
 
 /**
- * End battle with safe interaction handling
+ * End battle
  */
 async function endBattle(interaction, raidState, battleResult) {
     try {
@@ -695,24 +710,27 @@ async function endBattle(interaction, raidState, battleResult) {
         const rewards = await calculateRewards(raidState, battleResult.winner);
         const resultEmbed = createBattleResultEmbed(raidState, battleResult, rewards);
         
-        await InteractionHandler.safeReply(interaction, {
+        await interaction.editReply({
             embeds: [resultEmbed],
             components: []
         });
         
+        // Record raid in history (if available)
         try {
-            await recordRaidInHistory({
-                attackerId: raidState.attacker.userId,
-                defenderId: raidState.defender.userId,
-                winnerId: battleResult.winner,
-                battleDuration: Math.floor((Date.now() - raidState.startTime) / 1000),
-                totalTurns: raidState.turn,
-                berriesStolen: rewards.berries || 0,
-                fruitsStolen: rewards.fruitsStolen || [],
-                battleLog: raidState.battleLog,
-                startTime: raidState.startTime,
-                endTime: Date.now()
-            });
+            if (typeof recordRaidInHistory === 'function') {
+                await recordRaidInHistory({
+                    attackerId: raidState.attacker.userId,
+                    defenderId: raidState.defender.userId,
+                    winnerId: battleResult.winner,
+                    battleDuration: Math.floor((Date.now() - raidState.startTime) / 1000),
+                    totalTurns: raidState.turn,
+                    berriesStolen: rewards.berries || 0,
+                    fruitsStolen: rewards.fruitsStolen || [],
+                    battleLog: raidState.battleLog,
+                    startTime: raidState.startTime,
+                    endTime: Date.now()
+                });
+            }
         } catch (error) {
             console.error('Failed to record raid in history:', error);
         }
