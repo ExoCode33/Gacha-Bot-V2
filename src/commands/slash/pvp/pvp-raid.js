@@ -178,15 +178,11 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
         raidState.battleLog.push(`💥 Critical hit!`);
     }
     
-    // FIXED: Apply skill effects BEFORE damage calculation
+    // FIXED: Apply skill effects with proper DOT and status effect implementation
     let effectResults = null;
     if (skillType === 'skill' && skillData.effect) {
-        effectResults = SkillEffectService.applySkillEffect(
-            attackingFruit, 
-            defendingFruit, 
-            skillData.effect, 
-            damage
-        );
+        // Apply the skill effect using our enhanced system
+        effectResults = applyEnhancedSkillEffect(attackingFruit, defendingFruit, skillData, damage);
         
         if (effectResults && effectResults.messages && effectResults.messages.length > 0) {
             effectResults.messages.forEach(msg => raidState.battleLog.push(msg));
@@ -339,10 +335,10 @@ function processAllStatusEffects(raidState) {
 }
 
 /**
- * FIXED: Process individual fruit status effects with proper DOT
+ * FIXED: Process individual fruit status effects with proper DOT damage display
  */
 function processStatusEffects(fruit, battleLog) {
-    if (!fruit.statusEffects) return;
+    if (!fruit.statusEffects || fruit.statusEffects.length === 0) return;
 
     fruit.statusEffects = fruit.statusEffects.filter(effect => {
         let shouldKeepEffect = true;
@@ -353,10 +349,15 @@ function processStatusEffects(fruit, battleLog) {
                 // FIXED: Proper DOT damage calculation and display
                 const dotDamage = effect.damage || Math.floor(fruit.maxHP * 0.1);
                 const actualDotDamage = Math.min(fruit.currentHP, dotDamage);
-                fruit.currentHP = Math.max(0, fruit.currentHP - actualDotDamage);
                 
                 if (actualDotDamage > 0) {
-                    battleLog.push(`${effect.icon || '☠️'} ${fruit.name} takes ${actualDotDamage} damage from ${effect.name} (${fruit.currentHP}/${fruit.maxHP} HP left)`);
+                    fruit.currentHP = Math.max(0, fruit.currentHP - actualDotDamage);
+                    battleLog.push(`${effect.icon || '☠️'} DOT: ${fruit.name} takes ${actualDotDamage} damage from ${effect.name} (${fruit.currentHP}/${fruit.maxHP} HP remaining)`);
+                    
+                    // Check if fruit died from DOT
+                    if (fruit.currentHP === 0) {
+                        battleLog.push(`💀 ${fruit.name} was defeated by ${effect.name}!`);
+                    }
                 }
                 break;
                 
@@ -364,20 +365,18 @@ function processStatusEffects(fruit, battleLog) {
                 // Healing over time
                 const healAmount = effect.value || Math.floor(fruit.maxHP * 0.1);
                 const actualHeal = Math.min(healAmount, fruit.maxHP - fruit.currentHP);
-                fruit.currentHP = Math.min(fruit.maxHP, fruit.currentHP + actualHeal);
                 
                 if (actualHeal > 0) {
-                    battleLog.push(`${effect.icon || '💚'} ${fruit.name} recovers ${actualHeal} HP from ${effect.name} (${fruit.currentHP}/${fruit.maxHP} HP left)`);
+                    fruit.currentHP = Math.min(fruit.maxHP, fruit.currentHP + actualHeal);
+                    battleLog.push(`${effect.icon || '💚'} HEAL: ${fruit.name} recovers ${actualHeal} HP from ${effect.name} (${fruit.currentHP}/${fruit.maxHP} HP)`);
                 }
                 break;
                 
             case 'buff':
             case 'debuff':
-                // These just exist and modify stats when calculated
-                break;
-                
+            case 'defense':
             case 'disable':
-                // These prevent actions
+                // These just exist and modify stats when calculated
                 break;
         }
         
@@ -387,19 +386,23 @@ function processStatusEffects(fruit, battleLog) {
             
             if (effect.duration === 0) {
                 // Effect expired
-                battleLog.push(`⏰ ${effect.name} expired on ${fruit.name}`);
-                
-                // Remove buff/debuff effects
-                if (effect.type === 'buff' || effect.type === 'debuff') {
-                    removeBattleEffect(fruit, effect);
-                }
-                
+                battleLog.push(`⏰ STATUS: ${effect.name} expired on ${fruit.name}`);
                 shouldKeepEffect = false;
             }
         }
         
         return shouldKeepEffect;
     });
+}
+
+function countStatusEffectsUsed(battleLog) {
+    return battleLog.filter(log => 
+        log.includes('🔥') || log.includes('☠️') || log.includes('❄️') || 
+        log.includes('⚡') || log.includes('🌊') || log.includes('💥') ||
+        log.includes('🛡️') || log.includes('💚') || log.includes('⭐') ||
+        log.includes('Effects:') || log.includes('damage from') ||
+        log.includes('DOT:') || log.includes('HEAL:') || log.includes('STATUS:')
+    ).length;
 }
 
 /**
@@ -543,12 +546,14 @@ function decideAISkillUsage(attackingFruit, targetFruit, skillData, raidState) {
 }
 
 /**
- * ENHANCED: Show battle interface with proper status effects display
+ * ENHANCED: Show battle interface with proper status effects display and processing
  */
 async function showBattleInterface(interaction, raidState) {
-    // Process status effects at start of turn
+    // CRITICAL: Process status effects FIRST at start of each turn
+    raidState.battleLog.push(`\n⏰ === TURN ${raidState.turn} START ===`);
     processAllStatusEffects(raidState);
     
+    // Check if battle ended due to DOT damage
     const battleResult = checkBattleEnd(raidState);
     if (battleResult.ended) {
         await endBattle(interaction, raidState, battleResult);
@@ -561,6 +566,9 @@ async function showBattleInterface(interaction, raidState) {
     if (availableFruits.length === 0) {
         raidState.battleLog.push(`⏭️ ${raidState.attacker.username} has no available fruits - turn skipped!`);
         await processAITurn(raidState);
+        
+        // Process status effects after AI turn too
+        processAllStatusEffects(raidState);
         
         const battleResult2 = checkBattleEnd(raidState);
         if (battleResult2.ended) {
@@ -1210,13 +1218,332 @@ function removeBattleEffect(fruit, effect) {
     // This is where you'd remove temporary stat changes
 }
 
-function countStatusEffectsUsed(battleLog) {
-    return battleLog.filter(log => 
-        log.includes('🔥') || log.includes('☠️') || log.includes('❄️') || 
-        log.includes('⚡') || log.includes('🌊') || log.includes('💥') ||
-        log.includes('🛡️') || log.includes('💚') || log.includes('⭐') ||
-        log.includes('Effects:') || log.includes('damage from')
-    ).length;
+/**
+ * ENHANCED: Apply skill effects with proper DOT and status implementation
+ */
+function applyEnhancedSkillEffect(attacker, defender, skillData, skillDamage) {
+    const result = {
+        effectName: skillData.effect,
+        messages: [],
+        damageMultiplier: null,
+        armorPierce: null,
+        undodgeable: false
+    };
+
+    // Map skill effects to actual status effects
+    const effectMapping = {
+        // Mythical and Divine tier effects
+        'lightning_god': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Paralyzed',
+                duration: 2,
+                effect: 'speed',
+                modifier: -0.5,
+                icon: '⚡'
+            });
+            addStatusEffect(attacker, {
+                type: 'buff',
+                name: 'Lightning Speed',
+                duration: 3,
+                effect: 'speed',
+                modifier: 0.3,
+                icon: '⚡'
+            });
+            result.messages.push(`⚡ ${defender.name} is paralyzed by divine lightning!`);
+            result.messages.push(`⚡ ${attacker.name} gains lightning speed!`);
+            result.damageMultiplier = 1.5;
+        },
+        
+        'ice_age': () => {
+            addStatusEffect(defender, {
+                type: 'disable',
+                name: 'Frozen',
+                duration: 2,
+                icon: '❄️'
+            });
+            // Apply area freeze to nearby enemies
+            result.messages.push(`❄️ ${defender.name} is frozen solid!`);
+            result.messages.push(`🧊 Ice Age brings freezing cold to the battlefield!`);
+            result.damageMultiplier = 1.4;
+        },
+        
+        'light_speed_barrage': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Blinded',
+                duration: 2,
+                effect: 'accuracy',
+                modifier: -0.6,
+                icon: '💫'
+            });
+            result.messages.push(`💫 ${defender.name} is blinded by intense light!`);
+            result.undodgeable = true;
+            result.damageMultiplier = 1.3;
+        },
+        
+        'molten_justice': () => {
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Magma Burn',
+                duration: 4,
+                damage: Math.floor(skillDamage * 0.25),
+                icon: '🌋'
+            });
+            result.messages.push(`🌋 ${defender.name} suffers from molten magma burns!`);
+            result.armorPierce = 0.7;
+        },
+        
+        'soul_manipulation': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Soul Drained',
+                duration: 3,
+                effect: 'damage',
+                modifier: -0.4,
+                icon: '👻'
+            });
+            addStatusEffect(attacker, {
+                type: 'buff',
+                name: 'Soul Power',
+                duration: 3,
+                effect: 'damage',
+                modifier: 0.3,
+                icon: '👻'
+            });
+            result.messages.push(`👻 ${defender.name}'s soul is being drained!`);
+            result.messages.push(`👻 ${attacker.name} absorbs soul energy!`);
+        },
+        
+        'gravity_mastery': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Gravity Crushed',
+                duration: 3,
+                effect: 'speed',
+                modifier: -0.6,
+                icon: '🌌'
+            });
+            result.messages.push(`🌌 ${defender.name} is crushed by intense gravity!`);
+            result.damageMultiplier = 1.6;
+        },
+        
+        'flame_emperor': () => {
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Emperor Flames',
+                duration: 3,
+                damage: Math.floor(skillDamage * 0.3),
+                icon: '🔥'
+            });
+            addStatusEffect(attacker, {
+                type: 'buff',
+                name: 'Fire Immunity',
+                duration: 5,
+                effect: 'immunity',
+                value: 'fire',
+                icon: '🔥'
+            });
+            result.messages.push(`🔥 ${defender.name} burns with revolutionary flames!`);
+            result.messages.push(`🔥 ${attacker.name} becomes immune to fire!`);
+        },
+        
+        'forest_god': () => {
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Life Drain',
+                duration: 4,
+                damage: Math.floor(skillDamage * 0.2),
+                icon: '🌿'
+            });
+            const healAmount = Math.floor(skillDamage * 0.2);
+            attacker.currentHP = Math.min(attacker.maxHP, attacker.currentHP + healAmount);
+            result.messages.push(`🌿 ${defender.name}'s life force is being drained!`);
+            result.messages.push(`🌿 ${attacker.name} absorbs ${healAmount} HP from nature!`);
+        },
+        
+        'heavenly_strings': () => {
+            addStatusEffect(defender, {
+                type: 'disable',
+                name: 'String Puppet',
+                duration: 2,
+                icon: '🧵'
+            });
+            result.messages.push(`🧵 ${defender.name} is controlled like a puppet!`);
+            result.damageMultiplier = 1.3;
+        },
+        
+        'phoenix_rebirth': () => {
+            addStatusEffect(attacker, {
+                type: 'heal',
+                name: 'Phoenix Regeneration',
+                duration: 4,
+                value: Math.floor(attacker.maxHP * 0.15),
+                icon: '🔥💙'
+            });
+            const immediateHeal = Math.floor(attacker.maxHP * 0.3);
+            attacker.currentHP = Math.min(attacker.maxHP, attacker.currentHP + immediateHeal);
+            result.messages.push(`🔥💙 ${attacker.name} regenerates with phoenix flames!`);
+            result.messages.push(`💚 ${attacker.name} heals ${immediateHeal} HP immediately!`);
+        },
+        
+        'weapon_fusion': () => {
+            addStatusEffect(attacker, {
+                type: 'buff',
+                name: 'Mecha Enhancement',
+                duration: 4,
+                effect: 'damage',
+                modifier: 0.5,
+                icon: '🤖'
+            });
+            result.messages.push(`🤖 ${attacker.name} combines into a mechanical monster!`);
+            result.damageMultiplier = 1.4;
+        },
+        
+        'song_reality': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Trapped in Song',
+                duration: 3,
+                effect: 'damage',
+                modifier: -0.5,
+                icon: '🎵'
+            });
+            result.messages.push(`🎵 ${defender.name} is trapped in a world of song!`);
+        },
+        
+        // Legendary tier effects
+        'paw_repulsion': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Repelled',
+                duration: 2,
+                effect: 'speed',
+                modifier: -0.4,
+                icon: '🐾'
+            });
+            result.messages.push(`🐾 ${defender.name} is sent flying by paw repulsion!`);
+            result.damageMultiplier = 1.3;
+        },
+        
+        'spatial_surgery': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Internal Damage',
+                duration: 2,
+                effect: 'damage',
+                modifier: -0.3,
+                icon: '🔬'
+            });
+            result.messages.push(`🔬 ${defender.name} suffers internal organ damage!`);
+            result.armorPierce = 0.8;
+        },
+        
+        'desert_king': () => {
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Dehydration',
+                duration: 3,
+                damage: Math.floor(skillDamage * 0.2),
+                icon: '🏜️'
+            });
+            result.messages.push(`🏜️ ${defender.name} is being dehydrated by the desert!`);
+        },
+        
+        'poison_hell': () => {
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Deadly Poison',
+                duration: 4,
+                damage: Math.floor(skillDamage * 0.3),
+                icon: '☠️'
+            });
+            result.messages.push(`☠️ ${defender.name} is infected with deadly poison!`);
+        },
+        
+        'float_mastery': () => {
+            addStatusEffect(attacker, {
+                type: 'buff',
+                name: 'Float Advantage',
+                duration: 3,
+                effect: 'damage',
+                modifier: 0.3,
+                icon: '🌪️'
+            });
+            result.messages.push(`🌪️ ${attacker.name} gains aerial advantage!`);
+        },
+        
+        'absolute_barrier': () => {
+            addStatusEffect(attacker, {
+                type: 'defense',
+                name: 'Unbreakable Barrier',
+                duration: 2,
+                effect: 'damage_reduction',
+                value: 0.8,
+                icon: '🛡️'
+            });
+            result.messages.push(`🛡️ ${attacker.name} creates an unbreakable barrier!`);
+        },
+        
+        'magnetic_force': () => {
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Metal Control',
+                duration: 2,
+                effect: 'accuracy',
+                modifier: -0.4,
+                icon: '🧲'
+            });
+            result.messages.push(`🧲 ${defender.name}'s metal equipment is being controlled!`);
+        },
+        
+        // Add more effect mappings as needed...
+        
+        // Default fallback for unmapped effects
+        'default': () => {
+            // Apply a basic DOT effect for any unmapped skill
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Devil Fruit Effect',
+                duration: 2,
+                damage: Math.floor(skillDamage * 0.15),
+                icon: '🍈'
+            });
+            result.messages.push(`🍈 ${defender.name} is affected by a devil fruit power!`);
+        }
+    };
+
+    // Apply the effect
+    const effectFunction = effectMapping[skillData.effect] || effectMapping['default'];
+    effectFunction();
+
+    return result;
+}
+
+/**
+ * Add status effect to fruit
+ */
+function addStatusEffect(fruit, effect) {
+    if (!fruit.statusEffects) {
+        fruit.statusEffects = [];
+    }
+
+    // Check if effect already exists
+    const existingEffect = fruit.statusEffects.find(e => e.name === effect.name);
+    
+    if (existingEffect) {
+        // Refresh duration or stack if stackable
+        existingEffect.duration = Math.max(existingEffect.duration, effect.duration);
+        if (effect.damage && existingEffect.damage) {
+            existingEffect.damage = Math.max(existingEffect.damage, effect.damage);
+        }
+    } else {
+        // Add new effect
+        fruit.statusEffects.push({
+            ...effect,
+            stacks: 1
+        });
+    }
 }
 
 function calculateFruitHP(fruit) {
