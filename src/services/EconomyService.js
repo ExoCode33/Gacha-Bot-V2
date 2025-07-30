@@ -1,4 +1,4 @@
-// src/services/EconomyService.js - Professional Economy Service
+// src/services/EconomyService.js - FIXED: New Income System Based on Devil Fruits Count
 const DatabaseManager = require('../database/DatabaseManager');
 const Logger = require('../utils/Logger');
 const Config = require('../config/Config');
@@ -64,40 +64,54 @@ class EconomyService {
     }
 
     /**
-     * Calculate income based on user's CP
+     * FIXED: Calculate income based on devil fruits count (NOT CP)
+     * - 0 fruits = 0 income per hour
+     * - 5+ fruits = 6,250 berries per hour (flat rate)
+     * - Less than 5 fruits = proportional income
      */
     async calculateIncome(userId) {
         try {
-            const user = await DatabaseManager.getUser(userId);
-            const totalCP = user?.total_cp || 100;
+            // Get user's devil fruits count
+            const fruits = await DatabaseManager.getUserDevilFruits(userId);
+            const fruitCount = fruits?.length || 0;
             
-            const gameConfig = Config.game;
-            const baseIncome = gameConfig.baseIncome;
-            const incomeRate = gameConfig.incomeRate;
+            // FIXED: New income calculation based on fruit count
+            let hourlyIncome = 0;
             
-            // Base income + CP-based bonus
-            const cpBonus = Math.floor(totalCP * incomeRate);
-            const totalIncome = baseIncome + cpBonus;
+            if (fruitCount === 0) {
+                // No fruits = no income
+                hourlyIncome = 0;
+            } else if (fruitCount >= 5) {
+                // 5+ fruits = full income (6,250 per hour)
+                hourlyIncome = Config.game.fullIncome || 6250;
+            } else {
+                // Less than 5 fruits = proportional income
+                const baseIncome = Config.game.fullIncome || 6250;
+                hourlyIncome = Math.floor((baseIncome / 5) * fruitCount);
+            }
+            
+            // Convert to per-10-minute periods (income is calculated every 10 minutes)
+            const perPeriodIncome = Math.floor(hourlyIncome / 6);
 
             return {
-                base: baseIncome,
-                cpBonus,
-                total: totalIncome,
-                totalCP
+                fruitCount,
+                hourlyIncome,
+                perPeriodIncome,
+                total: perPeriodIncome // For compatibility
             };
         } catch (error) {
             this.logger.error(`Failed to calculate income for ${userId}:`, error);
             return {
-                base: 50,
-                cpBonus: 10,
-                total: 60,
-                totalCP: 100
+                fruitCount: 0,
+                hourlyIncome: 0,
+                perPeriodIncome: 0,
+                total: 0
             };
         }
     }
 
     /**
-     * Process automatic income (accumulated over time)
+     * FIXED: Process automatic income based on fruit count
      */
     async processAutomaticIncome(userId) {
         try {
@@ -118,18 +132,20 @@ class EconomyService {
             const periods = Math.floor(effectiveHours * 6); // 6 periods per hour (10 min each)
 
             const incomeData = await this.calculateIncome(userId);
-            const totalIncome = incomeData.total * periods;
+            const totalIncome = incomeData.perPeriodIncome * periods;
 
             if (totalIncome > 0) {
                 await this.addBerries(userId, totalIncome, 'automatic_income');
-                await DatabaseManager.recordIncome(userId, totalIncome, user.total_cp, 'automatic');
+                await DatabaseManager.recordIncome(userId, totalIncome, incomeData.fruitCount, 'automatic');
             }
 
             return {
                 periods,
-                perPeriod: incomeData.total,
+                perPeriod: incomeData.perPeriodIncome,
                 total: totalIncome,
-                hoursAccumulated: effectiveHours
+                hoursAccumulated: effectiveHours,
+                fruitCount: incomeData.fruitCount,
+                hourlyRate: incomeData.hourlyIncome
             };
         } catch (error) {
             this.logger.error(`Failed to process automatic income for ${userId}:`, error);
@@ -138,7 +154,7 @@ class EconomyService {
     }
 
     /**
-     * Process manual income (with cooldown)
+     * FIXED: Process manual income with fruit-based calculation
      */
     async processManualIncome(userId) {
         const lastManual = this.incomeCache.get(userId);
@@ -152,11 +168,20 @@ class EconomyService {
 
         try {
             const incomeData = await this.calculateIncome(userId);
+            
+            // Manual income has a multiplier (default 6x)
             const multiplier = Config.game.manualIncomeMultiplier || 6;
-            const manualIncome = Math.floor(incomeData.total * multiplier);
+            const manualIncome = Math.floor(incomeData.perPeriodIncome * multiplier);
+
+            if (manualIncome <= 0) {
+                return { 
+                    success: false, 
+                    error: 'You need at least 1 Devil Fruit to earn income!' 
+                };
+            }
 
             await this.addBerries(userId, manualIncome, 'manual_income');
-            await DatabaseManager.recordIncome(userId, manualIncome, incomeData.totalCP, 'manual');
+            await DatabaseManager.recordIncome(userId, manualIncome, incomeData.fruitCount, 'manual');
 
             this.incomeCache.set(userId, now);
 
@@ -164,11 +189,36 @@ class EconomyService {
                 success: true,
                 income: manualIncome,
                 multiplier,
-                baseIncome: incomeData.total
+                baseIncome: incomeData.perPeriodIncome,
+                fruitCount: incomeData.fruitCount,
+                hourlyRate: incomeData.hourlyIncome
             };
         } catch (error) {
             this.logger.error(`Failed to process manual income for ${userId}:`, error);
             return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * FIXED: Ensure new users get starting berries
+     */
+    async ensureStartingBerries(userId) {
+        try {
+            const user = await DatabaseManager.getUser(userId);
+            const fruits = await DatabaseManager.getUserDevilFruits(userId);
+            
+            // If user has no fruits and no berries, give them starting berries
+            if ((!fruits || fruits.length === 0) && (!user.berries || user.berries === 0)) {
+                const startingBerries = Config.game.startingBerries || 5000;
+                await this.addBerries(userId, startingBerries, 'starting_berries');
+                this.logger.info(`Gave ${startingBerries} starting berries to new user ${userId}`);
+                return startingBerries;
+            }
+            
+            return 0;
+        } catch (error) {
+            this.logger.error(`Failed to ensure starting berries for ${userId}:`, error);
+            return 0;
         }
     }
 
@@ -281,6 +331,43 @@ class EconomyService {
             return `${(amount / 1000).toFixed(1)}K`;
         }
         return amount.toLocaleString();
+    }
+
+    /**
+     * FIXED: Get income display info for commands
+     */
+    async getIncomeDisplayInfo(userId) {
+        try {
+            const incomeData = await this.calculateIncome(userId);
+            const fruits = await DatabaseManager.getUserDevilFruits(userId);
+            
+            let statusText;
+            if (incomeData.fruitCount === 0) {
+                statusText = "❌ No income - Get Devil Fruits to start earning!";
+            } else if (incomeData.fruitCount >= 5) {
+                statusText = "✅ Maximum income rate achieved!";
+            } else {
+                const needed = 5 - incomeData.fruitCount;
+                statusText = `📈 Need ${needed} more Devil Fruit${needed > 1 ? 's' : ''} for maximum income`;
+            }
+            
+            return {
+                fruitCount: incomeData.fruitCount,
+                hourlyIncome: incomeData.hourlyIncome,
+                perPeriodIncome: incomeData.perPeriodIncome,
+                statusText,
+                maxPossible: Config.game.fullIncome || 6250
+            };
+        } catch (error) {
+            this.logger.error(`Failed to get income display info for ${userId}:`, error);
+            return {
+                fruitCount: 0,
+                hourlyIncome: 0,
+                perPeriodIncome: 0,
+                statusText: "❌ Error calculating income",
+                maxPossible: 6250
+            };
+        }
     }
 }
 
