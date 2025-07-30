@@ -199,28 +199,7 @@ class EconomyService {
         }
     }
 
-    /**
-     * FIXED: Ensure new users get starting berries
-     */
-    async ensureStartingBerries(userId) {
-        try {
-            const user = await DatabaseManager.getUser(userId);
-            const fruits = await DatabaseManager.getUserDevilFruits(userId);
-            
-            // If user has no fruits and no berries, give them starting berries
-            if ((!fruits || fruits.length === 0) && (!user.berries || user.berries === 0)) {
-                const startingBerries = Config.game.startingBerries || 5000;
-                await this.addBerries(userId, startingBerries, 'starting_berries');
-                this.logger.info(`Gave ${startingBerries} starting berries to new user ${userId}`);
-                return startingBerries;
-            }
-            
-            return 0;
-        } catch (error) {
-            this.logger.error(`Failed to ensure starting berries for ${userId}:`, error);
-            return 0;
-        }
-    }
+
 
     /**
      * Transfer berries between users
