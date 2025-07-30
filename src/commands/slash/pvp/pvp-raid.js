@@ -616,19 +616,38 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         .setColor(RARITY_COLORS.legendary)
         .setTimestamp();
     
-    // Show YOUR team status with status effects
+    // Show YOUR team status with detailed status effects
     const attackerTeamText = attacker.team.map((fruit, index) => {
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
         const cooldownText = fruit.cooldown > 0 ? ` (CD: ${fruit.cooldown})` : '';
         const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
         
-        // Show status effects
+        // DETAILED: Show status effects with damage/healing values and duration
         let statusText = '';
         if (fruit.statusEffects && fruit.statusEffects.length > 0) {
-            const effects = fruit.statusEffects
-                .map(effect => `${effect.icon || '⭐'}${effect.name}${effect.duration > 0 ? `(${effect.duration})` : ''}`)
-                .join(' ');
-            statusText = `\n   Effects: ${effects}`;
+            const effects = fruit.statusEffects.map(effect => {
+                let effectText = `${effect.icon || '⭐'}${effect.name}`;
+                
+                // Add damage/heal info for DOT/HOT effects
+                if (effect.type === 'dot' && effect.damage) {
+                    effectText += `(-${effect.damage}/turn)`;
+                } else if (effect.type === 'heal' && effect.value) {
+                    effectText += `(+${effect.value}/turn)`;
+                } else if (effect.type === 'debuff' && effect.modifier) {
+                    effectText += `(${Math.round(effect.modifier * 100)}%)`;
+                } else if (effect.type === 'buff' && effect.modifier) {
+                    effectText += `(+${Math.round(effect.modifier * 100)}%)`;
+                }
+                
+                // Add duration
+                if (effect.duration > 0) {
+                    effectText += `[${effect.duration}]`;
+                }
+                
+                return effectText;
+            }).join(' ');
+            
+            statusText = `\n   🔮 Effects: ${effects}`;
         }
         
         const fruitLine = `${statusIcon} ${fruit.emoji} **${fruit.name}**${cooldownText}`;
@@ -648,18 +667,37 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         inline: false
     });
     
-    // Show AI team status with status effects
+    // Show AI team status with detailed status effects
     const defenderTeamText = defender.team.map((fruit, index) => {
         const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
         const statusIcon = fruit.currentHP > 0 ? '🟢' : '💀';
         
-        // Show status effects
+        // DETAILED: Show status effects with damage/healing values and duration
         let statusText = '';
         if (fruit.statusEffects && fruit.statusEffects.length > 0) {
-            const effects = fruit.statusEffects
-                .map(effect => `${effect.icon || '⭐'}${effect.name}${effect.duration > 0 ? `(${effect.duration})` : ''}`)
-                .join(' ');
-            statusText = `\n   Effects: ${effects}`;
+            const effects = fruit.statusEffects.map(effect => {
+                let effectText = `${effect.icon || '⭐'}${effect.name}`;
+                
+                // Add damage/heal info for DOT/HOT effects
+                if (effect.type === 'dot' && effect.damage) {
+                    effectText += `(-${effect.damage}/turn)`;
+                } else if (effect.type === 'heal' && effect.value) {
+                    effectText += `(+${effect.value}/turn)`;
+                } else if (effect.type === 'debuff' && effect.modifier) {
+                    effectText += `(${Math.round(effect.modifier * 100)}%)`;
+                } else if (effect.type === 'buff' && effect.modifier) {
+                    effectText += `(+${Math.round(effect.modifier * 100)}%)`;
+                }
+                
+                // Add duration
+                if (effect.duration > 0) {
+                    effectText += `[${effect.duration}]`;
+                }
+                
+                return effectText;
+            }).join(' ');
+            
+            statusText = `\n   🔮 Effects: ${effects}`;
         }
         
         const fruitLine = `${statusIcon} ${fruit.emoji} **${fruit.name}**`;
@@ -1219,7 +1257,7 @@ function removeBattleEffect(fruit, effect) {
 }
 
 /**
- * ENHANCED: Apply skill effects with proper DOT and status implementation
+ * ENHANCED: Apply skill effects with detailed fruit-specific DOT effects
  */
 function applyEnhancedSkillEffect(attacker, defender, skillData, skillDamage) {
     const result = {
@@ -1230,10 +1268,23 @@ function applyEnhancedSkillEffect(attacker, defender, skillData, skillDamage) {
         undodgeable: false
     };
 
-    // Map skill effects to actual status effects
+    // Get the specific fruit name for detailed messages
+    const attackerFruitName = attacker.name;
+    const defenderFruitName = defender.name;
+
+    // Detailed fruit-specific effect mapping
     const effectMapping = {
-        // Mythical and Divine tier effects
+        // === MYTHICAL AND DIVINE TIER EFFECTS ===
         'lightning_god': () => {
+            const dotDamage = Math.floor(skillDamage * 0.25);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Electrocution',
+                duration: 3,
+                damage: dotDamage,
+                icon: '⚡',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'debuff',
                 name: 'Paralyzed',
@@ -1244,176 +1295,268 @@ function applyEnhancedSkillEffect(attacker, defender, skillData, skillDamage) {
             });
             addStatusEffect(attacker, {
                 type: 'buff',
-                name: 'Lightning Speed',
+                name: 'Lightning God Mode',
                 duration: 3,
                 effect: 'speed',
-                modifier: 0.3,
+                modifier: 0.4,
                 icon: '⚡'
             });
-            result.messages.push(`⚡ ${defender.name} is paralyzed by divine lightning!`);
-            result.messages.push(`⚡ ${attacker.name} gains lightning speed!`);
+            result.messages.push(`⚡ ${attackerFruitName} applies **Electrocution** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`⚡ ${defenderFruitName} is **Paralyzed** by divine lightning!`);
+            result.messages.push(`⚡ ${attackerFruitName} enters **Lightning God Mode**!`);
             result.damageMultiplier = 1.5;
         },
         
         'ice_age': () => {
+            const dotDamage = Math.floor(skillDamage * 0.2);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Frostbite',
+                duration: 4,
+                damage: dotDamage,
+                icon: '❄️',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'disable',
-                name: 'Frozen',
-                duration: 2,
-                icon: '❄️'
+                name: 'Frozen Solid',
+                duration: 1,
+                icon: '🧊'
             });
-            // Apply area freeze to nearby enemies
-            result.messages.push(`❄️ ${defender.name} is frozen solid!`);
-            result.messages.push(`🧊 Ice Age brings freezing cold to the battlefield!`);
+            result.messages.push(`❄️ ${attackerFruitName} applies **Frostbite** to ${defenderFruitName} (${dotDamage} damage/turn for 4 turns)`);
+            result.messages.push(`🧊 ${defenderFruitName} is **Frozen Solid** and cannot act next turn!`);
             result.damageMultiplier = 1.4;
         },
         
         'light_speed_barrage': () => {
+            const dotDamage = Math.floor(skillDamage * 0.15);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Light Burn',
+                duration: 2,
+                damage: dotDamage,
+                icon: '💫',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'debuff',
-                name: 'Blinded',
+                name: 'Flash Blinded',
                 duration: 2,
                 effect: 'accuracy',
                 modifier: -0.6,
                 icon: '💫'
             });
-            result.messages.push(`💫 ${defender.name} is blinded by intense light!`);
+            result.messages.push(`💫 ${attackerFruitName} applies **Light Burn** to ${defenderFruitName} (${dotDamage} damage/turn for 2 turns)`);
+            result.messages.push(`💫 ${defenderFruitName} is **Flash Blinded** by intense light!`);
             result.undodgeable = true;
             result.damageMultiplier = 1.3;
         },
         
         'molten_justice': () => {
+            const dotDamage = Math.floor(skillDamage * 0.35);
             addStatusEffect(defender, {
                 type: 'dot',
                 name: 'Magma Burn',
                 duration: 4,
-                damage: Math.floor(skillDamage * 0.25),
-                icon: '🌋'
+                damage: dotDamage,
+                icon: '🌋',
+                source: attackerFruitName
             });
-            result.messages.push(`🌋 ${defender.name} suffers from molten magma burns!`);
-            result.armorPierce = 0.7;
+            result.messages.push(`🌋 ${attackerFruitName} applies **Magma Burn** to ${defenderFruitName} (${dotDamage} damage/turn for 4 turns)`);
+            result.messages.push(`🌋 Magma burns through all defenses with absolute justice!`);
+            result.armorPierce = 0.8;
         },
         
         'soul_manipulation': () => {
+            const dotDamage = Math.floor(skillDamage * 0.3);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Soul Drain',
+                duration: 3,
+                damage: dotDamage,
+                icon: '👻',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'debuff',
-                name: 'Soul Drained',
+                name: 'Soul Weakened',
                 duration: 3,
                 effect: 'damage',
                 modifier: -0.4,
                 icon: '👻'
             });
+            const healAmount = Math.floor(dotDamage * 0.5);
             addStatusEffect(attacker, {
-                type: 'buff',
-                name: 'Soul Power',
+                type: 'heal',
+                name: 'Soul Absorption',
                 duration: 3,
-                effect: 'damage',
-                modifier: 0.3,
+                value: healAmount,
                 icon: '👻'
             });
-            result.messages.push(`👻 ${defender.name}'s soul is being drained!`);
-            result.messages.push(`👻 ${attacker.name} absorbs soul energy!`);
+            result.messages.push(`👻 ${attackerFruitName} applies **Soul Drain** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`👻 ${defenderFruitName} is **Soul Weakened** (-40% damage)`);
+            result.messages.push(`👻 ${attackerFruitName} gains **Soul Absorption** (+${healAmount} HP/turn for 3 turns)`);
         },
         
         'gravity_mastery': () => {
+            const dotDamage = Math.floor(skillDamage * 0.25);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Gravity Crush',
+                duration: 3,
+                damage: dotDamage,
+                icon: '🌌',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'debuff',
-                name: 'Gravity Crushed',
+                name: 'Heavy Gravity',
                 duration: 3,
                 effect: 'speed',
                 modifier: -0.6,
                 icon: '🌌'
             });
-            result.messages.push(`🌌 ${defender.name} is crushed by intense gravity!`);
+            result.messages.push(`🌌 ${attackerFruitName} applies **Gravity Crush** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`🌌 ${defenderFruitName} suffers under **Heavy Gravity** (-60% speed)`);
             result.damageMultiplier = 1.6;
         },
         
         'flame_emperor': () => {
+            const dotDamage = Math.floor(skillDamage * 0.3);
             addStatusEffect(defender, {
                 type: 'dot',
-                name: 'Emperor Flames',
+                name: 'Revolutionary Flames',
                 duration: 3,
-                damage: Math.floor(skillDamage * 0.3),
-                icon: '🔥'
+                damage: dotDamage,
+                icon: '🔥',
+                source: attackerFruitName
             });
             addStatusEffect(attacker, {
                 type: 'buff',
-                name: 'Fire Immunity',
-                duration: 5,
-                effect: 'immunity',
-                value: 'fire',
+                name: 'Fire Emperor Aura',
+                duration: 4,
+                effect: 'damage',
+                modifier: 0.3,
                 icon: '🔥'
             });
-            result.messages.push(`🔥 ${defender.name} burns with revolutionary flames!`);
-            result.messages.push(`🔥 ${attacker.name} becomes immune to fire!`);
+            result.messages.push(`🔥 ${attackerFruitName} applies **Revolutionary Flames** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`🔥 ${attackerFruitName} gains **Fire Emperor Aura** (+30% damage for 4 turns)`);
         },
         
         'forest_god': () => {
+            const dotDamage = Math.floor(skillDamage * 0.2);
+            const healAmount = Math.floor(dotDamage * 0.8);
             addStatusEffect(defender, {
                 type: 'dot',
-                name: 'Life Drain',
+                name: 'Life Force Drain',
                 duration: 4,
-                damage: Math.floor(skillDamage * 0.2),
+                damage: dotDamage,
+                icon: '🌿',
+                source: attackerFruitName
+            });
+            addStatusEffect(attacker, {
+                type: 'heal',
+                name: 'Nature\'s Blessing',
+                duration: 4,
+                value: healAmount,
                 icon: '🌿'
             });
-            const healAmount = Math.floor(skillDamage * 0.2);
-            attacker.currentHP = Math.min(attacker.maxHP, attacker.currentHP + healAmount);
-            result.messages.push(`🌿 ${defender.name}'s life force is being drained!`);
-            result.messages.push(`🌿 ${attacker.name} absorbs ${healAmount} HP from nature!`);
+            result.messages.push(`🌿 ${attackerFruitName} applies **Life Force Drain** to ${defenderFruitName} (${dotDamage} damage/turn for 4 turns)`);
+            result.messages.push(`🌿 ${attackerFruitName} gains **Nature's Blessing** (+${healAmount} HP/turn for 4 turns)`);
         },
         
         'heavenly_strings': () => {
+            const dotDamage = Math.floor(skillDamage * 0.2);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'String Cuts',
+                duration: 3,
+                damage: dotDamage,
+                icon: '🧵',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'disable',
-                name: 'String Puppet',
-                duration: 2,
+                name: 'Puppet Strings',
+                duration: 1,
                 icon: '🧵'
             });
-            result.messages.push(`🧵 ${defender.name} is controlled like a puppet!`);
+            result.messages.push(`🧵 ${attackerFruitName} applies **String Cuts** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`🧵 ${defenderFruitName} is controlled by **Puppet Strings** (skips next turn)`);
             result.damageMultiplier = 1.3;
         },
         
         'phoenix_rebirth': () => {
+            const healAmount = Math.floor(skillDamage * 0.4);
             addStatusEffect(attacker, {
                 type: 'heal',
                 name: 'Phoenix Regeneration',
                 duration: 4,
-                value: Math.floor(attacker.maxHP * 0.15),
+                value: healAmount,
                 icon: '🔥💙'
             });
             const immediateHeal = Math.floor(attacker.maxHP * 0.3);
             attacker.currentHP = Math.min(attacker.maxHP, attacker.currentHP + immediateHeal);
-            result.messages.push(`🔥💙 ${attacker.name} regenerates with phoenix flames!`);
-            result.messages.push(`💚 ${attacker.name} heals ${immediateHeal} HP immediately!`);
+            result.messages.push(`🔥💙 ${attackerFruitName} gains **Phoenix Regeneration** (+${healAmount} HP/turn for 4 turns)`);
+            result.messages.push(`💚 ${attackerFruitName} heals ${immediateHeal} HP immediately with blue flames!`);
         },
         
         'weapon_fusion': () => {
+            const dotDamage = Math.floor(skillDamage * 0.25);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Mechanical Assault',
+                duration: 3,
+                damage: dotDamage,
+                icon: '🤖',
+                source: attackerFruitName
+            });
             addStatusEffect(attacker, {
                 type: 'buff',
-                name: 'Mecha Enhancement',
+                name: 'Mecha Form',
                 duration: 4,
                 effect: 'damage',
                 modifier: 0.5,
                 icon: '🤖'
             });
-            result.messages.push(`🤖 ${attacker.name} combines into a mechanical monster!`);
+            result.messages.push(`🤖 ${attackerFruitName} applies **Mechanical Assault** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`🤖 ${attackerFruitName} enters **Mecha Form** (+50% damage for 4 turns)`);
             result.damageMultiplier = 1.4;
         },
         
         'song_reality': () => {
+            const dotDamage = Math.floor(skillDamage * 0.2);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Nightmare Song',
+                duration: 4,
+                damage: dotDamage,
+                icon: '🎵',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'debuff',
-                name: 'Trapped in Song',
+                name: 'Song Prison',
                 duration: 3,
                 effect: 'damage',
                 modifier: -0.5,
                 icon: '🎵'
             });
-            result.messages.push(`🎵 ${defender.name} is trapped in a world of song!`);
+            result.messages.push(`🎵 ${attackerFruitName} applies **Nightmare Song** to ${defenderFruitName} (${dotDamage} damage/turn for 4 turns)`);
+            result.messages.push(`🎵 ${defenderFruitName} is trapped in **Song Prison** (-50% damage)`);
         },
         
-        // Legendary tier effects
+        // === LEGENDARY TIER EFFECTS ===
         'paw_repulsion': () => {
+            const dotDamage = Math.floor(skillDamage * 0.2);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Paw Impact',
+                duration: 2,
+                damage: dotDamage,
+                icon: '🐾',
+                source: attackerFruitName
+            });
             addStatusEffect(defender, {
                 type: 'debuff',
                 name: 'Repelled',
@@ -1422,46 +1565,64 @@ function applyEnhancedSkillEffect(attacker, defender, skillData, skillDamage) {
                 modifier: -0.4,
                 icon: '🐾'
             });
-            result.messages.push(`🐾 ${defender.name} is sent flying by paw repulsion!`);
+            result.messages.push(`🐾 ${attackerFruitName} applies **Paw Impact** to ${defenderFruitName} (${dotDamage} damage/turn for 2 turns)`);
+            result.messages.push(`🐾 ${defenderFruitName} is **Repelled** (-40% speed for 2 turns)`);
             result.damageMultiplier = 1.3;
         },
         
         'spatial_surgery': () => {
+            const dotDamage = Math.floor(skillDamage * 0.25);
             addStatusEffect(defender, {
-                type: 'debuff',
-                name: 'Internal Damage',
-                duration: 2,
-                effect: 'damage',
-                modifier: -0.3,
-                icon: '🔬'
+                type: 'dot',
+                name: 'Internal Bleeding',
+                duration: 3,
+                damage: dotDamage,
+                icon: '🔬',
+                source: attackerFruitName
             });
-            result.messages.push(`🔬 ${defender.name} suffers internal organ damage!`);
+            result.messages.push(`🔬 ${attackerFruitName} applies **Internal Bleeding** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`🔬 Surgical precision bypasses all defenses!`);
             result.armorPierce = 0.8;
         },
         
         'desert_king': () => {
+            const dotDamage = Math.floor(skillDamage * 0.25);
             addStatusEffect(defender, {
                 type: 'dot',
                 name: 'Dehydration',
                 duration: 3,
-                damage: Math.floor(skillDamage * 0.2),
-                icon: '🏜️'
+                damage: dotDamage,
+                icon: '🏜️',
+                source: attackerFruitName
             });
-            result.messages.push(`🏜️ ${defender.name} is being dehydrated by the desert!`);
+            result.messages.push(`🏜️ ${attackerFruitName} applies **Dehydration** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`🏜️ The desert drains all moisture from the enemy!`);
         },
         
         'poison_hell': () => {
+            const dotDamage = Math.floor(skillDamage * 0.35);
             addStatusEffect(defender, {
                 type: 'dot',
-                name: 'Deadly Poison',
+                name: 'Deadly Venom',
                 duration: 4,
-                damage: Math.floor(skillDamage * 0.3),
-                icon: '☠️'
+                damage: dotDamage,
+                icon: '☠️',
+                source: attackerFruitName
             });
-            result.messages.push(`☠️ ${defender.name} is infected with deadly poison!`);
+            result.messages.push(`☠️ ${attackerFruitName} applies **Deadly Venom** to ${defenderFruitName} (${dotDamage} damage/turn for 4 turns)`);
+            result.messages.push(`☠️ The most lethal poison spreads through the enemy's body!`);
         },
         
         'float_mastery': () => {
+            const dotDamage = Math.floor(skillDamage * 0.15);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Crushing Gravity',
+                duration: 2,
+                damage: dotDamage,
+                icon: '🌪️',
+                source: attackerFruitName
+            });
             addStatusEffect(attacker, {
                 type: 'buff',
                 name: 'Float Advantage',
@@ -1469,6 +1630,106 @@ function applyEnhancedSkillEffect(attacker, defender, skillData, skillDamage) {
                 effect: 'damage',
                 modifier: 0.3,
                 icon: '🌪️'
+            });
+            result.messages.push(`🌪️ ${attackerFruitName} applies **Crushing Gravity** to ${defenderFruitName} (${dotDamage} damage/turn for 2 turns)`);
+            result.messages.push(`🌪️ ${attackerFruitName} gains **Float Advantage** (+30% damage for 3 turns)`);
+        },
+        
+        'absolute_barrier': () => {
+            addStatusEffect(attacker, {
+                type: 'defense',
+                name: 'Unbreakable Barrier',
+                duration: 3,
+                effect: 'damage_reduction',
+                value: 0.8,
+                icon: '🛡️'
+            });
+            result.messages.push(`🛡️ ${attackerFruitName} creates an **Unbreakable Barrier** (80% damage reduction for 3 turns)`);
+        },
+        
+        'magnetic_force': () => {
+            const dotDamage = Math.floor(skillDamage * 0.2);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Metal Shredding',
+                duration: 3,
+                damage: dotDamage,
+                icon: '🧲',
+                source: attackerFruitName
+            });
+            addStatusEffect(defender, {
+                type: 'debuff',
+                name: 'Metal Disruption',
+                duration: 2,
+                effect: 'accuracy',
+                modifier: -0.4,
+                icon: '🧲'
+            });
+            result.messages.push(`🧲 ${attackerFruitName} applies **Metal Shredding** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+            result.messages.push(`🧲 ${defenderFruitName} suffers **Metal Disruption** (-40% accuracy)`);
+        },
+        
+        // === EPIC TIER EFFECTS ===
+        'shadow_mastery': () => {
+            const dotDamage = Math.floor(skillDamage * 0.2);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Shadow Corruption',
+                duration: 3,
+                damage: dotDamage,
+                icon: '🌑',
+                source: attackerFruitName
+            });
+            result.messages.push(`🌑 ${attackerFruitName} applies **Shadow Corruption** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+        },
+        
+        'gas_mastery': () => {
+            const dotDamage = Math.floor(skillDamage * 0.25);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Toxic Gas',
+                duration: 3,
+                damage: dotDamage,
+                icon: '☁️',
+                source: attackerFruitName
+            });
+            result.messages.push(`☁️ ${attackerFruitName} applies **Toxic Gas** to ${defenderFruitName} (${dotDamage} damage/turn for 3 turns)`);
+        },
+        
+        'stone_giant': () => {
+            const dotDamage = Math.floor(skillDamage * 0.15);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Stone Pressure',
+                duration: 2,
+                damage: dotDamage,
+                icon: '🗿',
+                source: attackerFruitName
+            });
+            result.messages.push(`🗿 ${attackerFruitName} applies **Stone Pressure** to ${defenderFruitName} (${dotDamage} damage/turn for 2 turns)`);
+        },
+        
+        // === DEFAULT FALLBACK ===
+        'default': () => {
+            const dotDamage = Math.floor(skillDamage * 0.15);
+            addStatusEffect(defender, {
+                type: 'dot',
+                name: 'Devil Fruit Effect',
+                duration: 2,
+                damage: dotDamage,
+                icon: '🍈',
+                source: attackerFruitName
+            });
+            result.messages.push(`🍈 ${attackerFruitName} applies **Devil Fruit Effect** to ${defenderFruitName} (${dotDamage} damage/turn for 2 turns)`);
+        }
+    };
+
+    // Apply the effect
+    const effectFunction = effectMapping[skillData.effect] || effectMapping['default'];
+    effectFunction();
+
+    return result;
+} '🌪️'
             });
             result.messages.push(`🌪️ ${attacker.name} gains aerial advantage!`);
         },
@@ -1521,7 +1782,7 @@ function applyEnhancedSkillEffect(attacker, defender, skillData, skillDamage) {
 }
 
 /**
- * Add status effect to fruit
+ * Add detailed status effect to fruit with source tracking
  */
 function addStatusEffect(fruit, effect) {
     if (!fruit.statusEffects) {
@@ -1537,6 +1798,9 @@ function addStatusEffect(fruit, effect) {
         if (effect.damage && existingEffect.damage) {
             existingEffect.damage = Math.max(existingEffect.damage, effect.damage);
         }
+        if (effect.source) {
+            existingEffect.source = effect.source; // Update source
+        }
     } else {
         // Add new effect
         fruit.statusEffects.push({
@@ -1544,6 +1808,103 @@ function addStatusEffect(fruit, effect) {
             stacks: 1
         });
     }
+}
+
+/**
+ * ENHANCED: Process individual fruit status effects with detailed DOT tracking
+ */
+function processStatusEffects(fruit, battleLog) {
+    if (!fruit.statusEffects || fruit.statusEffects.length === 0) return;
+
+    fruit.statusEffects = fruit.statusEffects.filter(effect => {
+        let shouldKeepEffect = true;
+        
+        // Apply effect based on type
+        switch (effect.type) {
+            case 'dot':
+                // DETAILED: Show exactly which fruit applied which DOT
+                const dotDamage = effect.damage || Math.floor(fruit.maxHP * 0.1);
+                const actualDotDamage = Math.min(fruit.currentHP, dotDamage);
+                
+                if (actualDotDamage > 0) {
+                    fruit.currentHP = Math.max(0, fruit.currentHP - actualDotDamage);
+                    
+                    // DETAILED DOT MESSAGE with source and remaining duration
+                    const sourceText = effect.source ? ` (applied by ${effect.source})` : '';
+                    const durationText = effect.duration > 1 ? ` [${effect.duration - 1} turns left]` : ' [FINAL TURN]';
+                    
+                    battleLog.push(`${effect.icon || '☠️'} **${effect.name}**: ${fruit.name} takes ${actualDotDamage} damage${sourceText} (${fruit.currentHP}/${fruit.maxHP} HP)${durationText}`);
+                    
+                    // Check if fruit died from DOT
+                    if (fruit.currentHP === 0) {
+                        battleLog.push(`💀 **DEATH BY DOT**: ${fruit.name} was defeated by ${effect.name}${sourceText}!`);
+                        fruit.statusEffects = []; // Clear all effects on death
+                        return false;
+                    }
+                }
+                break;
+                
+            case 'heal':
+                // DETAILED: Show healing effects with source
+                const healAmount = effect.value || Math.floor(fruit.maxHP * 0.1);
+                const actualHeal = Math.min(healAmount, fruit.maxHP - fruit.currentHP);
+                
+                if (actualHeal > 0) {
+                    fruit.currentHP = Math.min(fruit.maxHP, fruit.currentHP + actualHeal);
+                    
+                    const sourceText = effect.source ? ` (from ${effect.source})` : '';
+                    const durationText = effect.duration > 1 ? ` [${effect.duration - 1} turns left]` : ' [FINAL TURN]';
+                    
+                    battleLog.push(`${effect.icon || '💚'} **${effect.name}**: ${fruit.name} recovers ${actualHeal} HP${sourceText} (${fruit.currentHP}/${fruit.maxHP} HP)${durationText}`);
+                }
+                break;
+                
+            case 'buff':
+                // Show buff effects with detailed modifiers
+                if (effect.duration === 1) {
+                    const modifierText = effect.modifier ? ` (${effect.modifier > 0 ? '+' : ''}${Math.round(effect.modifier * 100)}% ${effect.effect})` : '';
+                    battleLog.push(`${effect.icon || '⭐'} **${effect.name}**: Active on ${fruit.name}${modifierText} [EXPIRES NEXT TURN]`);
+                }
+                break;
+                
+            case 'debuff':
+                // Show debuff effects with detailed modifiers
+                if (effect.duration === 1) {
+                    const modifierText = effect.modifier ? ` (${effect.modifier > 0 ? '+' : ''}${Math.round(effect.modifier * 100)}% ${effect.effect})` : '';
+                    battleLog.push(`${effect.icon || '🔻'} **${effect.name}**: Active on ${fruit.name}${modifierText} [EXPIRES NEXT TURN]`);
+                }
+                break;
+                
+            case 'defense':
+                // Show defensive effects
+                if (effect.duration === 1) {
+                    const valueText = effect.value ? ` (${Math.round(effect.value * 100)}% reduction)` : '';
+                    battleLog.push(`${effect.icon || '🛡️'} **${effect.name}**: Protecting ${fruit.name}${valueText} [EXPIRES NEXT TURN]`);
+                }
+                break;
+                
+            case 'disable':
+                // Show disable effects
+                if (effect.duration === 1) {
+                    battleLog.push(`${effect.icon || '🚫'} **${effect.name}**: ${fruit.name} is disabled [EXPIRES NEXT TURN]`);
+                }
+                break;
+        }
+        
+        // Reduce duration and check if effect should be removed
+        if (effect.duration > 0) {
+            effect.duration--;
+            
+            if (effect.duration === 0) {
+                // Effect expired - detailed expiration message
+                const sourceText = effect.source ? ` (from ${effect.source})` : '';
+                battleLog.push(`⏰ **EXPIRED**: ${effect.name}${sourceText} has ended on ${fruit.name}`);
+                shouldKeepEffect = false;
+            }
+        }
+        
+        return shouldKeepEffect;
+    });
 }
 
 function calculateFruitHP(fruit) {
