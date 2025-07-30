@@ -43,8 +43,8 @@ const RAID_CONFIG = {
     STATUS_STACK_LIMIT: 3,
     
     // AI behavior settings
-    AI_SKILL_USE_CHANCE: 0.7,
-    AI_AGGRESSION: 0.8
+    AI_SKILL_USE_CHANCE: 0.95,       // 95% chance to use skills (very high priority)
+    AI_AGGRESSION: 0.9               // High aggression for more challenging fights
 };
 
 // Active raids and cooldowns
@@ -718,10 +718,11 @@ async function processAITurn(raidState) {
     
     // FIXED: Verify AI actually did damage to PLAYER
     if (actualDamage === 0) {
-        raidState.battleLog.push(`⚠️ AI attack failed - applying minimum damage to PLAYER`);
+        raidState.battleLog.push(`⚠️ AI attack missed - applying minimum damage`);
         const minDamage = Math.max(1, Math.floor(selectedTarget.fruit.maxHP * 0.02)); // 2% minimum
         selectedTarget.fruit.currentHP = Math.max(0, selectedTarget.fruit.currentHP - minDamage);
-        raidState.battleLog.push(`💥 AI deals ${minDamage} minimum damage to PLAYER ${selectedTarget.fruit.name}`);
+        raidState.battleLog.push(`💥 AI deals ${minDamage} minimum damage to YOUR ${selectedTarget.fruit.name}`);
+        raidState.battleLog.push(`🩸 YOUR ${selectedTarget.fruit.name}: ${selectedTarget.fruit.currentHP}/${selectedTarget.fruit.maxHP} HP remaining`);
     }
 }
 
@@ -801,7 +802,7 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
         // Force at least 1 damage to player
         defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - 1);
         const forcedDamage = originalHP - defendingFruit.currentHP;
-        raidState.battleLog.push(`💥 AI ${skillName} deals ${forcedDamage} damage to YOUR ${defendingFruit.name}`);
+        raidState.battleLog.push(`💥 AI ${skillName} deals ${forcedDamage} forced damage to YOUR ${defendingFruit.name}`);
         raidState.battleLog.push(`🩸 YOUR ${defendingFruit.name}: ${defendingFruit.currentHP}/${defendingFruit.maxHP} HP remaining`);
         return forcedDamage;
     }
@@ -913,37 +914,57 @@ function selectBestAITarget(availablePlayerTargets, attackingFruit) {
 }
 
 /**
- * Enhanced AI skill usage decision
+ * FIXED: Enhanced AI skill usage decision - PRIORITIZE SKILLS FIRST
  */
 function decideAISkillUsage(attackingFruit, targetFruit, skillData, raidState) {
     if (!skillData || attackingFruit.cooldown > 0) {
-        return false;
+        return false; // No skill available or on cooldown
     }
     
+    // PRIORITIZE SKILLS: AI should use skills whenever available
     const targetHpPercent = targetFruit.currentHP / targetFruit.maxHP;
     
-    // Always use skills for finishing blows
+    // Check if ANY AI fruit has skills available
+    const aiHasAvailableSkills = raidState.defender.team.some(fruit => 
+        fruit.currentHP > 0 && 
+        fruit.cooldown === 0 && 
+        !areSkillsDisabled(fruit) &&
+        getSkillData(fruit.id, fruit.rarity)
+    );
+    
+    // PRIORITY 1: Always use skills for finishing blows
     if (targetHpPercent < 0.3 && skillData.damage > targetFruit.currentHP) {
         return true;
     }
     
-    // Prioritize AOE skills when multiple targets
+    // PRIORITY 2: Always prioritize AOE skills when multiple targets
     const livingTargets = raidState.attacker.team.filter(f => f.currentHP > 0).length;
     if ((skillData.range === 'area' || skillData.range === 'all') && livingTargets > 2) {
-        return Math.random() < 0.9;
+        return true; // 100% chance for AOE skills
     }
     
-    // Use effect skills more often
+    // PRIORITY 3: Always use effect skills (status effects, buffs, debuffs)
     if (skillData.effect) {
-        return Math.random() < 0.8;
+        return true; // 100% chance for effect skills
     }
     
-    // Use high damage skills against high HP targets
-    if (targetHpPercent > 0.7 && skillData.damage > 120) {
-        return Math.random() < 0.75;
+    // PRIORITY 4: Use high damage skills against high HP targets
+    if (targetHpPercent > 0.6 && skillData.damage > 100) {
+        return true; // 100% chance for strong skills vs healthy targets
     }
     
-    return Math.random() < RAID_CONFIG.AI_SKILL_USE_CHANCE;
+    // PRIORITY 5: Use skills more often early in battle
+    if (raidState.turn <= 5) {
+        return true; // 100% chance to use skills in first 5 turns
+    }
+    
+    // PRIORITY 6: Use skills when many AI fruits have skills available
+    if (aiHasAvailableSkills) {
+        return Math.random() < 0.9; // 90% chance when skills are available
+    }
+    
+    // PRIORITY 7: General skill preference
+    return Math.random() < 0.8; // 80% base chance to use skills (increased from 70%)
 }
 
 // ===== STATUS EFFECTS AND PROCESSING =====
