@@ -669,7 +669,7 @@ function createPerfectHPBar(currentHP, maxHP) {
 // ===== ENHANCED AI SYSTEM =====
 
 /**
- * FIXED: Enhanced AI turn processing with actual damage application
+ * FIXED: Enhanced AI turn processing with CORRECT target selection
  */
 async function processAITurn(raidState) {
     const availableAIFruits = raidState.defender.team
@@ -685,6 +685,7 @@ async function processAITurn(raidState) {
         return;
     }
     
+    // FIXED: Target PLAYER team, not AI team
     const availablePlayerTargets = raidState.attacker.team
         .map((fruit, index) => ({ fruit, index }))
         .filter(({ fruit }) => fruit.currentHP > 0);
@@ -704,24 +705,123 @@ async function processAITurn(raidState) {
     
     const skillChoice = shouldUseSkill ? `skill_${selectedAI.index}` : `basic_${selectedAI.index}`;
     
-    // Log AI decision with expected damage
+    // Log AI decision with target info
     const actionType = shouldUseSkill ? skillData?.name || 'Special Skill' : 'Basic Attack';
     const expectedDamage = shouldUseSkill ? 
         Math.floor(selectedTarget.fruit.maxHP * 0.10) : // ~10% for skills
         Math.floor(selectedTarget.fruit.maxHP * 0.06);  // ~6% for basic attacks
     
-    raidState.battleLog.push(`🤖 ${selectedAI.fruit.name} prepares ${actionType} (expected ~${expectedDamage} damage)!`);
+    raidState.battleLog.push(`🤖 ${selectedAI.fruit.name} targets PLAYER ${selectedTarget.fruit.name} with ${actionType}!`);
     
-    // Execute the AI's attack and ensure damage is applied
-    const actualDamage = await executeAttack(raidState, skillChoice, selectedTarget.index);
+    // FIXED: Execute AI attack against PLAYER target
+    const actualDamage = await executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseSkill, skillData);
     
-    // FIXED: Verify AI actually did damage
+    // FIXED: Verify AI actually did damage to PLAYER
     if (actualDamage === 0) {
-        raidState.battleLog.push(`⚠️ AI attack failed to deal damage - applying minimum damage`);
+        raidState.battleLog.push(`⚠️ AI attack failed - applying minimum damage to PLAYER`);
         const minDamage = Math.max(1, Math.floor(selectedTarget.fruit.maxHP * 0.02)); // 2% minimum
         selectedTarget.fruit.currentHP = Math.max(0, selectedTarget.fruit.currentHP - minDamage);
-        raidState.battleLog.push(`💥 AI deals ${minDamage} minimum damage to ${selectedTarget.fruit.name}`);
+        raidState.battleLog.push(`💥 AI deals ${minDamage} minimum damage to PLAYER ${selectedTarget.fruit.name}`);
     }
+}
+
+/**
+ * FIXED: Execute AI attack against PLAYER targets specifically
+ */
+async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseSkill, skillData) {
+    const attackingFruit = selectedAI.fruit;
+    const defendingFruit = selectedTarget.fruit; // This is a PLAYER fruit
+    
+    // Ensure we're targeting the right team
+    if (!raidState.attacker.team.includes(defendingFruit)) {
+        raidState.battleLog.push(`❌ AI targeting error - correcting to attack player`);
+        // Find a valid player target
+        const validPlayerTarget = raidState.attacker.team.find(fruit => fruit.currentHP > 0);
+        if (!validPlayerTarget) return 0;
+        
+        // Update defending fruit to be a player fruit
+        defendingFruit = validPlayerTarget;
+        selectedTarget.fruit = validPlayerTarget;
+        selectedTarget.index = raidState.attacker.team.indexOf(validPlayerTarget);
+    }
+    
+    const skillName = shouldUseSkill ? (skillData?.name || 'Special Skill') : 'Basic Attack';
+    
+    raidState.battleLog.push(`⚔️ ${raidState.defender.username}'s ${attackingFruit.name} attacks YOUR ${defendingFruit.name} with ${skillName}!`);
+    
+    // Calculate damage modifiers
+    const attackerModifiers = calculateDamageModifiers(attackingFruit);
+    const defenderModifiers = calculateDamageModifiers(defendingFruit);
+    
+    // Check dodge (rare for AI to miss)
+    const dodgeChance = calculateDodgeChance(attackingFruit, defendingFruit, defenderModifiers) * 0.5; // AI has better accuracy
+    if (Math.random() < dodgeChance) {
+        raidState.battleLog.push(`💨 YOUR ${defendingFruit.name} dodged the AI attack!`);
+        if (shouldUseSkill) {
+            attackingFruit.cooldown = skillData?.cooldown || 2;
+        }
+        return 0;
+    }
+    
+    // Calculate damage
+    const isBasicAttack = !shouldUseSkill;
+    const baseDamage = isBasicAttack ? 80 : (skillData?.damage || 120);
+    
+    let damage = calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, attackerModifiers, isBasicAttack);
+    
+    // Critical hit calculation
+    const criticalChance = calculateCriticalChance(attackingFruit, attackerModifiers, skillData);
+    const isCritical = Math.random() < criticalChance;
+    
+    if (isCritical) {
+        damage = Math.floor(damage * RAID_CONFIG.CRIT_DAMAGE_MULTIPLIER);
+        raidState.battleLog.push(`💥 AI scores a critical hit!`);
+    }
+    
+    // Apply skill effects if using skill
+    if (shouldUseSkill && skillData?.effect) {
+        const effectResults = applyEnhancedSkillEffect(attackingFruit, defendingFruit, skillData, damage);
+        
+        if (effectResults && effectResults.messages && effectResults.messages.length > 0) {
+            effectResults.messages.forEach(msg => raidState.battleLog.push(msg));
+        }
+        
+        if (effectResults && effectResults.damageMultiplier) {
+            damage = Math.floor(damage * effectResults.damageMultiplier);
+        }
+    }
+    
+    // Apply final damage to PLAYER fruit
+    const originalHP = defendingFruit.currentHP;
+    defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - damage);
+    const actualDamage = originalHP - defendingFruit.currentHP;
+    
+    // FIXED: Ensure damage was applied to player
+    if (actualDamage === 0 && damage > 0) {
+        // Force at least 1 damage to player
+        defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - 1);
+        const forcedDamage = originalHP - defendingFruit.currentHP;
+        raidState.battleLog.push(`💥 AI ${skillName} deals ${forcedDamage} damage to YOUR ${defendingFruit.name}`);
+        raidState.battleLog.push(`🩸 YOUR ${defendingFruit.name}: ${defendingFruit.currentHP}/${defendingFruit.maxHP} HP remaining`);
+        return forcedDamage;
+    }
+    
+    // Set AI cooldown
+    if (shouldUseSkill) {
+        attackingFruit.cooldown = skillData?.cooldown || 2;
+    }
+    
+    // Enhanced battle log
+    raidState.battleLog.push(`💥 AI ${skillName} deals ${actualDamage} damage to YOUR ${defendingFruit.name}`);
+    raidState.battleLog.push(`🩸 YOUR ${defendingFruit.name}: ${defendingFruit.currentHP}/${defendingFruit.maxHP} HP remaining`);
+    
+    // Handle defeated player fruits
+    if (defendingFruit.currentHP === 0) {
+        raidState.battleLog.push(`💀 YOUR ${defendingFruit.name} was defeated by AI!`);
+        defendingFruit.statusEffects = [];
+    }
+    
+    return actualDamage;
 }
 
 /**
