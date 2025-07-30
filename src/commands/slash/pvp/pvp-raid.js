@@ -1559,23 +1559,29 @@ async function validateRaid(attackerId, target) {
 }
 
 async function getUserFruitsForSelection(userId) {
-    const fruits = await DatabaseManager.getUserDevilFruits(userId);
+    // OPTIMIZED: Use a more efficient query that doesn't calculate duplicates on every fruit
+    const fruits = await DatabaseManager.query(`
+        SELECT DISTINCT ON (fruit_id) 
+            fruit_id, fruit_name, fruit_type, fruit_rarity, 
+            fruit_description, total_cp, base_cp
+        FROM user_devil_fruits 
+        WHERE user_id = $1 
+        ORDER BY fruit_id, total_cp DESC
+    `, [userId]);
     
     const fruitGroups = {};
-    fruits.forEach(fruit => {
+    fruits.rows.forEach(fruit => {
         const key = fruit.fruit_id;
-        if (!fruitGroups[key] || fruit.total_cp > fruitGroups[key].total_cp) {
-            fruitGroups[key] = {
-                id: fruit.fruit_id,
-                name: fruit.fruit_name,
-                type: fruit.fruit_type,
-                rarity: fruit.fruit_rarity,
-                description: fruit.fruit_description,
-                totalCP: fruit.total_cp,
-                baseCP: fruit.base_cp,
-                emoji: RARITY_EMOJIS[fruit.fruit_rarity] || '⚪'
-            };
-        }
+        fruitGroups[key] = {
+            id: fruit.fruit_id,
+            name: fruit.fruit_name,
+            type: fruit.fruit_type,
+            rarity: fruit.fruit_rarity,
+            description: fruit.fruit_description,
+            totalCP: fruit.total_cp,
+            baseCP: fruit.base_cp,
+            emoji: RARITY_EMOJIS[fruit.fruit_rarity] || '⚪'
+        };
     });
     
     return Object.values(fruitGroups).sort((a, b) => b.totalCP - a.totalCP);
@@ -1777,7 +1783,8 @@ function createFruitSelectionComponents(selectionId, allFruits, selectedFruits, 
                 description: `${fruit.rarity} • ${fruit.type}`.substring(0, 100),
                 value: `fruit_${globalIndex}`,
                 emoji: fruit.emoji,
-                default: isSelected
+                // FIXED: Don't set default on already selected fruits to avoid Discord error
+                default: false
             };
         });
         
@@ -1850,14 +1857,24 @@ async function handleFruitSelection(interaction, selectionId) {
     
     const selectedValues = interaction.values;
     
+    // Clear previous selections to avoid conflicts
+    const newSelections = [];
+    
     selectedValues.forEach(value => {
         const fruitIndex = parseInt(value.split('_')[1]);
         const fruit = selection.attackerFruits[fruitIndex];
         
         if (fruit && !selection.selectedFruits.some(s => s.id === fruit.id)) {
-            if (selection.selectedFruits.length < RAID_CONFIG.TEAM_SIZE) {
-                selection.selectedFruits.push(fruit);
+            if (selection.selectedFruits.length + newSelections.length < RAID_CONFIG.TEAM_SIZE) {
+                newSelections.push(fruit);
             }
+        }
+    });
+    
+    // Add new selections
+    newSelections.forEach(fruit => {
+        if (selection.selectedFruits.length < RAID_CONFIG.TEAM_SIZE) {
+            selection.selectedFruits.push(fruit);
         }
     });
     
