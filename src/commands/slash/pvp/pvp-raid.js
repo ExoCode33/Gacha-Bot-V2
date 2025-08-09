@@ -1291,5 +1291,959 @@ function reduceCooldowns(player) {
     });
 }
 
-// Other helper functions continue as in original code...
-// [Include remaining functions like setupEnhancedBattleCollector, validateRaid, etc.]
+// ===== MISSING UTILITY FUNCTIONS =====
+
+/**
+ * Update bot status during raids
+ */
+function updateBotStatus(client, activityType, data = {}) {
+    try {
+        const { ActivityType } = require('discord.js');
+        
+        let statusText = 'the Grand Line for Devil Fruits! 🍈';
+        let activityTypeDiscord = ActivityType.Watching;
+        
+        switch (activityType) {
+            case 'raid_start':
+                statusText = `⚔️ ${data.attacker} raiding ${data.target}!`;
+                activityTypeDiscord = ActivityType.Watching;
+                break;
+            case 'raid_battle':
+                statusText = `⚔️ Enhanced battle in progress!`;
+                activityTypeDiscord = ActivityType.Watching;
+                break;
+            case 'raid_end':
+                statusText = `🏆 ${data.winner} wins with enhanced combat!`;
+                activityTypeDiscord = ActivityType.Watching;
+                break;
+        }
+        
+        client.user.setActivity(statusText, { type: activityTypeDiscord });
+        
+        setTimeout(() => {
+            client.user.setActivity('the Grand Line for Devil Fruits! 🍈', { type: ActivityType.Watching });
+        }, 30000);
+        
+    } catch (error) {
+        console.error('Failed to update bot status:', error);
+    }
+}
+
+/**
+ * Create error embed
+ */
+function createErrorEmbed(message) {
+    return new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Raid Error')
+        .setDescription(message)
+        .setTimestamp();
+}
+
+/**
+ * Validate raid requirements
+ */
+async function validateRaid(attackerId, target) {
+    if (!target || target.bot) {
+        return { valid: false, reason: 'Cannot raid bots or invalid users!' };
+    }
+    
+    if (attackerId === target.id) {
+        return { valid: false, reason: 'Cannot raid yourself!' };
+    }
+    
+    const lastRaid = raidCooldowns.get(attackerId);
+    if (lastRaid && Date.now() - lastRaid < RAID_CONFIG.COOLDOWN_TIME) {
+        const timeLeft = Math.ceil((RAID_CONFIG.COOLDOWN_TIME - (Date.now() - lastRaid)) / 1000 / 60);
+        return { valid: false, reason: `Raid cooldown active! Wait ${timeLeft} more minutes.` };
+    }
+    
+    try {
+        const targetUser = await DatabaseManager.getUser(target.id);
+        if (!targetUser || targetUser.total_cp < RAID_CONFIG.MIN_CP_REQUIRED) {
+            return { valid: false, reason: `Target must have at least ${RAID_CONFIG.MIN_CP_REQUIRED} CP to be raided!` };
+        }
+    } catch (error) {
+        return { valid: false, reason: 'Could not verify target information!' };
+    }
+    
+    return { valid: true };
+}
+
+/**
+ * Get user fruits for selection
+ */
+async function getUserFruitsForSelection(userId) {
+    const fruits = await DatabaseManager.query(`
+        SELECT DISTINCT ON (fruit_id) 
+            fruit_id, fruit_name, fruit_type, fruit_rarity, 
+            fruit_description, total_cp, base_cp
+        FROM user_devil_fruits 
+        WHERE user_id = $1 
+        ORDER BY fruit_id, total_cp DESC
+    `, [userId]);
+    
+    const fruitGroups = {};
+    fruits.rows.forEach(fruit => {
+        const key = fruit.fruit_id;
+        fruitGroups[key] = {
+            id: fruit.fruit_id,
+            name: fruit.fruit_name,
+            type: fruit.fruit_type,
+            rarity: fruit.fruit_rarity,
+            description: fruit.fruit_description,
+            totalCP: fruit.total_cp,
+            baseCP: fruit.base_cp,
+            emoji: RARITY_EMOJIS[fruit.fruit_rarity] || '⚪'
+        };
+    });
+    
+    return Object.values(fruitGroups).sort((a, b) => b.totalCP - a.totalCP);
+}
+
+/**
+ * Get defender's strongest fruits
+ */
+async function getDefenderStrongestFruits(userId) {
+    const fruits = await getUserFruitsForSelection(userId);
+    return fruits.slice(0, RAID_CONFIG.TEAM_SIZE);
+}
+
+/**
+ * Start fruit selection
+ */
+async function startFruitSelection(interaction, attacker, target, attackerFruits) {
+    const selectionId = generateSelectionId();
+    
+    fruitSelections.set(selectionId, {
+        attackerId: attacker.id,
+        targetId: target.id,
+        attackerFruits,
+        selectedFruits: [],
+        currentPage: 0,
+        createdAt: Date.now()
+    });
+    
+    const embed = createFruitSelectionEmbed(attackerFruits, [], 0);
+    const components = createFruitSelectionComponents(selectionId, attackerFruits, [], 0);
+    
+    await interaction.editReply({
+        embeds: [embed],
+        components
+    });
+    
+    setupFruitSelectionCollector(interaction, selectionId, target);
+}
+
+/**
+ * Create fruit selection embed
+ */
+function createFruitSelectionEmbed(allFruits, selectedFruits, currentPage) {
+    const selectedCount = selectedFruits.length;
+    const remainingSlots = RAID_CONFIG.TEAM_SIZE - selectedCount;
+    
+    const embed = new EmbedBuilder()
+        .setColor(RARITY_COLORS.legendary)
+        .setTitle(`🍈 Select Your Raid Team (${selectedCount}/${RAID_CONFIG.TEAM_SIZE})`)
+        .setDescription(`Choose ${remainingSlots} more Devil Fruit${remainingSlots !== 1 ? 's' : ''} for your raid team!`)
+        .setFooter({ text: `Page ${currentPage + 1} • Use buttons to navigate and select` })
+        .setTimestamp();
+    
+    // Show current selections
+    if (selectedFruits.length > 0) {
+        const selectedText = selectedFruits
+            .map((fruit, index) => `${index + 1}. ${fruit.emoji} **${fruit.name}** (${fruit.totalCP} CP)`)
+            .join('\n');
+        
+        embed.addFields({
+            name: '✅ Selected Team',
+            value: selectedText,
+            inline: false
+        });
+    }
+    
+    // Show available fruits for current page
+    const startIndex = currentPage * RAID_CONFIG.FRUITS_PER_PAGE;
+    const endIndex = startIndex + RAID_CONFIG.FRUITS_PER_PAGE;
+    const pageFruits = allFruits.slice(startIndex, endIndex);
+    
+    if (pageFruits.length > 0) {
+        const availableText = pageFruits
+            .map((fruit, index) => {
+                const globalIndex = startIndex + index;
+                const isSelected = selectedFruits.some(s => s.id === fruit.id);
+                const status = isSelected ? '✅' : `${globalIndex + 1}.`;
+                return `${status} ${fruit.emoji} **${fruit.name}** (${fruit.rarity}, ${fruit.totalCP} CP)`;
+            })
+            .join('\n');
+        
+        embed.addFields({
+            name: '🍈 Available Fruits',
+            value: availableText.length > 1000 ? availableText.substring(0, 997) + '...' : availableText,
+            inline: false
+        });
+    }
+    
+    return embed;
+}
+
+/**
+ * Create fruit selection components
+ */
+function createFruitSelectionComponents(selectionId, allFruits, selectedFruits, currentPage) {
+    const components = [];
+    
+    // Navigation buttons
+    const navRow = new ActionRowBuilder();
+    const totalPages = Math.ceil(allFruits.length / RAID_CONFIG.FRUITS_PER_PAGE);
+    
+    if (currentPage > 0) {
+        navRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_prev_${selectionId}`)
+                .setLabel('⬅️ Previous')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+    
+    if (currentPage < totalPages - 1) {
+        navRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_next_${selectionId}`)
+                .setLabel('➡️ Next')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+    
+    if (navRow.components.length > 0) {
+        components.push(navRow);
+    }
+    
+    // Fruit selection dropdown
+    const startIndex = currentPage * RAID_CONFIG.FRUITS_PER_PAGE;
+    const endIndex = startIndex + RAID_CONFIG.FRUITS_PER_PAGE;
+    const pageFruits = allFruits.slice(startIndex, endIndex);
+    
+    if (pageFruits.length > 0 && selectedFruits.length < RAID_CONFIG.TEAM_SIZE) {
+        const options = pageFruits.map((fruit, index) => {
+            const globalIndex = startIndex + index;
+            
+            return {
+                label: `${fruit.name} (${fruit.totalCP} CP)`.substring(0, 100),
+                description: `${fruit.rarity} • ${fruit.type}`.substring(0, 100),
+                value: `fruit_${globalIndex}`,
+                emoji: fruit.emoji
+            };
+        });
+        
+        const remainingSlots = RAID_CONFIG.TEAM_SIZE - selectedFruits.length;
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`fruit_select_${selectionId}`)
+            .setPlaceholder('Select fruits for your raid team...')
+            .setMinValues(0)
+            .setMaxValues(Math.min(options.length, remainingSlots))
+            .addOptions(options);
+        
+        components.push(new ActionRowBuilder().addComponents(selectMenu));
+    }
+    
+    // Action buttons
+    const actionRow = new ActionRowBuilder();
+    
+    if (selectedFruits.length > 0) {
+        actionRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_clear_${selectionId}`)
+                .setLabel('🗑️ Clear All')
+                .setStyle(ButtonStyle.Danger)
+        );
+    }
+    
+    if (selectedFruits.length === RAID_CONFIG.TEAM_SIZE) {
+        actionRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`fruit_confirm_${selectionId}`)
+                .setLabel('⚔️ Start Raid!')
+                .setStyle(ButtonStyle.Success)
+        );
+    }
+    
+    if (actionRow.components.length > 0) {
+        components.push(actionRow);
+    }
+    
+    return components;
+}
+
+/**
+ * Setup fruit selection collector
+ */
+function setupFruitSelectionCollector(interaction, selectionId, target) {
+    const filter = (i) => i.user.id === interaction.user.id;
+    
+    const collector = interaction.channel.createMessageComponentCollector({
+        filter,
+        time: RAID_CONFIG.INTERACTION_TIMEOUT
+    });
+    
+    collector.on('collect', async (componentInteraction) => {
+        try {
+            const selection = fruitSelections.get(selectionId);
+            if (!selection) {
+                return componentInteraction.reply({
+                    content: 'Selection session expired!',
+                    ephemeral: true
+                });
+            }
+            
+            const customId = componentInteraction.customId;
+            
+            if (customId.startsWith('fruit_prev_')) {
+                await handlePageNavigation(componentInteraction, selectionId, 'prev');
+            } else if (customId.startsWith('fruit_next_')) {
+                await handlePageNavigation(componentInteraction, selectionId, 'next');
+            } else if (customId.startsWith('fruit_select_')) {
+                await handleFruitSelection(componentInteraction, selectionId);
+            } else if (customId.startsWith('fruit_clear_')) {
+                await handleClearSelection(componentInteraction, selectionId);
+            } else if (customId.startsWith('fruit_confirm_')) {
+                await handleConfirmSelection(componentInteraction, selectionId, target);
+                collector.stop('confirmed');
+            }
+        } catch (error) {
+            console.error('Fruit selection error:', error);
+            try {
+                await componentInteraction.reply({
+                    content: 'An error occurred. Please try again.',
+                    ephemeral: true
+                });
+            } catch (replyError) {
+                console.error('Failed to send error response:', replyError);
+            }
+        }
+    });
+    
+    collector.on('end', (collected, reason) => {
+        if (reason === 'time') {
+            interaction.followUp({
+                embeds: [createErrorEmbed('Fruit selection timed out!')],
+                ephemeral: true
+            }).catch(() => {});
+        }
+        
+        fruitSelections.delete(selectionId);
+    });
+}
+
+/**
+ * Handle page navigation
+ */
+async function handlePageNavigation(interaction, selectionId, direction) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    const totalPages = Math.ceil(selection.attackerFruits.length / RAID_CONFIG.FRUITS_PER_PAGE);
+    
+    if (direction === 'prev' && selection.currentPage > 0) {
+        selection.currentPage--;
+    } else if (direction === 'next' && selection.currentPage < totalPages - 1) {
+        selection.currentPage++;
+    }
+    
+    const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+/**
+ * Handle fruit selection
+ */
+async function handleFruitSelection(interaction, selectionId) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    const selectedValues = interaction.values;
+    
+    // Process selections
+    selectedValues.forEach(value => {
+        const fruitIndex = parseInt(value.split('_')[1]);
+        const fruit = selection.attackerFruits[fruitIndex];
+        
+        if (fruit && !selection.selectedFruits.some(s => s.id === fruit.id)) {
+            if (selection.selectedFruits.length < RAID_CONFIG.TEAM_SIZE) {
+                selection.selectedFruits.push(fruit);
+            }
+        }
+    });
+    
+    const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+/**
+ * Handle clear selection
+ */
+async function handleClearSelection(interaction, selectionId) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    selection.selectedFruits = [];
+    
+    const embed = createFruitSelectionEmbed(selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    const components = createFruitSelectionComponents(selectionId, selection.attackerFruits, selection.selectedFruits, selection.currentPage);
+    
+    await interaction.update({ embeds: [embed], components });
+}
+
+/**
+ * Handle confirm selection
+ */
+async function handleConfirmSelection(interaction, selectionId, target) {
+    const selection = fruitSelections.get(selectionId);
+    if (!selection) {
+        return interaction.reply({ content: '❌ Selection session expired!', ephemeral: true });
+    }
+    
+    if (selection.selectedFruits.length !== RAID_CONFIG.TEAM_SIZE) {
+        return interaction.reply({ 
+            content: `❌ You must select exactly ${RAID_CONFIG.TEAM_SIZE} fruits!`, 
+            ephemeral: true 
+        });
+    }
+    
+    await interaction.update({
+        embeds: [new EmbedBuilder()
+            .setColor(RARITY_COLORS.epic)
+            .setTitle('⚔️ Starting Enhanced Raid Battle!')
+            .setDescription('Preparing for battle with improved damage system and UI!')
+            .setTimestamp()],
+        components: []
+    });
+    
+    // Get defender team
+    const defenderFruits = await getDefenderStrongestFruits(target.id);
+    
+    // Start the battle
+    await startBattle(interaction, selection.attackerId, selection.targetId, selection.selectedFruits, defenderFruits);
+    
+    fruitSelections.delete(selectionId);
+}
+
+/**
+ * Start battle
+ */
+async function startBattle(interaction, attackerId, defenderId, attackerTeam, defenderTeam) {
+    const raidId = generateRaidId();
+    
+    const [attackerUser, defenderUser] = await Promise.all([
+        DatabaseManager.getUser(attackerId),
+        DatabaseManager.getUser(defenderId)
+    ]);
+    
+    updateBotStatus(interaction.client, 'raid_battle', {
+        attacker: attackerUser.username,
+        defender: defenderUser.username
+    });
+    
+    const raidState = {
+        id: raidId,
+        attacker: {
+            userId: attackerId,
+            username: attackerUser.username,
+            team: attackerTeam.map(fruit => {
+                const maxHP = calculateFruitHP(fruit);
+                return {
+                    ...fruit,
+                    currentHP: maxHP,
+                    maxHP: maxHP,
+                    cooldown: 0,
+                    statusEffects: []
+                };
+            }),
+            activeFruitIndex: 0
+        },
+        defender: {
+            userId: defenderId,
+            username: defenderUser.username,
+            team: defenderTeam.map(fruit => {
+                const maxHP = calculateFruitHP(fruit);
+                return {
+                    ...fruit,
+                    currentHP: maxHP,
+                    maxHP: maxHP,
+                    cooldown: 0,
+                    statusEffects: []
+                };
+            }),
+            activeFruitIndex: 0
+        },
+        turn: 1,
+        currentPlayer: 'attacker',
+        battleLog: [],
+        startTime: Date.now(),
+        collector: null
+    };
+    
+    activeRaids.set(raidId, raidState);
+    
+    await showBattleInterface(interaction, raidState);
+}
+
+/**
+ * Calculate fruit HP
+ */
+function calculateFruitHP(fruit) {
+    const baseHP = {
+        'common': 400, 'uncommon': 450, 'rare': 500, 'epic': 550,
+        'legendary': 600, 'mythical': 650, 'divine': 700
+    };
+    
+    const rarityHP = baseHP[fruit.rarity] || 400;
+    const cpBonus = Math.floor(fruit.totalCP / 50);
+    
+    return rarityHP + cpBonus;
+}
+
+/**
+ * Setup enhanced battle collector
+ */
+function setupEnhancedBattleCollector(interaction, raidState) {
+    const filter = (i) => i.user.id === raidState.attacker.userId;
+    
+    if (raidState.collector) {
+        raidState.collector.stop();
+    }
+    
+    const collector = interaction.channel.createMessageComponentCollector({
+        filter,
+        time: RAID_CONFIG.TURN_TIMEOUT
+    });
+    
+    let selectedSkill = null;
+    
+    collector.on('collect', async (componentInteraction) => {
+        try {
+            const customId = componentInteraction.customId;
+            
+            if (customId.startsWith('skill_select_')) {
+                selectedSkill = componentInteraction.values[0];
+                await componentInteraction.deferUpdate();
+                
+                const updatedEmbed = createEnhancedBattleEmbed(raidState, selectedSkill);
+                const updatedComponents = createEnhancedBattleComponents(raidState, selectedSkill);
+                
+                await interaction.editReply({
+                    embeds: [updatedEmbed],
+                    components: updatedComponents
+                });
+                
+            } else if (customId.startsWith('target_select_')) {
+                if (!selectedSkill) {
+                    return componentInteraction.reply({
+                        content: '❌ Please select a skill first!',
+                        ephemeral: true
+                    });
+                }
+                
+                const selectedTarget = parseInt(componentInteraction.values[0]);
+                await componentInteraction.deferUpdate();
+                
+                // Execute player attack
+                await executeAttack(raidState, selectedSkill, selectedTarget);
+                
+                const battleResult = checkBattleEnd(raidState);
+                if (battleResult.ended) {
+                    await endBattle(interaction, raidState, battleResult);
+                    collector.stop();
+                    return;
+                }
+                
+                // Process AI turn
+                await processAITurn(raidState);
+                
+                const battleResult2 = checkBattleEnd(raidState);
+                if (battleResult2.ended) {
+                    await endBattle(interaction, raidState, battleResult2);
+                    collector.stop();
+                    return;
+                }
+                
+                // Reduce cooldowns and advance turn
+                reduceCooldowns(raidState.attacker);
+                reduceCooldowns(raidState.defender);
+                raidState.turn++;
+                raidState.currentPlayer = 'attacker';
+                
+                selectedSkill = null;
+                
+                await showBattleInterface(interaction, raidState);
+                collector.stop();
+                
+            } else if (customId.startsWith('change_skill_')) {
+                selectedSkill = null;
+                await componentInteraction.deferUpdate();
+                
+                const updatedEmbed = createEnhancedBattleEmbed(raidState);
+                const updatedComponents = createEnhancedBattleComponents(raidState);
+                
+                await interaction.editReply({
+                    embeds: [updatedEmbed],
+                    components: updatedComponents
+                });
+            }
+        } catch (error) {
+            console.error('Enhanced battle action error:', error);
+            try {
+                if (!componentInteraction.replied && !componentInteraction.deferred) {
+                    await componentInteraction.reply({
+                        content: 'An error occurred during battle. Continuing...',
+                        ephemeral: true
+                    });
+                }
+            } catch (replyError) {
+                console.error('Failed to send battle error response:', replyError);
+            }
+        }
+    });
+    
+    collector.on('end', async (collected, reason) => {
+        if (reason === 'time' && activeRaids.has(raidState.id)) {
+            await endBattle(interaction, raidState, { 
+                ended: true, 
+                winner: raidState.defender.userId, 
+                reason: 'timeout' 
+            });
+        }
+    });
+    
+    raidState.collector = collector;
+}
+
+/**
+ * End battle
+ */
+async function endBattle(interaction, raidState, battleResult) {
+    try {
+        if (raidState.collector) {
+            raidState.collector.stop();
+        }
+        
+        const winnerUser = battleResult.winner === raidState.attacker.userId ? 
+            raidState.attacker.username : raidState.defender.username;
+        
+        updateBotStatus(interaction.client, 'raid_end', {
+            winner: winnerUser
+        });
+        
+        const rewards = await calculateRewards(raidState, battleResult.winner);
+        const resultEmbed = createEnhancedBattleResultEmbed(raidState, battleResult, rewards);
+        
+        await interaction.editReply({
+            embeds: [resultEmbed],
+            components: []
+        });
+        
+        activeRaids.delete(raidState.id);
+        
+    } catch (error) {
+        console.error('Error ending battle:', error);
+        activeRaids.delete(raidState.id);
+    }
+}
+
+/**
+ * Create enhanced battle result embed
+ */
+function createEnhancedBattleResultEmbed(raidState, battleResult, rewards) {
+    const { attacker, defender } = raidState;
+    const { winner, reason } = battleResult;
+    
+    const winnerName = winner === attacker.userId ? attacker.username : defender.username;
+    const loserName = winner === attacker.userId ? defender.username : attacker.username;
+    
+    const embed = new EmbedBuilder()
+        .setTitle('🏆 Battle Complete!')
+        .setDescription(`**${winnerName}** defeats **${loserName}** with devil fruit mastery!`)
+        .setColor(winner === attacker.userId ? 0x00FF00 : 0xFF0000)
+        .setTimestamp();
+    
+    // Show final team status
+    const attackerStatus = attacker.team.map(fruit => {
+        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
+        const hpPercent = Math.round((fruit.currentHP / fruit.maxHP) * 100);
+        
+        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${hpPercent}% (${fruit.currentHP}/${fruit.maxHP})`;
+    }).join('\n\n');
+    
+    const defenderStatus = defender.team.map(fruit => {
+        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
+        const hpPercent = Math.round((fruit.currentHP / fruit.maxHP) * 100);
+        
+        return `${fruit.emoji} **${fruit.name}**\n${hpBar} ${hpPercent}% (${fruit.currentHP}/${fruit.maxHP})`;
+    }).join('\n\n');
+    
+    embed.addFields(
+        {
+            name: `⚔️ ${attacker.username}'s Final Team`,
+            value: attackerStatus,
+            inline: false
+        },
+        {
+            name: `🛡️ ${defender.username}'s Final Team`,
+            value: defenderStatus,
+            inline: false
+        },
+        {
+            name: '📊 Battle Summary',
+            value: [
+                `**Winner:** ${winnerName}`,
+                `**Reason:** ${reason}`,
+                `**Total Turns:** ${raidState.turn}`,
+                `**Duration:** ${Math.floor((Date.now() - raidState.startTime) / 1000)}s`
+            ].join('\n'),
+            inline: false
+        }
+    );
+    
+    // Show rewards
+    if (rewards.berries > 0 || rewards.fruitsStolen.length > 0) {
+        let rewardsText = '';
+        
+        if (rewards.berries > 0) {
+            rewardsText += `💰 **Berries Stolen:** ${rewards.berries.toLocaleString()}\n`;
+        }
+        
+        if (rewards.fruitsStolen.length > 0) {
+            rewardsText += `🍈 **Fruits Stolen:** ${rewards.fruitsStolen.length}\n`;
+            rewards.fruitsStolen.forEach(fruit => {
+                rewardsText += `• ${fruit.emoji || '⚪'} ${fruit.name}\n`;
+            });
+        }
+        
+        if (rewardsText) {
+            embed.addFields({
+                name: '🎁 Battle Rewards',
+                value: rewardsText,
+                inline: false
+            });
+        }
+    }
+    
+    return embed;
+}
+
+/**
+ * Calculate rewards
+ */
+async function calculateRewards(raidState, winnerId) {
+    const rewards = {
+        berries: 0,
+        fruitsStolen: [],
+        experience: 0
+    };
+    
+    if (winnerId === raidState.attacker.userId) {
+        const defenderUser = await DatabaseManager.getUser(raidState.defender.userId);
+        const targetBerries = defenderUser.berries || 0;
+        const berriesStolen = Math.floor(targetBerries * RAID_CONFIG.BERRY_STEAL_PERCENTAGE);
+        
+        if (berriesStolen > 0) {
+            rewards.berries = berriesStolen;
+            
+            try {
+                await DatabaseManager.updateUserBerries(raidState.attacker.userId, berriesStolen, 'raid_victory');
+                await DatabaseManager.updateUserBerries(raidState.defender.userId, -berriesStolen, 'raid_loss');
+            } catch (error) {
+                console.error('Error updating berries:', error);
+            }
+        }
+        
+        const stolenFruits = await tryStealFruits(raidState.defender.userId, raidState.attacker.userId);
+        rewards.fruitsStolen = stolenFruits;
+        
+        rewards.experience = Math.floor(defenderUser.total_cp / 100);
+        
+        raidCooldowns.set(raidState.attacker.userId, Date.now());
+    }
+    
+    return rewards;
+}
+
+/**
+ * Try to steal fruits
+ */
+async function tryStealFruits(targetId, attackerId) {
+    const stolenFruits = [];
+    
+    try {
+        const targetFruits = await DatabaseManager.getUserDevilFruits(targetId);
+        
+        for (let i = 0; i < RAID_CONFIG.MAX_FRUIT_DROPS && stolenFruits.length < RAID_CONFIG.MAX_FRUIT_DROPS; i++) {
+            if (targetFruits.length === 0) break;
+            
+            const randomFruit = targetFruits[Math.floor(Math.random() * targetFruits.length)];
+            const dropChance = RAID_CONFIG.FRUIT_DROP_CHANCES[randomFruit.fruit_rarity] || 0.1;
+            
+            if (Math.random() < dropChance) {
+                await transferFruit(randomFruit, targetId, attackerId);
+                stolenFruits.push({
+                    name: randomFruit.fruit_name,
+                    rarity: randomFruit.fruit_rarity,
+                    emoji: RARITY_EMOJIS[randomFruit.fruit_rarity] || '⚪'
+                });
+                
+                const index = targetFruits.indexOf(randomFruit);
+                if (index > -1) {
+                    targetFruits.splice(index, 1);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error stealing fruits:', error);
+    }
+    
+    return stolenFruits;
+}
+
+/**
+ * Transfer fruit between users
+ */
+async function transferFruit(fruit, fromUserId, toUserId) {
+    try {
+        await DatabaseManager.query(`
+            DELETE FROM user_devil_fruits 
+            WHERE user_id = $1 AND fruit_id = $2 
+            AND id = (
+                SELECT id FROM user_devil_fruits 
+                WHERE user_id = $1 AND fruit_id = $2 
+                LIMIT 1
+            )
+        `, [fromUserId, fruit.fruit_id]);
+        
+        await DatabaseManager.addDevilFruit(toUserId, {
+            id: fruit.fruit_id,
+            name: fruit.fruit_name,
+            type: fruit.fruit_type,
+            rarity: fruit.fruit_rarity,
+            multiplier: (fruit.base_cp / 100).toFixed(1),
+            description: fruit.fruit_description
+        });
+        
+        await DatabaseManager.recalculateUserCP(fromUserId);
+        await DatabaseManager.recalculateUserCP(toUserId);
+        
+    } catch (error) {
+        console.error('Error transferring fruit:', error);
+    }
+}
+
+/**
+ * Generate unique raid ID
+ */
+function generateRaidId() {
+    return `raid_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
+
+/**
+ * Generate unique selection ID
+ */
+function generateSelectionId() {
+    return `selection_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
+
+/**
+ * Enhanced AI fruit selection
+ */
+function selectBestAIFruit(availableAIFruits, playerTargets) {
+    let bestScore = -1;
+    let bestFruit = availableAIFruits[0];
+    
+    availableAIFruits.forEach(({ fruit, index }) => {
+        let score = 0;
+        
+        // HP and CP factors
+        score += (fruit.currentHP / fruit.maxHP) * 30;
+        score += (fruit.totalCP / 10000) * 40;
+        
+        // Skill availability
+        const skillData = getSkillData(fruit.id, fruit.rarity);
+        if (skillData && fruit.cooldown === 0) {
+            score += 25;
+            
+            if ((skillData.range === 'area' || skillData.range === 'all') && playerTargets.length > 2) {
+                score += 15;
+            }
+            
+            if (skillData.damage > 120) {
+                score += 10;
+            }
+        }
+        
+        // Status considerations
+        if (fruit.statusEffects) {
+            const debuffs = fruit.statusEffects.filter(e => e.type === 'debuff' || e.type === 'disable');
+            score -= debuffs.length * 10;
+            
+            const buffs = fruit.statusEffects.filter(e => e.type === 'buff');
+            score += buffs.length * 5;
+        }
+        
+        score += Math.random() * 5;
+        
+        if (score > bestScore) {
+            bestScore = score;
+            bestFruit = { fruit, index };
+        }
+    });
+    
+    return bestFruit;
+}
+
+/**
+ * Enhanced AI target selection
+ */
+function selectBestAITarget(availablePlayerTargets, attackingFruit) {
+    let bestScore = -1;
+    let bestTarget = availablePlayerTargets[0];
+    
+    availablePlayerTargets.forEach(({ fruit, index }) => {
+        let score = 0;
+        
+        // Prioritize low HP targets
+        const hpPercent = fruit.currentHP / fruit.maxHP;
+        if (hpPercent < 0.3) {
+            score += 60; // High priority for finishing
+        } else if (hpPercent < 0.6) {
+            score += 30;
+        }
+        
+        // Prioritize high CP threats
+        score += (fruit.totalCP / 10000) * 20;
+        
+        // Avoid heavily defended targets
+        const hasDefenses = fruit.statusEffects && 
+            fruit.statusEffects.some(e => e.type === 'defense' || e.type === 'immunity');
+        
+        if (!hasDefenses) {
+            score += 15;
+        }
+        
+        score += Math.random() * 10;
+        
+        if (score > bestScore) {
+            bestScore = score;
+            bestTarget = { fruit, index };
+        }
+    });
+    
+    return bestTarget;
+}
