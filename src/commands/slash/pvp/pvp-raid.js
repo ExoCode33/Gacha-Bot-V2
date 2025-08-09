@@ -509,7 +509,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
 }
 
 /**
- * IMPROVED: Perfect HP bar with better visual feedback
+ * IMPROVED: Perfect HP bar with white circles for dead fruits
  */
 function createPerfectHPBar(currentHP, maxHP) {
     const barLength = 12; // Consistent bar length
@@ -518,7 +518,7 @@ function createPerfectHPBar(currentHP, maxHP) {
     const emptyBars = barLength - filledBars;
     
     if (percentage <= 0) {
-        return '🔴'.repeat(barLength); // All red when dead
+        return '⚪'.repeat(barLength); // WHITE circles when dead
     }
     
     let hpEmoji = '🟢'; // Green for healthy
