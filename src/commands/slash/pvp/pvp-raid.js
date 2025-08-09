@@ -161,23 +161,23 @@ function calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, att
 }
 
 /**
- * IMPROVED: Better rarity bonus for basic attacks
+ * IMPROVED: Much stronger rarity bonus for basic attacks
  */
 function getRarityBasicAttackBonus(rarity) {
     const bonuses = {
-        'common': 1.0, 'uncommon': 1.15, 'rare': 1.3, 'epic': 1.45,
-        'legendary': 1.6, 'mythical': 1.8, 'divine': 2.0
+        'common': 1.0, 'uncommon': 1.2, 'rare': 1.4, 'epic': 1.7,
+        'legendary': 2.0, 'mythical': 2.5, 'divine': 3.0  // DIVINE is 3x stronger!
     };
     return bonuses[rarity] || 1.0;
 }
 
 /**
- * IMPROVED: Better rarity damage bonus for skills
+ * IMPROVED: Much stronger rarity damage bonus for skills
  */
 function getRarityDamageBonus(rarity) {
     const bonuses = {
-        'common': 1.0, 'uncommon': 1.1, 'rare': 1.2, 'epic': 1.35,
-        'legendary': 1.5, 'mythical': 1.7, 'divine': 2.0
+        'common': 1.0, 'uncommon': 1.15, 'rare': 1.3, 'epic': 1.5,
+        'legendary': 1.8, 'mythical': 2.2, 'divine': 2.8  // DIVINE is 2.8x stronger!
     };
     return bonuses[rarity] || 1.0;
 }
@@ -648,11 +648,11 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
     
     let damage = calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, attackerModifiers, isBasicAttack);
     
-    // IMPROVED: AI gets slight damage bonus
-    damage = Math.floor(damage * 1.15); // 15% AI damage bonus
+    // IMPROVED: AI gets damage reduction (nerf) to make player stronger
+    damage = Math.floor(damage * RAID_CONFIG.AI_DAMAGE_NERF); // Reduce AI damage by 20%
     
     // Critical hit calculation
-    const criticalChance = calculateCriticalChance(attackingFruit, attackerModifiers, skillData);
+    const criticalChance = calculateCriticalChance(attackingFruit, attackerModifiers, skillData) * 0.7; // Reduce AI crit chance
     const isCritical = Math.random() < criticalChance;
     
     if (isCritical) {
@@ -756,7 +756,7 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
 }
 
 /**
- * IMPROVED: Enhanced AI skill usage decision - Prioritize skills with better logic
+ * IMPROVED: Enhanced AI skill usage decision - MUCH less aggressive
  */
 function decideAISkillUsage(attackingFruit, targetFruit, skillData, raidState) {
     if (!skillData || attackingFruit.cooldown > 0) {
@@ -765,34 +765,35 @@ function decideAISkillUsage(attackingFruit, targetFruit, skillData, raidState) {
     
     const targetHpPercent = targetFruit.currentHP / targetFruit.maxHP;
     
-    // PRIORITY 1: Always use skills for finishing blows
-    if (targetHpPercent < 0.35 && skillData.damage > (targetFruit.currentHP * 0.8)) {
+    // PRIORITY 1: Use skills for finishing blows only if very likely to kill
+    if (targetHpPercent < 0.25 && skillData.damage > (targetFruit.currentHP * 1.2)) {
         return true;
     }
     
-    // PRIORITY 2: Always prioritize AOE skills when multiple targets
+    // PRIORITY 2: AOE skills only if 3+ targets and low player HP
     const livingTargets = raidState.attacker.team.filter(f => f.currentHP > 0).length;
-    if ((skillData.range === 'area' || skillData.range === 'all') && livingTargets > 2) {
-        return true;
+    const averagePlayerHP = raidState.attacker.team.reduce((sum, f) => sum + (f.currentHP/f.maxHP), 0) / raidState.attacker.team.length;
+    if ((skillData.range === 'area' || skillData.range === 'all') && livingTargets > 3 && averagePlayerHP < 0.5) {
+        return Math.random() < 0.7; // 70% chance
     }
     
-    // PRIORITY 3: Always use effect skills
+    // PRIORITY 3: Effect skills less often
     if (skillData.effect) {
-        return true;
+        return Math.random() < 0.6; // 60% chance for effect skills
     }
     
-    // PRIORITY 4: Use high damage skills against healthy targets
-    if (targetHpPercent > 0.6 && skillData.damage > 120) {
-        return true;
+    // PRIORITY 4: High damage skills only against healthy targets
+    if (targetHpPercent > 0.8 && skillData.damage > 150) {
+        return Math.random() < 0.5; // 50% chance
     }
     
-    // PRIORITY 5: Use skills more often early in battle
-    if (raidState.turn <= 8) {
-        return Math.random() < 0.95; // 95% in first 8 turns
+    // PRIORITY 5: Use skills less often early in battle
+    if (raidState.turn <= 5) {
+        return Math.random() < 0.4; // Only 40% in first 5 turns
     }
     
-    // PRIORITY 6: General high skill preference
-    return Math.random() < 0.85; // 85% base chance
+    // PRIORITY 6: Much lower general skill preference
+    return Math.random() < 0.3; // Only 30% base chance (was 85%!)
 }
 
 // ===== IMPROVED BATTLE INTERFACE =====
@@ -1072,21 +1073,21 @@ function createEnhancedBattleComponents(raidState, selectedSkill = null) {
 // calculateDodgeChance, checkBattleEnd, etc. from the original code]
 
 /**
- * Calculate critical hit chance with proper scaling
+ * Calculate critical hit chance with MUCH stronger rarity scaling
  */
 function calculateCriticalChance(attacker, attackerModifiers, skillData) {
     let critChance = RAID_CONFIG.BASE_CRIT_CHANCE;
     
-    // Rarity bonus
+    // IMPROVED: Much stronger rarity bonus for crits
     const rarityBonus = {
-        'common': 0.05, 'uncommon': 0.08, 'rare': 0.12, 'epic': 0.16,
-        'legendary': 0.20, 'mythical': 0.25, 'divine': 0.30
+        'common': 0.05, 'uncommon': 0.10, 'rare': 0.15, 'epic': 0.20,
+        'legendary': 0.30, 'mythical': 0.40, 'divine': 0.50  // DIVINE gets 50% bonus crit!
     };
     critChance += (rarityBonus[attacker.rarity] || 0.05);
     
     // Skill bonus
     if (skillData && skillData.type === 'attack') {
-        critChance += 0.1;
+        critChance += 0.15; // Increased skill crit bonus
     }
     
     // Status effect modifiers
@@ -1799,16 +1800,16 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
 }
 
 /**
- * Calculate fruit HP
+ * Calculate fruit HP with MUCH stronger rarity scaling
  */
 function calculateFruitHP(fruit) {
     const baseHP = {
-        'common': 400, 'uncommon': 450, 'rare': 500, 'epic': 550,
-        'legendary': 600, 'mythical': 650, 'divine': 700
+        'common': 300, 'uncommon': 400, 'rare': 500, 'epic': 650,
+        'legendary': 800, 'mythical': 1000, 'divine': 1300  // DIVINE gets massive HP boost!
     };
     
-    const rarityHP = baseHP[fruit.rarity] || 400;
-    const cpBonus = Math.floor(fruit.totalCP / 50);
+    const rarityHP = baseHP[fruit.rarity] || 300;
+    const cpBonus = Math.floor(fruit.totalCP / 40); // Better CP scaling for HP
     
     return rarityHP + cpBonus;
 }
