@@ -534,7 +534,7 @@ function createPerfectHPBar(currentHP, maxHP) {
 // ===== IMPROVED AI SYSTEM =====
 
 /**
- * IMPROVED: Enhanced AI turn processing with better damage
+ * IMPROVED: Enhanced AI turn processing with proper message categorization
  */
 async function processAITurn(raidState) {
     const availableAIFruits = raidState.defender.team
@@ -548,7 +548,7 @@ async function processAITurn(raidState) {
     if (availableAIFruits.length === 0) {
         raidState.battleLog.push({
             type: 'ai_skip',
-            message: `⏭️ **${raidState.defender.username}** has no available fruits - turn skipped!`,
+            message: `⏭️ **AI ${raidState.defender.username}** has no available fruits - turn skipped!`,
             turn: raidState.turn
         });
         return;
@@ -562,7 +562,7 @@ async function processAITurn(raidState) {
     if (availablePlayerTargets.length === 0) {
         raidState.battleLog.push({
             type: 'ai_no_targets',
-            message: `⏭️ **${raidState.defender.username}** has no valid targets!`,
+            message: `⏭️ **AI ${raidState.defender.username}** has no valid targets!`,
             turn: raidState.turn
         });
         return;
@@ -578,7 +578,7 @@ async function processAITurn(raidState) {
     
     const skillChoice = shouldUseSkill ? `skill_${selectedAI.index}` : `basic_${selectedAI.index}`;
     
-    // IMPROVED: Better AI action announcement
+    // IMPROVED: Better AI action announcement with proper categorization
     const actionType = shouldUseSkill ? skillData?.name || 'Special Skill' : 'Basic Attack';
     
     raidState.battleLog.push({
@@ -608,7 +608,7 @@ async function processAITurn(raidState) {
         
         const hpPercent = Math.round((selectedTarget.fruit.currentHP / selectedTarget.fruit.maxHP) * 100);
         raidState.battleLog.push({
-            type: 'hp_update',
+            type: 'ai_hp_update',
             message: `🩸 **YOUR ${selectedTarget.fruit.name}**: ${selectedTarget.fruit.currentHP}/${selectedTarget.fruit.maxHP} HP (${hpPercent}%)`,
             turn: raidState.turn
         });
@@ -717,11 +717,11 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
         attackingFruit.cooldown = skillData?.cooldown || 2;
     }
     
-    // IMPROVED: Enhanced battle log for AI actions
+    // IMPROVED: Enhanced battle log for AI actions with proper categorization
     const damageType = isCritical ? 'ai_critical_damage' : 'ai_damage';
     raidState.battleLog.push({
         type: damageType,
-        message: `💥 **AI ${skillName}** deals **${actualDamage}** damage to **YOUR ${defendingFruit.name}**`,
+        message: `💥 **🤖 AI ${skillName}** deals **${actualDamage}** damage to **YOUR ${defendingFruit.name}**`,
         turn: raidState.turn,
         damage: actualDamage,
         isCritical
@@ -733,7 +733,7 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
         `💀 **YOUR ${defendingFruit.name}** has been defeated by AI!`;
     
     raidState.battleLog.push({
-        type: 'hp_update',
+        type: 'ai_hp_update',
         message: hpStatus,
         turn: raidState.turn,
         target: defendingFruit.name,
@@ -868,7 +868,7 @@ async function showBattleInterface(interaction, raidState) {
 }
 
 /**
- * IMPROVED: Process all status effects with better messaging
+ * IMPROVED: Process all status effects with better team identification
  */
 function processAllStatusEffects(raidState) {
     // Process attacker team status effects
