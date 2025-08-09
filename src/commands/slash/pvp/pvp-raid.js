@@ -509,11 +509,16 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
 }
 
 /**
- * IMPROVED: Perfect HP bar with white circles for dead fruits
+ * IMPROVED: Perfect HP bar with NaN protection
  */
 function createPerfectHPBar(currentHP, maxHP) {
     const barLength = 12; // Consistent bar length
-    const percentage = Math.max(0, Math.min(1, currentHP / maxHP));
+    
+    // FIXED: Protect against NaN and invalid values
+    const safeCurrentHP = isNaN(currentHP) || currentHP < 0 ? 0 : currentHP;
+    const safeMaxHP = isNaN(maxHP) || maxHP <= 0 ? 1000 : maxHP;
+    
+    const percentage = Math.max(0, Math.min(1, safeCurrentHP / safeMaxHP));
     const filledBars = Math.floor(percentage * barLength);
     const emptyBars = barLength - filledBars;
     
