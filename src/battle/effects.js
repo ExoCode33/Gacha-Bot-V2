@@ -1,6 +1,5 @@
 // src/battle/effects.js
-// Centralized effect engine for buffs/debuffs in PvP & raids.
-// CommonJS export so it works whether your project is ESM or not via require().
+// Centralized effect engine for buffs/debuffs in PvP & raids (CommonJS).
 
 const EFFECT_ICONS = {
   buff: "🟢", debuff: "🔴",
