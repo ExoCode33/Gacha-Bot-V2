@@ -5,6 +5,101 @@ const { getSkillData } = require('../../../data/DevilFruitSkills');
 const SkillEffectService = require('../../../services/SkillEffectService');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 
+
+// ===== CINEMATIC VIEW HELPERS (non-breaking) =====
+const RAID_ANIM = { enabled: true, delayMs: 900 };
+
+function _hpBar(unit, size = 22) {
+    const cur = unit.currentHP || 0;
+    const max = unit.maxHP || 1;
+    const ratio = Math.max(0, Math.min(1, cur / max));
+    const filled = Math.round(ratio * size);
+    return "█".repeat(filled) + "░".repeat(size - filled);
+}
+
+function _fmtPct(v){ return (v>=0?"+":"") + Math.round(v*100) + "%"; }
+
+function _effectListFor(unit) {
+    if (!unit || !unit.statusEffects || unit.statusEffects.length === 0) return "—";
+    return unit.statusEffects.map(e => {
+        const dur = (e.duration !== undefined) ? `${e.duration}t` : "";
+        const stack = (e.maxStacks > 1 && e.stacks > 1) ? ` x${e.stacks}` : "";
+        const parts = [];
+        if (e.atkPct) parts.push(`ATK ${_fmtPct(e.atkPct)}`);
+        if (e.defPct) parts.push(`DEF ${_fmtPct(e.defPct)}`);
+        if (e.dmgDealtPct) parts.push(`DMG Dealt ${_fmtPct(e.dmgDealtPct)}`);
+        if (e.dmgTakenPct) parts.push(`DMG Taken ${_fmtPct(e.dmgTakenPct)}`);
+        if (e.shield) parts.push(`Shield ${e.shield}`);
+        if (e.type === 'dot' && e.damage) parts.push(`DOT ${e.damage}/t`);
+        if (e.type === 'hot' && e.damage) parts.push(`HOT ${e.damage}/t`);
+        const desc = parts.length ? ` — ${parts.join(', ')}` : "";
+        return `${e.icon || '⭐'} ${e.name}${stack}${dur?` (${dur})`:""}${desc}`;
+    }).join("\n");
+}
+
+function _unitCard(u) {
+    const cur = u.currentHP || 0, max = u.maxHP || 1;
+    const hpPct = Math.round((cur / max) * 100);
+    const line1 = `${u.emoji || ''} **${u.name}**`;
+    const line2 = `\`${_hpBar(u)}\` **${hpPct}%** (${cur}/${max})`;
+    const effects = _effectListFor(u);
+    return `${line1}\n${line2}\n**Effects**\n${effects}`;
+}
+
+function _getFrontliner(team) {
+    // Choose first alive unit
+    return (team || []).find(x => (x.currentHP || 0) > 0) || (team && team[0]) || { name: "—", currentHP: 0, maxHP: 1, statusEffects: [] };
+}
+
+function buildCinematicEmbed(raidState, title = "Battle") {
+    try {
+        const leftU = _getFrontliner(raidState.attacker?.team || raidState.left || []);
+        const rightU = _getFrontliner(raidState.defender?.team || raidState.right || []);
+        const e = new EmbedBuilder()
+            .setTitle(`🎮 ${title}`)
+            .setDescription(`Turn ${raidState.turn || 1}`)
+            .addFields(
+                { name: `🜁 YOUR Team`, value: _unitCard(leftU), inline: true },
+                { name: `🜂 AI Team`, value: _unitCard(rightU), inline: true },
+                { name: "Log", value: (raidState.battleLog || []).slice(-8).map(x => x.message || x).join("\n") || "—" }
+            )
+            .setColor(0x2b2d31);
+        return e;
+    } catch (e) {
+        // Fallback minimal embed if anything goes wrong
+        return new EmbedBuilder().setTitle("Battle").setDescription("Cinematic view error");
+    }
+}
+
+async function ensureCinematicMessage(interaction, raidState) {
+    try {
+        if (!RAID_ANIM.enabled) return null;
+        // Make a separate cinematic message to avoid breaking interactive components
+        if (!raidState._cinematicMessageId) {
+            const sent = await interaction.followUp({ embeds: [buildCinematicEmbed(raidState, "Ready")], ephemeral: false });
+            raidState._cinematicMessageId = sent.id;
+            raidState._cinematicChannelId = sent.channelId;
+            return sent;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function updateCinematicFrame(interaction, raidState, title = "Battle") {
+    try {
+        if (!RAID_ANIM.enabled || !raidState._cinematicMessageId) return;
+        const channel = interaction.channel;
+        if (!channel) return;
+        const msg = await channel.messages.fetch(raidState._cinematicMessageId).catch(()=>null);
+        if (!msg) return;
+        await msg.edit({ embeds: [buildCinematicEmbed(raidState, title)] });
+        await new Promise(res => setTimeout(res, RAID_ANIM.delayMs));
+    } catch (e) {
+        // fail silently
+    }
+}
 // FIXED: Enhanced raid configuration with proper damage balance
 const RAID_CONFIG = {
     COOLDOWN_TIME: 300000, // 5 minutes
@@ -82,7 +177,10 @@ module.exports = {
             
             await interaction.deferReply();
             
-            const attackerFruits = await getUserFruitsForSelection(attacker.id);
+            
+        // Create cinematic message (separate from controls)
+        await ensureCinematicMessage(interaction, raidState);
+const attackerFruits = await getUserFruitsForSelection(attacker.id);
             
             if (attackerFruits.length < RAID_CONFIG.TEAM_SIZE) {
                 return interaction.editReply({
@@ -1102,7 +1200,9 @@ function getRarityDamageBonus(rarity) {
 /**
  * FIXED: Enhanced battle interface with better status processing
  */
-async function showBattleInterface(interaction, raidState) {
+async async function showBattleInterface(interaction, raidState) {
+    // Ensure cinematic message exists
+    await ensureCinematicMessage(interaction, raidState);
     // FIXED: Process status effects with clear messaging
     if (raidState.battleLog.length === 0 || !raidState.battleLog.some(entry => entry.turn === raidState.turn)) {
         raidState.battleLog.push({
@@ -1114,7 +1214,10 @@ async function showBattleInterface(interaction, raidState) {
     
     processAllStatusEffects(raidState);
     
-    // Check if battle ended due to status effects
+    
+    // Update cinematic frame after status ticks
+    await updateCinematicFrame(interaction, raidState, 'Battle');
+// Check if battle ended due to status effects
     const battleResult = checkBattleEnd(raidState);
     if (battleResult.ended) {
         await endBattle(interaction, raidState, battleResult);
@@ -1145,7 +1248,7 @@ async function showBattleInterface(interaction, raidState) {
         reduceCooldowns(raidState.defender);
         raidState.turn++;
         raidState.currentPlayer = 'attacker';
-        
+        await updateCinematicFrame(interaction, raidState, 'Battle');
         return showBattleInterface(interaction, raidState);
     }
     
