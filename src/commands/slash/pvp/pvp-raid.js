@@ -122,6 +122,11 @@ function calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, att
     const safeBaseDamage = isNaN(baseDamage) ? 100 : baseDamage;
     const attackerCP = attackingFruit.totalCP || 1000;
     const defenderCP = defendingFruit.totalCP || 1000;
+    // === Effects modifiers ===
+    const attMods = getEffectModifiers(attackingFruit);
+    const defMods = getEffectModifiers(defendingFruit);
+    baseDamage = Math.max(1, Math.floor(baseDamage * (1 + attMods.atkMult) * (1 + attMods.dmgDealtMult) * (1 + defMods.dmgTakenMult) * (1 - Math.max(0, defMods.defMult))));
+    
     
     // FIXED: Higher damage ranges for more exciting battles
     let minPercent, maxPercent;
@@ -312,7 +317,9 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
     const originalHP = defendingFruit.currentHP || 0;
     const safeDamage = isNaN(damage) ? 50 : Math.max(damage, 1);
     
-    defendingFruit.currentHP = Math.max(0, originalHP - safeDamage);
+    const shieldResult = applyShieldAbsorption(defendingFruit, safeDamage, raidState.battleLog, raidState.turn, 'AI');
+    const postShieldDamage = shieldResult.remaining;
+    defendingFruit.currentHP = Math.max(0, originalHP - postShieldDamage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
     // FIXED: Clear damage report
@@ -431,10 +438,8 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         
         let statusEffectsText = '';
         if (fruit.statusEffects && fruit.statusEffects.length > 0) {
-            const effectIcons = fruit.statusEffects
-                .map(effect => `${effect.icon || '⭐'}`)
-                .join('');
-            statusEffectsText = ` ${effectIcons}`;
+            const effectList = formatEffectsList(fruit);
+            statusEffectsText = effectList ? `\n**Effects**\n${effectList}` : '';
         }
         
         return `${fruit.emoji} **${fruit.name}**${cooldownText}${statusEffectsText}\n${hpBar} **${hpPercent}%** (${currentHP}/${maxHP})`;
@@ -455,10 +460,8 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         
         let statusEffectsText = '';
         if (fruit.statusEffects && fruit.statusEffects.length > 0) {
-            const effectIcons = fruit.statusEffects
-                .map(effect => `${effect.icon || '⭐'}`)
-                .join('');
-            statusEffectsText = ` ${effectIcons}`;
+            const effectList = formatEffectsList(fruit);
+            statusEffectsText = effectList ? `\n**Effects**\n${effectList}` : '';
         }
         
         return `${fruit.emoji} **${fruit.name}**${statusEffectsText}\n${hpBar} **${hpPercent}%** (${currentHP}/${maxHP})`;
@@ -707,7 +710,9 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
     const originalHP = defendingFruit.currentHP || 0;
     const safeDamage = isNaN(damage) ? 50 : Math.max(damage, 1);
     
-    defendingFruit.currentHP = Math.max(0, originalHP - safeDamage);
+    const shieldResult2 = applyShieldAbsorption(defendingFruit, safeDamage, raidState.battleLog, raidState.turn, 'YOUR');
+    const postShieldDamage2 = shieldResult2.remaining;
+    defendingFruit.currentHP = Math.max(0, originalHP - postShieldDamage2);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
     // FIXED: Ensure minimum damage from AI
@@ -1003,6 +1008,66 @@ function isDisabled(fruit) {
     );
 }
 
+// ===== EFFECTS ENGINE LITE (buff/debuff visibility + modifiers + shields) =====
+function getEffectModifiers(fruit) {
+    const mods = {
+        atkMult: 0, defMult: 0, spdMult: 0, critAdd: 0,
+        dmgDealtMult: 0, dmgTakenMult: 0
+    };
+    if (!fruit || !fruit.statusEffects) return mods;
+    for (const e of fruit.statusEffects) {
+        if (!e) continue;
+        const n = (e.name || "").toLowerCase();
+        const v = e.value ?? e.percent ?? e.multiplier ?? 0;
+        // Generic mappings by name keywords
+        if (n.includes('attack up') || n.includes('atk up') || n.includes('strengthen')) mods.atkMult += (v||0.2);
+        if (n.includes('attack down') || n.includes('atk down') || n.includes('weaken')) mods.atkMult -= (v||0.2);
+        if (n.includes('defense up') || n.includes('def up')) mods.defMult += (v||0.2);
+        if (n.includes('defense down') || n.includes('def down')) mods.defMult -= (v||0.2);
+        if (n.includes('speed up') || n.includes('spd up')) mods.spdMult += (v||0.2);
+        if (n.includes('speed down') || n.includes('spd down')) mods.spdMult -= (v||0.2);
+        if (n.includes('crit up')) mods.critAdd += (v||0.1);
+        if (n.includes('crit down')) mods.critAdd -= (v||0.1);
+        if (n.includes('damage up') || n.includes('damage boost')) mods.dmgDealtMult += (v||0.15);
+        if (n.includes('vulnerable') || n.includes('damage taken up')) mods.dmgTakenMult += (v||0.15);
+    }
+    return mods;
+}
+
+function applyShieldAbsorption(defender, incomingDamage, battleLog, turn, teamPrefix='') {
+    if (!defender || !defender.statusEffects) return { remaining: incomingDamage, absorbed: 0 };
+    let dmg = incomingDamage;
+    let absorbedTotal = 0;
+    for (const e of defender.statusEffects) {
+        if (e && (e.type === 'shield' || (e.name||'').toLowerCase().includes('shield')) && e.value > 0) {
+            const absorb = Math.min(e.value, dmg);
+            e.value -= absorb;
+            dmg -= absorb;
+            absorbedTotal += absorb;
+            if (battleLog) {
+                battleLog.push({
+                    type: 'shield_absorb',
+                    message: `🛡️ **${teamPrefix ? teamPrefix+' ' : ''}${defender.name}**'s shield absorbed **${absorb}** damage (${e.name})`,
+                    turn
+                });
+            }
+            if (dmg <= 0) break;
+        }
+    }
+    return { remaining: Math.max(0, Math.floor(dmg)), absorbed: absorbedTotal };
+}
+
+function formatEffectsList(fruit) {
+    if (!fruit || !fruit.statusEffects || fruit.statusEffects.length === 0) return '—';
+    return fruit.statusEffects.map(e => {
+        const icon = e.icon || (e.type === 'dot' ? '☠️' : e.type === 'heal' ? '✨' : e.type === 'shield' ? '🛡️' : '⭐');
+        const dur = (e.duration !== undefined) ? ` (${e.duration}t)` : '';
+        const stack = (e.stacks && e.stacks > 1) ? ` x${e.stacks}` : '';
+        return `${icon} ${e.name || 'Effect'}${stack}${dur}`;
+    }).join('\n');
+}
+
+
 function areSkillsDisabled(fruit) {
     if (!fruit.statusEffects) return false;
     return fruit.statusEffects.some(effect => 
@@ -1156,6 +1221,7 @@ function processStatusEffects(fruit, battleLog, turn, teamPrefix = '') {
                 break;
                 
             case 'heal':
+            case 'hot':
                 const healAmount = effect.value || Math.floor((fruit.maxHP || 1000) * 0.1);
                 const actualHeal = Math.min(healAmount, (fruit.maxHP || 1000) - fruit.currentHP);
                 
