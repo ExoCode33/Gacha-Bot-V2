@@ -1,11 +1,11 @@
-// src/commands/slash/pvp/pvp-raid.js - IMPROVED: Better Damage, Battle Log & UI
+// src/commands/slash/pvp/pvp-raid.js - FIXED: NaN Values and HP Calculations
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const DatabaseManager = require('../../../database/DatabaseManager');
 const { getSkillData } = require('../../../data/DevilFruitSkills');
 const SkillEffectService = require('../../../services/SkillEffectService');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 
-// IMPROVED: Enhanced raid configuration with better damage balance
+// FIXED: Enhanced raid configuration with proper damage balance
 const RAID_CONFIG = {
     COOLDOWN_TIME: 300000, // 5 minutes
     MIN_CP_REQUIRED: 500,
@@ -16,7 +16,7 @@ const RAID_CONFIG = {
     },
     MAX_FRUIT_DROPS: 3,
     
-    // IMPROVED: Better balanced damage system
+    // FIXED: Better balanced damage system with NaN protection
     MAX_BATTLE_TURNS: 30,
     TURN_TIMEOUT: 300000,
     HP_BAR_LENGTH: 20,
@@ -24,23 +24,24 @@ const RAID_CONFIG = {
     FRUITS_PER_PAGE: 12,
     INTERACTION_TIMEOUT: 900000,
     
-    // IMPROVED: More balanced damage calculations
+    // FIXED: More balanced damage calculations with safeguards
     BASIC_MIN_DAMAGE_PERCENT: 0.08,   // Basic attacks: 8-12% of target's max HP
-    BASIC_MAX_DAMAGE_PERCENT: 0.12,   // Increased from 4-8%
+    BASIC_MAX_DAMAGE_PERCENT: 0.12,   
     SKILL_MIN_DAMAGE_PERCENT: 0.12,   // Skills: 12-20% of target's max HP  
-    SKILL_MAX_DAMAGE_PERCENT: 0.20,   // Increased from 6-15%
-    BASE_DAMAGE_MULTIPLIER: 1.2,      // Increased base damage
-    CP_SCALING_FACTOR: 0.4,           // Increased CP scaling
-    RARITY_BASIC_SCALING: 0.7,        // Better rarity scaling for basic attacks
+    SKILL_MAX_DAMAGE_PERCENT: 0.20,   
+    BASE_DAMAGE_MULTIPLIER: 1.2,      
+    CP_SCALING_FACTOR: 0.4,           
+    RARITY_BASIC_SCALING: 0.7,        
     
-    // IMPROVED: Better critical and dodge rates
-    BASE_CRIT_CHANCE: 0.20,       // 20% base critical chance (increased)
-    CRIT_DAMAGE_MULTIPLIER: 2.0,  // 100% more damage on crit (increased)
-    BASE_DODGE_CHANCE: 0.06,      // 6% base dodge chance (reduced)
+    // FIXED: Better critical and dodge rates
+    BASE_CRIT_CHANCE: 0.20,       // 20% base critical chance
+    CRIT_DAMAGE_MULTIPLIER: 2.0,  // 100% more damage on crit
+    BASE_DODGE_CHANCE: 0.06,      // 6% base dodge chance
     
-    // AI behavior settings
-    AI_SKILL_USE_CHANCE: 0.95,       // 95% chance to use skills
-    AI_AGGRESSION: 0.9               // High aggression
+    // AI settings
+    AI_SKILL_USE_CHANCE: 0.30,       // FIXED: Reduced to 30% chance to use skills
+    AI_AGGRESSION: 0.9,              
+    AI_DAMAGE_NERF: 0.80             // FIXED: AI does 20% less damage
 };
 
 // Active raids and cooldowns
@@ -108,22 +109,28 @@ module.exports = {
     }
 };
 
-// ===== IMPROVED DAMAGE CALCULATION SYSTEM =====
+// ===== FIXED DAMAGE CALCULATION SYSTEM WITH NaN PROTECTION =====
 
 /**
- * IMPROVED: Calculate much better balanced damage
+ * FIXED: Calculate damage with NaN protection and proper bounds
  */
 function calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, attackerModifiers = {}, isBasicAttack = false) {
-    const targetMaxHP = defendingFruit.maxHP;
+    // FIXED: Ensure we have valid maxHP
+    const targetMaxHP = defendingFruit.maxHP || defendingFruit.currentHP || 1000;
     
-    // IMPROVED: Higher damage ranges for more exciting battles
+    // FIXED: Protect against NaN and undefined values
+    const safeBaseDamage = isNaN(baseDamage) ? 100 : baseDamage;
+    const attackerCP = attackingFruit.totalCP || 1000;
+    const defenderCP = defendingFruit.totalCP || 1000;
+    
+    // FIXED: Higher damage ranges for more exciting battles
     let minPercent, maxPercent;
     
     if (isBasicAttack) {
         minPercent = RAID_CONFIG.BASIC_MIN_DAMAGE_PERCENT;
         maxPercent = RAID_CONFIG.BASIC_MAX_DAMAGE_PERCENT;
         
-        // IMPROVED: Better rarity scaling for basic attacks
+        // FIXED: Better rarity scaling for basic attacks
         const rarityMultiplier = getRarityBasicAttackBonus(attackingFruit.rarity);
         maxPercent *= rarityMultiplier;
     } else {
@@ -135,8 +142,8 @@ function calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, att
     const damagePercent = minPercent + (Math.random() * (maxPercent - minPercent));
     let damage = Math.floor(targetMaxHP * damagePercent);
     
-    // IMPROVED: Better CP scaling
-    const cpRatio = attackingFruit.totalCP / Math.max(defendingFruit.totalCP, 1);
+    // FIXED: Better CP scaling with NaN protection
+    const cpRatio = attackerCP / Math.max(defenderCP, 1);
     const cpMultiplier = 0.7 + (cpRatio * RAID_CONFIG.CP_SCALING_FACTOR);
     damage = Math.floor(damage * Math.min(cpMultiplier, 1.8)); // Cap at 1.8x
     
@@ -146,46 +153,46 @@ function calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, att
         damage = Math.floor(damage * rarityBonus);
     }
     
-    // Apply attacker modifiers
-    if (attackerModifiers.damageModifier) {
+    // Apply attacker modifiers with NaN protection
+    if (attackerModifiers.damageModifier && !isNaN(attackerModifiers.damageModifier)) {
         damage = Math.floor(damage * attackerModifiers.damageModifier);
     }
     
-    // IMPROVED: Better damage bounds - minimum 5% of max HP
+    // FIXED: Better damage bounds - minimum 5% of max HP, protect against NaN
     const minDamage = Math.floor(targetMaxHP * (isBasicAttack ? 0.05 : 0.08)); // 5% for basic, 8% for skills
     const maxDamage = Math.floor(targetMaxHP * (isBasicAttack ? 0.18 : 0.30)); // 18% for basic, 30% for skills
     
-    damage = Math.max(minDamage, Math.min(damage, maxDamage));
+    const finalDamage = Math.max(minDamage, Math.min(damage, maxDamage));
     
-    return damage;
+    // FIXED: Final NaN check
+    return isNaN(finalDamage) ? minDamage : finalDamage;
 }
 
 /**
- * IMPROVED: Much stronger rarity bonus for basic attacks
+ * FIXED: Calculate fruit HP with NaN protection and better scaling
  */
-function getRarityBasicAttackBonus(rarity) {
-    const bonuses = {
-        'common': 1.0, 'uncommon': 1.2, 'rare': 1.4, 'epic': 1.7,
-        'legendary': 2.0, 'mythical': 2.5, 'divine': 3.0  // DIVINE is 3x stronger!
+function calculateFruitHP(fruit) {
+    // FIXED: Base HP values by rarity with proper defaults
+    const baseHP = {
+        'common': 300, 'uncommon': 400, 'rare': 500, 'epic': 650,
+        'legendary': 800, 'mythical': 1000, 'divine': 1300
     };
-    return bonuses[rarity] || 1.0;
+    
+    // FIXED: Protect against undefined/NaN values
+    const rarity = fruit.rarity || 'common';
+    const totalCP = fruit.totalCP || fruit.total_cp || 1000;
+    
+    const rarityHP = baseHP[rarity] || 300;
+    const cpBonus = Math.floor(totalCP / 40); // Better CP scaling for HP
+    
+    const finalHP = rarityHP + cpBonus;
+    
+    // FIXED: Ensure minimum HP and no NaN
+    return isNaN(finalHP) ? 500 : Math.max(finalHP, 200);
 }
 
 /**
- * IMPROVED: Much stronger rarity damage bonus for skills
- */
-function getRarityDamageBonus(rarity) {
-    const bonuses = {
-        'common': 1.0, 'uncommon': 1.15, 'rare': 1.3, 'epic': 1.5,
-        'legendary': 1.8, 'mythical': 2.2, 'divine': 2.8  // DIVINE is 2.8x stronger!
-    };
-    return bonuses[rarity] || 1.0;
-}
-
-// ===== IMPROVED BATTLE EXECUTION SYSTEM =====
-
-/**
- * IMPROVED: Execute attack with better damage guarantees
+ * FIXED: Enhanced battle execution with proper NaN protection
  */
 async function executeAttack(raidState, skillChoice, targetFruitIndex) {
     const [skillType, attackerFruitIndex] = skillChoice.split('_');
@@ -220,7 +227,7 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
         return 0;
     }
     
-    // Get skill data
+    // Get skill data with fallback
     const skillData = getSkillData(attackingFruit.id, attackingFruit.rarity) || {
         name: `${attackingFruit.name} Power`,
         damage: 120,
@@ -234,7 +241,7 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
     const isSkillAttack = skillType === 'skill';
     const skillName = isSkillAttack ? skillData.name : 'Basic Attack';
     
-    // IMPROVED: Better action announcement
+    // FIXED: Better action announcement
     raidState.battleLog.push({
         type: 'action_start',
         message: `⚔️ **${raidState.attacker.username}'s ${attackingFruit.name}** uses **${skillName}** against **${defendingFruit.name}**!`,
@@ -248,7 +255,7 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
     const attackerModifiers = calculateDamageModifiers(attackingFruit);
     const defenderModifiers = calculateDamageModifiers(defendingFruit);
     
-    // IMPROVED: Reduced dodge chance
+    // FIXED: Dodge calculation with NaN protection
     const dodgeChance = calculateDodgeChance(attackingFruit, defendingFruit, defenderModifiers);
     if (Math.random() < dodgeChance) {
         raidState.battleLog.push({
@@ -262,13 +269,13 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
         return 0;
     }
     
-    // IMPROVED: Calculate damage based on attack type
+    // FIXED: Calculate damage based on attack type with NaN protection
     const isBasicAttack = skillType === 'basic';
-    const baseDamage = isBasicAttack ? 100 : (skillData.damage || 150); // Increased base damage
+    const baseDamage = isBasicAttack ? 100 : (skillData.damage || 150);
     
     let damage = calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, attackerModifiers, isBasicAttack);
     
-    // IMPROVED: Better critical hit calculation
+    // FIXED: Critical hit calculation with NaN protection
     const criticalChance = calculateCriticalChance(attackingFruit, attackerModifiers, skillData);
     const isCritical = Math.random() < criticalChance;
     
@@ -296,17 +303,19 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
             });
         }
         
-        if (effectResults && effectResults.damageMultiplier) {
+        if (effectResults && effectResults.damageMultiplier && !isNaN(effectResults.damageMultiplier)) {
             damage = Math.floor(damage * effectResults.damageMultiplier);
         }
     }
     
-    // IMPROVED: Apply final damage with clear messaging
-    const originalHP = defendingFruit.currentHP;
-    defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - damage);
+    // FIXED: Apply final damage with clear messaging and NaN protection
+    const originalHP = defendingFruit.currentHP || 0;
+    const safeDamage = isNaN(damage) ? 50 : Math.max(damage, 1);
+    
+    defendingFruit.currentHP = Math.max(0, originalHP - safeDamage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
-    // IMPROVED: Clear damage report
+    // FIXED: Clear damage report
     const damageType = isCritical ? 'critical_damage' : 'normal_damage';
     raidState.battleLog.push({
         type: damageType,
@@ -316,10 +325,12 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
         isCritical
     });
     
-    // IMPROVED: HP status update
-    const hpPercent = Math.round((defendingFruit.currentHP / defendingFruit.maxHP) * 100);
-    const hpStatus = defendingFruit.currentHP > 0 ? 
-        `🩸 **${defendingFruit.name}**: ${defendingFruit.currentHP}/${defendingFruit.maxHP} HP (${hpPercent}%)` :
+    // FIXED: HP status update with NaN protection
+    const maxHP = defendingFruit.maxHP || 1000;
+    const currentHP = defendingFruit.currentHP || 0;
+    const hpPercent = Math.round((currentHP / maxHP) * 100);
+    const hpStatus = currentHP > 0 ? 
+        `🩸 **${defendingFruit.name}**: ${currentHP}/${maxHP} HP (${hpPercent}%)` :
         `💀 **${defendingFruit.name}** has been defeated!`;
     
     raidState.battleLog.push({
@@ -327,9 +338,9 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
         message: hpStatus,
         turn: raidState.turn,
         target: defendingFruit.name,
-        hp: defendingFruit.currentHP,
-        maxHP: defendingFruit.maxHP,
-        defeated: defendingFruit.currentHP === 0
+        hp: currentHP,
+        maxHP: maxHP,
+        defeated: currentHP === 0
     });
     
     // Handle AOE effects with clear messaging
@@ -358,7 +369,7 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
         }
     }
     
-    // IMPROVED: Reduced recoil damage
+    // FIXED: Reduced recoil damage
     const recoilDamage = Math.floor(actualDamage * 0.01); // Only 1% recoil
     if (recoilDamage > 0) {
         attackingFruit.currentHP = Math.max(0, attackingFruit.currentHP - recoilDamage);
@@ -396,10 +407,10 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
     return actualDamage;
 }
 
-// ===== IMPROVED UI SYSTEM =====
+// ===== FIXED UI SYSTEM WITH NaN PROTECTION =====
 
 /**
- * IMPROVED: Create enhanced battle embed with better formatting
+ * FIXED: Create enhanced battle embed with better formatting and NaN protection
  */
 function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
     const { attacker, defender, turn } = raidState;
@@ -410,10 +421,12 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         .setColor(RARITY_COLORS.legendary)
         .setTimestamp();
     
-    // IMPROVED: Clean team display without status icons for alive/dead
+    // FIXED: Clean team display with NaN protection
     const attackerTeamText = attacker.team.map((fruit, index) => {
-        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
-        const hpPercent = Math.round((fruit.currentHP / fruit.maxHP) * 100);
+        const currentHP = fruit.currentHP || 0;
+        const maxHP = fruit.maxHP || 1000;
+        const hpBar = createPerfectHPBar(currentHP, maxHP);
+        const hpPercent = Math.round((currentHP / maxHP) * 100);
         const cooldownText = fruit.cooldown > 0 ? ` ⏱️${fruit.cooldown}` : '';
         
         let statusEffectsText = '';
@@ -424,7 +437,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
             statusEffectsText = ` ${effectIcons}`;
         }
         
-        return `${fruit.emoji} **${fruit.name}**${cooldownText}${statusEffectsText}\n${hpBar} **${hpPercent}%** (${fruit.currentHP}/${fruit.maxHP})`;
+        return `${fruit.emoji} **${fruit.name}**${cooldownText}${statusEffectsText}\n${hpBar} **${hpPercent}%** (${currentHP}/${maxHP})`;
     }).join('\n\n');
     
     embed.addFields({
@@ -433,10 +446,12 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         inline: false
     });
     
-    // IMPROVED: AI team display with same clean format
+    // FIXED: AI team display with same clean format and NaN protection
     const defenderTeamText = defender.team.map((fruit, index) => {
-        const hpBar = createPerfectHPBar(fruit.currentHP, fruit.maxHP);
-        const hpPercent = Math.round((fruit.currentHP / fruit.maxHP) * 100);
+        const currentHP = fruit.currentHP || 0;
+        const maxHP = fruit.maxHP || 1000;
+        const hpBar = createPerfectHPBar(currentHP, maxHP);
+        const hpPercent = Math.round((currentHP / maxHP) * 100);
         
         let statusEffectsText = '';
         if (fruit.statusEffects && fruit.statusEffects.length > 0) {
@@ -446,7 +461,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
             statusEffectsText = ` ${effectIcons}`;
         }
         
-        return `${fruit.emoji} **${fruit.name}**${statusEffectsText}\n${hpBar} **${hpPercent}%** (${fruit.currentHP}/${fruit.maxHP})`;
+        return `${fruit.emoji} **${fruit.name}**${statusEffectsText}\n${hpBar} **${hpPercent}%** (${currentHP}/${maxHP})`;
     }).join('\n\n');
     
     embed.addFields({
@@ -455,7 +470,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         inline: false
     });
     
-    // IMPROVED: Better battle log formatting (last 8 actions)
+    // FIXED: Better battle log formatting (last 8 actions)
     if (raidState.battleLog.length > 0) {
         const recentActions = raidState.battleLog
             .slice(-8) // Show last 8 actions instead of 6
@@ -494,7 +509,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         });
     }
     
-    // IMPROVED: Clear turn instructions
+    // FIXED: Clear turn instructions
     const instructionText = selectedSkill ? 
         `✅ **${selectedSkill.split('_')[0].toUpperCase()} Selected!** Choose your target from the AI team.` :
         `🎯 **Your Turn!** Select an attack/skill, then choose your target.`;
@@ -509,7 +524,7 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
 }
 
 /**
- * IMPROVED: Perfect HP bar with NaN protection
+ * FIXED: Perfect HP bar with NaN protection
  */
 function createPerfectHPBar(currentHP, maxHP) {
     const barLength = 12; // Consistent bar length
@@ -536,10 +551,10 @@ function createPerfectHPBar(currentHP, maxHP) {
     return hpEmoji.repeat(filledBars) + '⚫'.repeat(emptyBars);
 }
 
-// ===== IMPROVED AI SYSTEM =====
+// ===== FIXED AI SYSTEM =====
 
 /**
- * IMPROVED: Enhanced AI turn processing with proper message categorization
+ * FIXED: Enhanced AI turn processing with proper message categorization
  */
 async function processAITurn(raidState) {
     const availableAIFruits = raidState.defender.team
@@ -583,7 +598,7 @@ async function processAITurn(raidState) {
     
     const skillChoice = shouldUseSkill ? `skill_${selectedAI.index}` : `basic_${selectedAI.index}`;
     
-    // IMPROVED: Better AI action announcement with proper categorization
+    // FIXED: Better AI action announcement with proper categorization
     const actionType = shouldUseSkill ? skillData?.name || 'Special Skill' : 'Basic Attack';
     
     raidState.battleLog.push({
@@ -595,7 +610,7 @@ async function processAITurn(raidState) {
     // Execute AI attack against PLAYER target
     const actualDamage = await executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseSkill, skillData);
     
-    // IMPROVED: Ensure AI does meaningful damage
+    // FIXED: Ensure AI does meaningful damage
     if (actualDamage === 0 && shouldUseSkill) {
         raidState.battleLog.push({
             type: 'ai_miss',
@@ -621,7 +636,7 @@ async function processAITurn(raidState) {
 }
 
 /**
- * IMPROVED: Execute AI attack with guaranteed meaningful damage
+ * FIXED: Execute AI attack with guaranteed meaningful damage and NaN protection
  */
 async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseSkill, skillData) {
     const attackingFruit = selectedAI.fruit;
@@ -633,7 +648,7 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
     const attackerModifiers = calculateDamageModifiers(attackingFruit);
     const defenderModifiers = calculateDamageModifiers(defendingFruit);
     
-    // IMPROVED: Much lower dodge chance for AI attacks
+    // FIXED: Much lower dodge chance for AI attacks
     const dodgeChance = calculateDodgeChance(attackingFruit, defendingFruit, defenderModifiers) * 0.3; // AI has much better accuracy
     if (Math.random() < dodgeChance) {
         raidState.battleLog.push({
@@ -647,13 +662,13 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
         return 0;
     }
     
-    // IMPROVED: Calculate higher AI damage
+    // FIXED: Calculate higher AI damage with NaN protection
     const isBasicAttack = !shouldUseSkill;
     const baseDamage = isBasicAttack ? 120 : (skillData?.damage || 180); // Higher AI base damage
     
     let damage = calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, attackerModifiers, isBasicAttack);
     
-    // IMPROVED: AI gets damage reduction (nerf) to make player stronger
+    // FIXED: AI gets damage reduction (nerf) to make player stronger
     damage = Math.floor(damage * RAID_CONFIG.AI_DAMAGE_NERF); // Reduce AI damage by 20%
     
     // Critical hit calculation
@@ -683,19 +698,21 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
             });
         }
         
-        if (effectResults && effectResults.damageMultiplier) {
+        if (effectResults && effectResults.damageMultiplier && !isNaN(effectResults.damageMultiplier)) {
             damage = Math.floor(damage * effectResults.damageMultiplier);
         }
     }
     
-    // IMPROVED: Apply final damage to PLAYER fruit with better messaging
-    const originalHP = defendingFruit.currentHP;
-    defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - damage);
+    // FIXED: Apply final damage to PLAYER fruit with better messaging and NaN protection
+    const originalHP = defendingFruit.currentHP || 0;
+    const safeDamage = isNaN(damage) ? 50 : Math.max(damage, 1);
+    
+    defendingFruit.currentHP = Math.max(0, originalHP - safeDamage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
-    // IMPROVED: Ensure minimum damage from AI
+    // FIXED: Ensure minimum damage from AI
     if (actualDamage === 0 && damage > 0) {
-        const minDamage = Math.max(Math.floor(defendingFruit.maxHP * 0.04), 12); // At least 4% or 12 damage
+        const minDamage = Math.max(Math.floor((defendingFruit.maxHP || 1000) * 0.04), 12); // At least 4% or 12 damage
         defendingFruit.currentHP = Math.max(0, defendingFruit.currentHP - minDamage);
         const forcedDamage = originalHP - defendingFruit.currentHP;
         
@@ -707,10 +724,11 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
             isCritical
         });
         
-        const hpPercent = Math.round((defendingFruit.currentHP / defendingFruit.maxHP) * 100);
+        const maxHP = defendingFruit.maxHP || 1000;
+        const hpPercent = Math.round((defendingFruit.currentHP / maxHP) * 100);
         raidState.battleLog.push({
             type: 'hp_update',
-            message: `🩸 **YOUR ${defendingFruit.name}**: ${defendingFruit.currentHP}/${defendingFruit.maxHP} HP (${hpPercent}%)`,
+            message: `🩸 **YOUR ${defendingFruit.name}**: ${defendingFruit.currentHP}/${maxHP} HP (${hpPercent}%)`,
             turn: raidState.turn
         });
         
@@ -722,7 +740,7 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
         attackingFruit.cooldown = skillData?.cooldown || 2;
     }
     
-    // IMPROVED: Enhanced battle log for AI actions with proper categorization
+    // FIXED: Enhanced battle log for AI actions with proper categorization
     const damageType = isCritical ? 'ai_critical_damage' : 'ai_damage';
     raidState.battleLog.push({
         type: damageType,
@@ -732,9 +750,11 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
         isCritical
     });
     
-    const hpPercent = Math.round((defendingFruit.currentHP / defendingFruit.maxHP) * 100);
-    const hpStatus = defendingFruit.currentHP > 0 ? 
-        `🩸 **YOUR ${defendingFruit.name}**: ${defendingFruit.currentHP}/${defendingFruit.maxHP} HP (${hpPercent}%)` :
+    const maxHP = defendingFruit.maxHP || 1000;
+    const currentHP = defendingFruit.currentHP || 0;
+    const hpPercent = Math.round((currentHP / maxHP) * 100);
+    const hpStatus = currentHP > 0 ? 
+        `🩸 **YOUR ${defendingFruit.name}**: ${currentHP}/${maxHP} HP (${hpPercent}%)` :
         `💀 **YOUR ${defendingFruit.name}** has been defeated by AI!`;
     
     raidState.battleLog.push({
@@ -742,13 +762,13 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
         message: hpStatus,
         turn: raidState.turn,
         target: defendingFruit.name,
-        hp: defendingFruit.currentHP,
-        maxHP: defendingFruit.maxHP,
-        defeated: defendingFruit.currentHP === 0
+        hp: currentHP,
+        maxHP: maxHP,
+        defeated: currentHP === 0
     });
     
     // Handle defeated player fruits
-    if (defendingFruit.currentHP === 0) {
+    if (currentHP === 0) {
         raidState.battleLog.push({
             type: 'defeat',
             message: `💀 **YOUR ${defendingFruit.name}** was defeated by AI!`,
@@ -761,14 +781,14 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
 }
 
 /**
- * IMPROVED: Enhanced AI skill usage decision - MUCH less aggressive
+ * FIXED: Enhanced AI skill usage decision - MUCH less aggressive
  */
 function decideAISkillUsage(attackingFruit, targetFruit, skillData, raidState) {
     if (!skillData || attackingFruit.cooldown > 0) {
         return false;
     }
     
-    const targetHpPercent = targetFruit.currentHP / targetFruit.maxHP;
+    const targetHpPercent = (targetFruit.currentHP || 0) / (targetFruit.maxHP || 1000);
     
     // PRIORITY 1: Use skills for finishing blows only if very likely to kill
     if (targetHpPercent < 0.25 && skillData.damage > (targetFruit.currentHP * 1.2)) {
@@ -777,7 +797,7 @@ function decideAISkillUsage(attackingFruit, targetFruit, skillData, raidState) {
     
     // PRIORITY 2: AOE skills only if 3+ targets and low player HP
     const livingTargets = raidState.attacker.team.filter(f => f.currentHP > 0).length;
-    const averagePlayerHP = raidState.attacker.team.reduce((sum, f) => sum + (f.currentHP/f.maxHP), 0) / raidState.attacker.team.length;
+    const averagePlayerHP = raidState.attacker.team.reduce((sum, f) => sum + ((f.currentHP || 0)/(f.maxHP || 1000)), 0) / raidState.attacker.team.length;
     if ((skillData.range === 'area' || skillData.range === 'all') && livingTargets > 3 && averagePlayerHP < 0.5) {
         return Math.random() < 0.7; // 70% chance
     }
@@ -798,284 +818,10 @@ function decideAISkillUsage(attackingFruit, targetFruit, skillData, raidState) {
     }
     
     // PRIORITY 6: Much lower general skill preference
-    return Math.random() < 0.3; // Only 30% base chance (was 85%!)
+    return Math.random() < RAID_CONFIG.AI_SKILL_USE_CHANCE; // Only 30% base chance
 }
 
-// ===== IMPROVED BATTLE INTERFACE =====
-
-/**
- * IMPROVED: Enhanced battle interface with better status processing
- */
-async function showBattleInterface(interaction, raidState) {
-    // IMPROVED: Process status effects with clear messaging
-    if (raidState.battleLog.length === 0 || !raidState.battleLog.some(entry => entry.turn === raidState.turn)) {
-        raidState.battleLog.push({
-            type: 'turn_start',
-            message: `\n⏰ **=== TURN ${raidState.turn} START ===**`,
-            turn: raidState.turn
-        });
-    }
-    
-    processAllStatusEffects(raidState);
-    
-    // Check if battle ended due to status effects
-    const battleResult = checkBattleEnd(raidState);
-    if (battleResult.ended) {
-        await endBattle(interaction, raidState, battleResult);
-        return;
-    }
-    
-    const availableFruits = raidState.attacker.team
-        .filter(fruit => fruit.currentHP > 0 && fruit.cooldown === 0 && !isDisabled(fruit));
-    
-    if (availableFruits.length === 0) {
-        raidState.battleLog.push({
-            type: 'player_skip',
-            message: `⏭️ **${raidState.attacker.username}** has no available fruits - turn skipped!`,
-            turn: raidState.turn
-        });
-        
-        await processAITurn(raidState);
-        
-        processAllStatusEffects(raidState);
-        
-        const battleResult2 = checkBattleEnd(raidState);
-        if (battleResult2.ended) {
-            await endBattle(interaction, raidState, battleResult2);
-            return;
-        }
-        
-        reduceCooldowns(raidState.attacker);
-        reduceCooldowns(raidState.defender);
-        raidState.turn++;
-        raidState.currentPlayer = 'attacker';
-        
-        return showBattleInterface(interaction, raidState);
-    }
-    
-    const embed = createEnhancedBattleEmbed(raidState);
-    const components = createEnhancedBattleComponents(raidState);
-    
-    try {
-        await interaction.editReply({
-            embeds: [embed],
-            components
-        });
-        
-        setupEnhancedBattleCollector(interaction, raidState);
-    } catch (error) {
-        console.error('Failed to show battle interface:', error);
-        await endBattle(interaction, raidState, { 
-            ended: true, 
-            winner: raidState.defender.userId, 
-            reason: 'interface_error' 
-        });
-    }
-}
-
-/**
- * IMPROVED: Process all status effects with better team identification
- */
-function processAllStatusEffects(raidState) {
-    // Process attacker team status effects
-    raidState.attacker.team.forEach(fruit => {
-        if (fruit.currentHP > 0) {
-            processStatusEffects(fruit, raidState.battleLog, raidState.turn, 'YOUR');
-        }
-    });
-    
-    // Process defender team status effects
-    raidState.defender.team.forEach(fruit => {
-        if (fruit.currentHP > 0) {
-            processStatusEffects(fruit, raidState.battleLog, raidState.turn, 'AI');
-        }
-    });
-}
-
-/**
- * IMPROVED: Process individual fruit status effects with better formatting
- */
-function processStatusEffects(fruit, battleLog, turn, teamPrefix = '') {
-    if (!fruit.statusEffects || fruit.statusEffects.length === 0) return;
-
-    fruit.statusEffects = fruit.statusEffects.filter(effect => {
-        let shouldKeepEffect = true;
-        
-        switch (effect.type) {
-            case 'dot':
-                const dotDamage = effect.damage || Math.floor(fruit.maxHP * 0.1);
-                const actualDotDamage = Math.min(fruit.currentHP, dotDamage);
-                
-                if (actualDotDamage > 0) {
-                    fruit.currentHP = Math.max(0, fruit.currentHP - actualDotDamage);
-                    battleLog.push({
-                        type: 'status_damage',
-                        message: `${effect.icon || '☠️'} **${teamPrefix} ${fruit.name}** takes **${actualDotDamage}** ${effect.name} damage`,
-                        turn: turn
-                    });
-                    
-                    if (fruit.currentHP === 0) {
-                        battleLog.push({
-                            type: 'status_defeat',
-                            message: `💀 **${teamPrefix} ${fruit.name}** was defeated by ${effect.name}!`,
-                            turn: turn
-                        });
-                    }
-                }
-                break;
-                
-            case 'heal':
-                const healAmount = effect.value || Math.floor(fruit.maxHP * 0.1);
-                const actualHeal = Math.min(healAmount, fruit.maxHP - fruit.currentHP);
-                
-                if (actualHeal > 0) {
-                    fruit.currentHP = Math.min(fruit.maxHP, fruit.currentHP + actualHeal);
-                    battleLog.push({
-                        type: 'status_heal',
-                        message: `${effect.icon || '💚'} **${teamPrefix} ${fruit.name}** recovers **${actualHeal}** HP from ${effect.name}`,
-                        turn: turn
-                    });
-                }
-                break;
-        }
-        
-        if (effect.duration > 0) {
-            effect.duration--;
-            
-            if (effect.duration === 0) {
-                battleLog.push({
-                    type: 'status_expire',
-                    message: `⏰ **${effect.name}** expired on **${teamPrefix} ${fruit.name}**`,
-                    turn: turn
-                });
-                shouldKeepEffect = false;
-            }
-        }
-        
-        return shouldKeepEffect;
-    });
-}
-
-/**
- * IMPROVED: Enhanced battle components with better skill info
- */
-function createEnhancedBattleComponents(raidState, selectedSkill = null) {
-    if (raidState.currentPlayer !== 'attacker') {
-        return [];
-    }
-    
-    const components = [];
-    
-    // STEP 1: Skill Selection Dropdown
-    if (!selectedSkill) {
-        const availableSkills = [];
-        
-        raidState.attacker.team.forEach((fruit, index) => {
-            if (fruit.currentHP > 0 && !isDisabled(fruit)) {
-                const skillData = getSkillData(fruit.id, fruit.rarity) || {
-                    name: `${fruit.name} Power`,
-                    damage: 120,
-                    cooldown: 2
-                };
-                
-                // Basic Attack option with improved damage calculation
-                const rarityBasicBonus = getRarityBasicAttackBonus(fruit.rarity);
-                const basicDamage = Math.floor(100 * rarityBasicBonus);
-                availableSkills.push({
-                    label: `${fruit.name} - Basic Attack`,
-                    description: `~${basicDamage} base damage • Always ready • ${fruit.rarity}`,
-                    value: `basic_${index}`,
-                    emoji: fruit.emoji
-                });
-                
-                // Special Skill option (if not on cooldown)
-                if (fruit.cooldown === 0 && !areSkillsDisabled(fruit)) {
-                    let skillDescription = `~${skillData.damage || 150} base damage`;
-                    
-                    if (skillData.effect) {
-                        skillDescription += ` • Special Effect`;
-                    }
-                    
-                    if (skillData.range && skillData.range !== 'single') {
-                        skillDescription += ` • ${skillData.range.toUpperCase()}`;
-                    }
-                    
-                    skillDescription += ` • ${skillData.cooldown || 2} turn CD`;
-                    
-                    availableSkills.push({
-                        label: `${fruit.name} - ${skillData.name}`,
-                        description: skillDescription.substring(0, 100),
-                        value: `skill_${index}`,
-                        emoji: '✨'
-                    });
-                }
-            }
-        });
-        
-        if (availableSkills.length > 0) {
-            const skillMenu = new StringSelectMenuBuilder()
-                .setCustomId(`skill_select_${raidState.id}`)
-                .setPlaceholder('🎯 Step 1: Choose your attack type...')
-                .addOptions(availableSkills.slice(0, 25));
-            
-            components.push(new ActionRowBuilder().addComponents(skillMenu));
-        }
-    }
-    
-    // STEP 2: Target Selection Dropdown (only AI team)
-    if (selectedSkill) {
-        const availableTargets = [];
-        
-        raidState.defender.team.forEach((fruit, index) => {
-            if (fruit.currentHP > 0) {
-                const hpPercent = Math.round((fruit.currentHP / fruit.maxHP) * 100);
-                
-                let effectsText = '';
-                if (fruit.statusEffects && fruit.statusEffects.length > 0) {
-                    const effects = fruit.statusEffects
-                        .map(e => `${e.icon || '⭐'}`)
-                        .join('');
-                    effectsText = ` ${effects}`;
-                }
-                
-                const description = `AI Target • ${hpPercent}% HP • ${fruit.rarity}${effectsText}`.substring(0, 100);
-                
-                availableTargets.push({
-                    label: `🤖 ${fruit.name}`,
-                    description: description,
-                    value: index.toString(),
-                    emoji: fruit.emoji
-                });
-            }
-        });
-        
-        if (availableTargets.length > 0) {
-            const targetMenu = new StringSelectMenuBuilder()
-                .setCustomId(`target_select_${raidState.id}`)
-                .setPlaceholder('🎯 Step 2: Choose AI target to attack...')
-                .addOptions(availableTargets);
-            
-            components.push(new ActionRowBuilder().addComponents(targetMenu));
-        }
-        
-        // Add a "Back" button
-        const backButton = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`change_skill_${raidState.id}`)
-                    .setLabel('↩️ Change Attack')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-        
-        components.push(backButton);
-    }
-    
-    return components;
-}
-
-// Continue with existing helper functions and remaining implementation...
-// [Rest of the file continues with the same helper functions like calculateCriticalChance, 
-// calculateDodgeChance, checkBattleEnd, etc. from the original code]
+// ===== HELPER FUNCTIONS =====
 
 /**
  * Calculate critical hit chance with MUCH stronger rarity scaling
@@ -1083,7 +829,7 @@ function createEnhancedBattleComponents(raidState, selectedSkill = null) {
 function calculateCriticalChance(attacker, attackerModifiers, skillData) {
     let critChance = RAID_CONFIG.BASE_CRIT_CHANCE;
     
-    // IMPROVED: Much stronger rarity bonus for crits
+    // FIXED: Much stronger rarity bonus for crits
     const rarityBonus = {
         'common': 0.05, 'uncommon': 0.10, 'rare': 0.15, 'epic': 0.20,
         'legendary': 0.30, 'mythical': 0.40, 'divine': 0.50  // DIVINE gets 50% bonus crit!
@@ -1095,8 +841,8 @@ function calculateCriticalChance(attacker, attackerModifiers, skillData) {
         critChance += 0.15; // Increased skill crit bonus
     }
     
-    // Status effect modifiers
-    if (attackerModifiers.criticalModifier) {
+    // Status effect modifiers with NaN protection
+    if (attackerModifiers.criticalModifier && !isNaN(attackerModifiers.criticalModifier)) {
         critChance += attackerModifiers.criticalModifier;
     }
     
@@ -1104,17 +850,19 @@ function calculateCriticalChance(attacker, attackerModifiers, skillData) {
 }
 
 /**
- * Calculate dodge chance with diminishing returns
+ * Calculate dodge chance with diminishing returns and NaN protection
  */
 function calculateDodgeChance(attacker, defender, defenderModifiers) {
     let dodgeChance = RAID_CONFIG.BASE_DODGE_CHANCE;
     
-    // Speed difference factor
-    const speedDiff = (defender.totalCP - attacker.totalCP) / 15000;
+    // Speed difference factor with NaN protection
+    const attackerCP = attacker.totalCP || 1000;
+    const defenderCP = defender.totalCP || 1000;
+    const speedDiff = (defenderCP - attackerCP) / 15000;
     dodgeChance += Math.max(-0.03, Math.min(0.08, speedDiff));
     
-    // Status effect modifiers
-    if (defenderModifiers.speedModifier) {
+    // Status effect modifiers with NaN protection
+    if (defenderModifiers.speedModifier && !isNaN(defenderModifiers.speedModifier)) {
         const speedBonus = (defenderModifiers.speedModifier - 1) * 0.15;
         dodgeChance += speedBonus;
     }
@@ -1262,7 +1010,304 @@ function areSkillsDisabled(fruit) {
     );
 }
 
-// Helper functions for battle management
+/**
+ * FIXED: Better rarity bonus for basic attacks
+ */
+function getRarityBasicAttackBonus(rarity) {
+    const bonuses = {
+        'common': 1.0, 'uncommon': 1.2, 'rare': 1.4, 'epic': 1.7,
+        'legendary': 2.0, 'mythical': 2.5, 'divine': 3.0  // DIVINE is 3x stronger!
+    };
+    return bonuses[rarity] || 1.0;
+}
+
+/**
+ * FIXED: Better rarity damage bonus for skills
+ */
+function getRarityDamageBonus(rarity) {
+    const bonuses = {
+        'common': 1.0, 'uncommon': 1.15, 'rare': 1.3, 'epic': 1.5,
+        'legendary': 1.8, 'mythical': 2.2, 'divine': 2.8  // DIVINE is 2.8x stronger!
+    };
+    return bonuses[rarity] || 1.0;
+}
+
+// ===== BATTLE INTERFACE SYSTEM =====
+
+/**
+ * FIXED: Enhanced battle interface with better status processing
+ */
+async function showBattleInterface(interaction, raidState) {
+    // FIXED: Process status effects with clear messaging
+    if (raidState.battleLog.length === 0 || !raidState.battleLog.some(entry => entry.turn === raidState.turn)) {
+        raidState.battleLog.push({
+            type: 'turn_start',
+            message: `\n⏰ **=== TURN ${raidState.turn} START ===**`,
+            turn: raidState.turn
+        });
+    }
+    
+    processAllStatusEffects(raidState);
+    
+    // Check if battle ended due to status effects
+    const battleResult = checkBattleEnd(raidState);
+    if (battleResult.ended) {
+        await endBattle(interaction, raidState, battleResult);
+        return;
+    }
+    
+    const availableFruits = raidState.attacker.team
+        .filter(fruit => fruit.currentHP > 0 && fruit.cooldown === 0 && !isDisabled(fruit));
+    
+    if (availableFruits.length === 0) {
+        raidState.battleLog.push({
+            type: 'player_skip',
+            message: `⏭️ **${raidState.attacker.username}** has no available fruits - turn skipped!`,
+            turn: raidState.turn
+        });
+        
+        await processAITurn(raidState);
+        
+        processAllStatusEffects(raidState);
+        
+        const battleResult2 = checkBattleEnd(raidState);
+        if (battleResult2.ended) {
+            await endBattle(interaction, raidState, battleResult2);
+            return;
+        }
+        
+        reduceCooldowns(raidState.attacker);
+        reduceCooldowns(raidState.defender);
+        raidState.turn++;
+        raidState.currentPlayer = 'attacker';
+        
+        return showBattleInterface(interaction, raidState);
+    }
+    
+    const embed = createEnhancedBattleEmbed(raidState);
+    const components = createEnhancedBattleComponents(raidState);
+    
+    try {
+        await interaction.editReply({
+            embeds: [embed],
+            components
+        });
+        
+        setupEnhancedBattleCollector(interaction, raidState);
+    } catch (error) {
+        console.error('Failed to show battle interface:', error);
+        await endBattle(interaction, raidState, { 
+            ended: true, 
+            winner: raidState.defender.userId, 
+            reason: 'interface_error' 
+        });
+    }
+}
+
+/**
+ * FIXED: Process all status effects with better team identification
+ */
+function processAllStatusEffects(raidState) {
+    // Process attacker team status effects
+    raidState.attacker.team.forEach(fruit => {
+        if (fruit.currentHP > 0) {
+            processStatusEffects(fruit, raidState.battleLog, raidState.turn, 'YOUR');
+        }
+    });
+    
+    // Process defender team status effects
+    raidState.defender.team.forEach(fruit => {
+        if (fruit.currentHP > 0) {
+            processStatusEffects(fruit, raidState.battleLog, raidState.turn, 'AI');
+        }
+    });
+}
+
+/**
+ * FIXED: Process individual fruit status effects with better formatting
+ */
+function processStatusEffects(fruit, battleLog, turn, teamPrefix = '') {
+    if (!fruit.statusEffects || fruit.statusEffects.length === 0) return;
+
+    fruit.statusEffects = fruit.statusEffects.filter(effect => {
+        let shouldKeepEffect = true;
+        
+        switch (effect.type) {
+            case 'dot':
+                const dotDamage = effect.damage || Math.floor((fruit.maxHP || 1000) * 0.1);
+                const actualDotDamage = Math.min(fruit.currentHP || 0, dotDamage);
+                
+                if (actualDotDamage > 0) {
+                    fruit.currentHP = Math.max(0, fruit.currentHP - actualDotDamage);
+                    battleLog.push({
+                        type: 'status_damage',
+                        message: `${effect.icon || '☠️'} **${teamPrefix} ${fruit.name}** takes **${actualDotDamage}** ${effect.name} damage`,
+                        turn: turn
+                    });
+                    
+                    if (fruit.currentHP === 0) {
+                        battleLog.push({
+                            type: 'status_defeat',
+                            message: `💀 **${teamPrefix} ${fruit.name}** was defeated by ${effect.name}!`,
+                            turn: turn
+                        });
+                    }
+                }
+                break;
+                
+            case 'heal':
+                const healAmount = effect.value || Math.floor((fruit.maxHP || 1000) * 0.1);
+                const actualHeal = Math.min(healAmount, (fruit.maxHP || 1000) - fruit.currentHP);
+                
+                if (actualHeal > 0) {
+                    fruit.currentHP = Math.min(fruit.maxHP || 1000, fruit.currentHP + actualHeal);
+                    battleLog.push({
+                        type: 'status_heal',
+                        message: `${effect.icon || '💚'} **${teamPrefix} ${fruit.name}** recovers **${actualHeal}** HP from ${effect.name}`,
+                        turn: turn
+                    });
+                }
+                break;
+        }
+        
+        if (effect.duration > 0) {
+            effect.duration--;
+            
+            if (effect.duration === 0) {
+                battleLog.push({
+                    type: 'status_expire',
+                    message: `⏰ **${effect.name}** expired on **${teamPrefix} ${fruit.name}**`,
+                    turn: turn
+                });
+                shouldKeepEffect = false;
+            }
+        }
+        
+        return shouldKeepEffect;
+    });
+}
+
+/**
+ * FIXED: Enhanced battle components with better skill info
+ */
+function createEnhancedBattleComponents(raidState, selectedSkill = null) {
+    if (raidState.currentPlayer !== 'attacker') {
+        return [];
+    }
+    
+    const components = [];
+    
+    // STEP 1: Skill Selection Dropdown
+    if (!selectedSkill) {
+        const availableSkills = [];
+        
+        raidState.attacker.team.forEach((fruit, index) => {
+            if (fruit.currentHP > 0 && !isDisabled(fruit)) {
+                const skillData = getSkillData(fruit.id, fruit.rarity) || {
+                    name: `${fruit.name} Power`,
+                    damage: 120,
+                    cooldown: 2
+                };
+                
+                // Basic Attack option with improved damage calculation
+                const rarityBasicBonus = getRarityBasicAttackBonus(fruit.rarity);
+                const basicDamage = Math.floor(100 * rarityBasicBonus);
+                availableSkills.push({
+                    label: `${fruit.name} - Basic Attack`,
+                    description: `~${basicDamage} base damage • Always ready • ${fruit.rarity}`,
+                    value: `basic_${index}`,
+                    emoji: fruit.emoji
+                });
+                
+                // Special Skill option (if not on cooldown)
+                if (fruit.cooldown === 0 && !areSkillsDisabled(fruit)) {
+                    let skillDescription = `~${skillData.damage || 150} base damage`;
+                    
+                    if (skillData.effect) {
+                        skillDescription += ` • Special Effect`;
+                    }
+                    
+                    if (skillData.range && skillData.range !== 'single') {
+                        skillDescription += ` • ${skillData.range.toUpperCase()}`;
+                    }
+                    
+                    skillDescription += ` • ${skillData.cooldown || 2} turn CD`;
+                    
+                    availableSkills.push({
+                        label: `${fruit.name} - ${skillData.name}`,
+                        description: skillDescription.substring(0, 100),
+                        value: `skill_${index}`,
+                        emoji: '✨'
+                    });
+                }
+            }
+        });
+        
+        if (availableSkills.length > 0) {
+            const skillMenu = new StringSelectMenuBuilder()
+                .setCustomId(`skill_select_${raidState.id}`)
+                .setPlaceholder('🎯 Step 1: Choose your attack type...')
+                .addOptions(availableSkills.slice(0, 25));
+            
+            components.push(new ActionRowBuilder().addComponents(skillMenu));
+        }
+    }
+    
+    // STEP 2: Target Selection Dropdown (only AI team)
+    if (selectedSkill) {
+        const availableTargets = [];
+        
+        raidState.defender.team.forEach((fruit, index) => {
+            if (fruit.currentHP > 0) {
+                const maxHP = fruit.maxHP || 1000;
+                const currentHP = fruit.currentHP || 0;
+                const hpPercent = Math.round((currentHP / maxHP) * 100);
+                
+                let effectsText = '';
+                if (fruit.statusEffects && fruit.statusEffects.length > 0) {
+                    const effects = fruit.statusEffects
+                        .map(e => `${e.icon || '⭐'}`)
+                        .join('');
+                    effectsText = ` ${effects}`;
+                }
+                
+                const description = `AI Target • ${hpPercent}% HP • ${fruit.rarity}${effectsText}`.substring(0, 100);
+                
+                availableTargets.push({
+                    label: `🤖 ${fruit.name}`,
+                    description: description,
+                    value: index.toString(),
+                    emoji: fruit.emoji
+                });
+            }
+        });
+        
+        if (availableTargets.length > 0) {
+            const targetMenu = new StringSelectMenuBuilder()
+                .setCustomId(`target_select_${raidState.id}`)
+                .setPlaceholder('🎯 Step 2: Choose AI target to attack...')
+                .addOptions(availableTargets);
+            
+            components.push(new ActionRowBuilder().addComponents(targetMenu));
+        }
+        
+        // Add a "Back" button
+        const backButton = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`change_skill_${raidState.id}`)
+                    .setLabel('↩️ Change Attack')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
+        components.push(backButton);
+    }
+    
+    return components;
+}
+
+// ===== BATTLE MANAGEMENT FUNCTIONS =====
+
 function checkBattleEnd(raidState) {
     const attackerAlive = raidState.attacker.team.some(fruit => fruit.currentHP > 0);
     const defenderAlive = raidState.defender.team.some(fruit => fruit.currentHP > 0);
@@ -1276,8 +1321,8 @@ function checkBattleEnd(raidState) {
     }
     
     if (raidState.turn >= RAID_CONFIG.MAX_BATTLE_TURNS) {
-        const attackerHP = raidState.attacker.team.reduce((sum, fruit) => sum + fruit.currentHP, 0);
-        const defenderHP = raidState.defender.team.reduce((sum, fruit) => sum + fruit.currentHP, 0);
+        const attackerHP = raidState.attacker.team.reduce((sum, fruit) => sum + (fruit.currentHP || 0), 0);
+        const defenderHP = raidState.defender.team.reduce((sum, fruit) => sum + (fruit.currentHP || 0), 0);
         
         return { 
             ended: true, 
@@ -1297,7 +1342,7 @@ function reduceCooldowns(player) {
     });
 }
 
-// ===== MISSING UTILITY FUNCTIONS =====
+// ===== UTILITY FUNCTIONS =====
 
 /**
  * Update bot status during raids
@@ -1398,8 +1443,8 @@ async function getUserFruitsForSelection(userId) {
             type: fruit.fruit_type,
             rarity: fruit.fruit_rarity,
             description: fruit.fruit_description,
-            totalCP: fruit.total_cp,
-            baseCP: fruit.base_cp,
+            totalCP: fruit.total_cp || 1000,
+            baseCP: fruit.base_cp || 100,
             emoji: RARITY_EMOJIS[fruit.fruit_rarity] || '⚪'
         };
     });
@@ -1745,7 +1790,7 @@ async function handleConfirmSelection(interaction, selectionId, target) {
 }
 
 /**
- * Start battle
+ * Start battle with FIXED fruit initialization
  */
 async function startBattle(interaction, attackerId, defenderId, attackerTeam, defenderTeam) {
     const raidId = generateRaidId();
@@ -1760,6 +1805,7 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
         defender: defenderUser.username
     });
     
+    // FIXED: Properly initialize fruits with HP and all required properties
     const raidState = {
         id: raidId,
         attacker: {
@@ -1772,7 +1818,12 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
                     currentHP: maxHP,
                     maxHP: maxHP,
                     cooldown: 0,
-                    statusEffects: []
+                    statusEffects: [],
+                    // FIXED: Ensure all required properties exist
+                    totalCP: fruit.totalCP || 1000,
+                    rarity: fruit.rarity || 'common',
+                    name: fruit.name || 'Unknown Fruit',
+                    emoji: fruit.emoji || '🍈'
                 };
             }),
             activeFruitIndex: 0
@@ -1787,7 +1838,12 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
                     currentHP: maxHP,
                     maxHP: maxHP,
                     cooldown: 0,
-                    statusEffects: []
+                    statusEffects: [],
+                    // FIXED: Ensure all required properties exist
+                    totalCP: fruit.totalCP || 1000,
+                    rarity: fruit.rarity || 'common',
+                    name: fruit.name || 'Unknown Fruit',
+                    emoji: fruit.emoji || '🍈'
                 };
             }),
             activeFruitIndex: 0
@@ -1802,21 +1858,6 @@ async function startBattle(interaction, attackerId, defenderId, attackerTeam, de
     activeRaids.set(raidId, raidState);
     
     await showBattleInterface(interaction, raidState);
-}
-
-/**
- * Calculate fruit HP with MUCH stronger rarity scaling
- */
-function calculateFruitHP(fruit) {
-    const baseHP = {
-        'common': 300, 'uncommon': 400, 'rare': 500, 'epic': 650,
-        'legendary': 800, 'mythical': 1000, 'divine': 1300  // DIVINE gets massive HP boost!
-    };
-    
-    const rarityHP = baseHP[fruit.rarity] || 300;
-    const cpBonus = Math.floor(fruit.totalCP / 40); // Better CP scaling for HP
-    
-    return rarityHP + cpBonus;
 }
 
 /**
@@ -2177,8 +2218,8 @@ function selectBestAIFruit(availableAIFruits, playerTargets) {
         let score = 0;
         
         // HP and CP factors
-        score += (fruit.currentHP / fruit.maxHP) * 30;
-        score += (fruit.totalCP / 10000) * 40;
+        score += ((fruit.currentHP || 0) / (fruit.maxHP || 1000)) * 30;
+        score += ((fruit.totalCP || 1000) / 10000) * 40;
         
         // Skill availability
         const skillData = getSkillData(fruit.id, fruit.rarity);
@@ -2225,7 +2266,7 @@ function selectBestAITarget(availablePlayerTargets, attackingFruit) {
         let score = 0;
         
         // Prioritize low HP targets
-        const hpPercent = fruit.currentHP / fruit.maxHP;
+        const hpPercent = (fruit.currentHP || 0) / (fruit.maxHP || 1000);
         if (hpPercent < 0.3) {
             score += 60; // High priority for finishing
         } else if (hpPercent < 0.6) {
@@ -2233,7 +2274,7 @@ function selectBestAITarget(availablePlayerTargets, attackingFruit) {
         }
         
         // Prioritize high CP threats
-        score += (fruit.totalCP / 10000) * 20;
+        score += ((fruit.totalCP || 1000) / 10000) * 20;
         
         // Avoid heavily defended targets
         const hasDefenses = fruit.statusEffects && 
