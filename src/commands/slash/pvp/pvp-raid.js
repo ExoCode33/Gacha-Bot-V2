@@ -5,101 +5,6 @@ const { getSkillData } = require('../../../data/DevilFruitSkills');
 const SkillEffectService = require('../../../services/SkillEffectService');
 const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
 
-
-// ===== CINEMATIC VIEW HELPERS (non-breaking) =====
-const RAID_ANIM = { enabled: true, delayMs: 900 };
-
-function _hpBar(unit, size = 22) {
-    const cur = unit.currentHP || 0;
-    const max = unit.maxHP || 1;
-    const ratio = Math.max(0, Math.min(1, cur / max));
-    const filled = Math.round(ratio * size);
-    return "█".repeat(filled) + "░".repeat(size - filled);
-}
-
-function _fmtPct(v){ return (v>=0?"+":"") + Math.round(v*100) + "%"; }
-
-function _effectListFor(unit) {
-    if (!unit || !unit.statusEffects || unit.statusEffects.length === 0) return "—";
-    return unit.statusEffects.map(e => {
-        const dur = (e.duration !== undefined) ? `${e.duration}t` : "";
-        const stack = (e.maxStacks > 1 && e.stacks > 1) ? ` x${e.stacks}` : "";
-        const parts = [];
-        if (e.atkPct) parts.push(`ATK ${_fmtPct(e.atkPct)}`);
-        if (e.defPct) parts.push(`DEF ${_fmtPct(e.defPct)}`);
-        if (e.dmgDealtPct) parts.push(`DMG Dealt ${_fmtPct(e.dmgDealtPct)}`);
-        if (e.dmgTakenPct) parts.push(`DMG Taken ${_fmtPct(e.dmgTakenPct)}`);
-        if (e.shield) parts.push(`Shield ${e.shield}`);
-        if (e.type === 'dot' && e.damage) parts.push(`DOT ${e.damage}/t`);
-        if (e.type === 'hot' && e.damage) parts.push(`HOT ${e.damage}/t`);
-        const desc = parts.length ? ` — ${parts.join(', ')}` : "";
-        return `${e.icon || '⭐'} ${e.name}${stack}${dur?` (${dur})`:""}${desc}`;
-    }).join("\n");
-}
-
-function _unitCard(u) {
-    const cur = u.currentHP || 0, max = u.maxHP || 1;
-    const hpPct = Math.round((cur / max) * 100);
-    const line1 = `${u.emoji || ''} **${u.name}**`;
-    const line2 = `\`${_hpBar(u)}\` **${hpPct}%** (${cur}/${max})`;
-    const effects = _effectListFor(u);
-    return `${line1}\n${line2}\n**Effects**\n${effects}`;
-}
-
-function _getFrontliner(team) {
-    // Choose first alive unit
-    return (team || []).find(x => (x.currentHP || 0) > 0) || (team && team[0]) || { name: "—", currentHP: 0, maxHP: 1, statusEffects: [] };
-}
-
-function buildCinematicEmbed(raidState, title = "Battle") {
-    try {
-        const leftU = _getFrontliner(raidState.attacker?.team || raidState.left || []);
-        const rightU = _getFrontliner(raidState.defender?.team || raidState.right || []);
-        const e = new EmbedBuilder()
-            .setTitle(`🎮 ${title}`)
-            .setDescription(`Turn ${raidState.turn || 1}`)
-            .addFields(
-                { name: `🜁 YOUR Team`, value: _unitCard(leftU), inline: true },
-                { name: `🜂 AI Team`, value: _unitCard(rightU), inline: true },
-                { name: "Log", value: (raidState.battleLog || []).slice(-8).map(x => x.message || x).join("\n") || "—" }
-            )
-            .setColor(0x2b2d31);
-        return e;
-    } catch (e) {
-        // Fallback minimal embed if anything goes wrong
-        return new EmbedBuilder().setTitle("Battle").setDescription("Cinematic view error");
-    }
-}
-
-async function ensureCinematicMessage(interaction, raidState) {
-    try {
-        if (!RAID_ANIM.enabled) return null;
-        // Make a separate cinematic message to avoid breaking interactive components
-        if (!raidState._cinematicMessageId) {
-            const sent = await interaction.followUp({ embeds: [buildCinematicEmbed(raidState, "Ready")], ephemeral: false });
-            raidState._cinematicMessageId = sent.id;
-            raidState._cinematicChannelId = sent.channelId;
-            return sent;
-        }
-        return null;
-    } catch (e) {
-        return null;
-    }
-}
-
-async function updateCinematicFrame(interaction, raidState, title = "Battle") {
-    try {
-        if (!RAID_ANIM.enabled || !raidState._cinematicMessageId) return;
-        const channel = interaction.channel;
-        if (!channel) return;
-        const msg = await channel.messages.fetch(raidState._cinematicMessageId).catch(()=>null);
-        if (!msg) return;
-        await msg.edit({ embeds: [buildCinematicEmbed(raidState, title)] });
-        await new Promise(res => setTimeout(res, RAID_ANIM.delayMs));
-    } catch (e) {
-        // fail silently
-    }
-}
 // FIXED: Enhanced raid configuration with proper damage balance
 const RAID_CONFIG = {
     COOLDOWN_TIME: 300000, // 5 minutes
@@ -178,9 +83,8 @@ module.exports = {
             await interaction.deferReply();
             
             
-        // Create cinematic message (separate from controls)
-        await ensureCinematicMessage(interaction, raidState);
-const attackerFruits = await getUserFruitsForSelection(attacker.id);
+        // Cinematic panel
+        await ensureCinematicMessage(interaction, raidState);const attackerFruits = await getUserFruitsForSelection(attacker.id);
             
             if (attackerFruits.length < RAID_CONFIG.TEAM_SIZE) {
                 return interaction.editReply({
@@ -220,11 +124,6 @@ function calculateEnhancedDamage(attackingFruit, defendingFruit, baseDamage, att
     const safeBaseDamage = isNaN(baseDamage) ? 100 : baseDamage;
     const attackerCP = attackingFruit.totalCP || 1000;
     const defenderCP = defendingFruit.totalCP || 1000;
-    // === Effects modifiers ===
-    const attMods = getEffectModifiers(attackingFruit);
-    const defMods = getEffectModifiers(defendingFruit);
-    baseDamage = Math.max(1, Math.floor(baseDamage * (1 + attMods.atkMult) * (1 + attMods.dmgDealtMult) * (1 + defMods.dmgTakenMult) * (1 - Math.max(0, defMods.defMult))));
-    
     
     // FIXED: Higher damage ranges for more exciting battles
     let minPercent, maxPercent;
@@ -415,9 +314,7 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
     const originalHP = defendingFruit.currentHP || 0;
     const safeDamage = isNaN(damage) ? 50 : Math.max(damage, 1);
     
-    const shieldResult = applyShieldAbsorption(defendingFruit, safeDamage, raidState.battleLog, raidState.turn, 'AI');
-    const postShieldDamage = shieldResult.remaining;
-    defendingFruit.currentHP = Math.max(0, originalHP - postShieldDamage);
+    defendingFruit.currentHP = Math.max(0, originalHP - safeDamage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
     // FIXED: Clear damage report
@@ -520,7 +417,81 @@ async function executeAttack(raidState, skillChoice, targetFruitIndex) {
 function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
     const { attacker, defender, turn } = raidState;
     
-    const embed = new EmbedBuilder()
+    const embed = 
+// ===== Cinematic UI (non-invasive) =====
+const RAID_ANIM = { enabled: true, delayMs: 900 };
+
+function _hpBar(unit, size = 22) {
+  const cur = unit.currentHP || 0;
+  const max = unit.maxHP || 1;
+  const ratio = Math.max(0, Math.min(1, cur / max));
+  const filled = Math.round(ratio * size);
+  return "█".repeat(filled) + "░".repeat(size - filled);
+}
+function _fmtPct(v){ return (v>=0?"+":"") + Math.round(v*100) + "%"; }
+function _effectListFor(unit) {
+  const list = (unit?.statusEffects||[]);
+  if (!list.length) return "—";
+  return list.map(e => {
+    const dur = (e.duration !== undefined) ? `${e.duration}t` : "";
+    const stack = (e.maxStacks > 1 && e.stacks > 1) ? ` x${e.stacks}` : "";
+    const parts = [];
+    if (e.atkPct) parts.push(`ATK ${_fmtPct(e.atkPct)}`);
+    if (e.defPct) parts.push(`DEF ${_fmtPct(e.defPct)}`);
+    if (e.dmgDealtPct) parts.push(`DMG Dealt ${_fmtPct(e.dmgDealtPct)}`);
+    if (e.dmgTakenPct) parts.push(`DMG Taken ${_fmtPct(e.dmgTakenPct)}`);
+    if (e.shield) parts.push(`Shield ${e.shield}`);
+    if (e.type === 'dot' && e.damage) parts.push(`DOT ${e.damage}/t`);
+    if (e.type === 'hot' && e.damage) parts.push(`HOT ${e.damage}/t`);
+    const desc = parts.length ? ` — ${parts.join(', ')}` : "";
+    return `${e.icon || '⭐'} ${e.name}${stack}${dur?` (${dur})`:""}${desc}`;
+  }).join("\n");
+}
+function _frontliner(team) {
+  return (team||[]).find(u => (u.currentHP||0) > 0) || (team&&team[0]) || { name: "—", currentHP: 0, maxHP: 1, statusEffects: [] };
+}
+function buildCinematicEmbed(raidState, title = "Battle") {
+  try {
+    const leftU = _frontliner(raidState.attacker?.team || raidState.left || raidState.playerTeam || []);
+    const rightU = _frontliner(raidState.defender?.team || raidState.right || raidState.aiTeam || []);
+    const e = new EmbedBuilder()
+      .setTitle(`🎮 ${title}`)
+      .setDescription(`Turn ${raidState.turn || 1}`)
+      .addFields(
+        { name: `🜁 YOUR Team`, value: `${leftU.emoji||''} **${leftU.name}**\n\`${_hpBar(leftU)}\` **${Math.round((leftU.currentHP||0)/(leftU.maxHP||1)*100)}%** (${leftU.currentHP||0}/${leftU.maxHP||1})\n**Effects**\n${_effectListFor(leftU)}`, inline: true },
+        { name: `🜂 AI Team`, value: `${rightU.emoji||''} **${rightU.name}**\n\`${_hpBar(rightU)}\` **${Math.round((rightU.currentHP||0)/(rightU.maxHP||1)*100)}%** (${rightU.currentHP||0}/${rightU.maxHP||1})\n**Effects**\n${_effectListFor(rightU)}`, inline: true },
+        { name: "Log", value: (raidState.battleLog || []).slice(-8).map(x => x.message || x).join("\n") || "—" }
+      )
+      .setColor(0x2b2d31);
+    return e;
+  } catch (e) {
+    return new EmbedBuilder().setTitle("Battle").setDescription("Cinematic view error");
+  }
+}
+async function ensureCinematicMessage(interaction, raidState) {
+  try {
+    if (!RAID_ANIM.enabled) return null;
+    if (!raidState._cinMsgId) {
+      const sent = await interaction.followUp({ embeds: [buildCinematicEmbed(raidState, "Ready")], ephemeral: false });
+      raidState._cinMsgId = sent.id;
+      raidState._cinChId = sent.channelId;
+      return sent;
+    }
+    return null;
+  } catch (e) { return null; }
+}
+async function updateCinematicFrame(interaction, raidState, title = "Battle") {
+  try {
+    if (!RAID_ANIM.enabled || !raidState._cinMsgId) return;
+    const channel = interaction.channel;
+    if (!channel) return;
+    const msg = await channel.messages.fetch(raidState._cinMsgId).catch(()=>null);
+    if (!msg) return;
+    await msg.edit({ embeds: [buildCinematicEmbed(raidState, title)] });
+    await new Promise(res => setTimeout(res, RAID_ANIM.delayMs));
+  } catch (e) {}
+}
+new EmbedBuilder()
         .setTitle('⚔️ Devil Fruit Battle Arena')
         .setDescription(`**Turn ${turn}** | ${attacker.username} (YOU) vs ${defender.username} (AI)`)
         .setColor(RARITY_COLORS.legendary)
@@ -536,8 +507,10 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         
         let statusEffectsText = '';
         if (fruit.statusEffects && fruit.statusEffects.length > 0) {
-            const effectList = formatEffectsList(fruit);
-            statusEffectsText = effectList ? `\n**Effects**\n${effectList}` : '';
+            const effectIcons = fruit.statusEffects
+                .map(effect => `${effect.icon || '⭐'}`)
+                .join('');
+            statusEffectsText = ` ${effectIcons}`;
         }
         
         return `${fruit.emoji} **${fruit.name}**${cooldownText}${statusEffectsText}\n${hpBar} **${hpPercent}%** (${currentHP}/${maxHP})`;
@@ -558,8 +531,10 @@ function createEnhancedBattleEmbed(raidState, selectedSkill = null) {
         
         let statusEffectsText = '';
         if (fruit.statusEffects && fruit.statusEffects.length > 0) {
-            const effectList = formatEffectsList(fruit);
-            statusEffectsText = effectList ? `\n**Effects**\n${effectList}` : '';
+            const effectIcons = fruit.statusEffects
+                .map(effect => `${effect.icon || '⭐'}`)
+                .join('');
+            statusEffectsText = ` ${effectIcons}`;
         }
         
         return `${fruit.emoji} **${fruit.name}**${statusEffectsText}\n${hpBar} **${hpPercent}%** (${currentHP}/${maxHP})`;
@@ -808,9 +783,7 @@ async function executeAIAttack(raidState, selectedAI, selectedTarget, shouldUseS
     const originalHP = defendingFruit.currentHP || 0;
     const safeDamage = isNaN(damage) ? 50 : Math.max(damage, 1);
     
-    const shieldResult2 = applyShieldAbsorption(defendingFruit, safeDamage, raidState.battleLog, raidState.turn, 'YOUR');
-    const postShieldDamage2 = shieldResult2.remaining;
-    defendingFruit.currentHP = Math.max(0, originalHP - postShieldDamage2);
+    defendingFruit.currentHP = Math.max(0, originalHP - safeDamage);
     const actualDamage = originalHP - defendingFruit.currentHP;
     
     // FIXED: Ensure minimum damage from AI
@@ -1106,66 +1079,6 @@ function isDisabled(fruit) {
     );
 }
 
-// ===== EFFECTS ENGINE LITE (buff/debuff visibility + modifiers + shields) =====
-function getEffectModifiers(fruit) {
-    const mods = {
-        atkMult: 0, defMult: 0, spdMult: 0, critAdd: 0,
-        dmgDealtMult: 0, dmgTakenMult: 0
-    };
-    if (!fruit || !fruit.statusEffects) return mods;
-    for (const e of fruit.statusEffects) {
-        if (!e) continue;
-        const n = (e.name || "").toLowerCase();
-        const v = e.value ?? e.percent ?? e.multiplier ?? 0;
-        // Generic mappings by name keywords
-        if (n.includes('attack up') || n.includes('atk up') || n.includes('strengthen')) mods.atkMult += (v||0.2);
-        if (n.includes('attack down') || n.includes('atk down') || n.includes('weaken')) mods.atkMult -= (v||0.2);
-        if (n.includes('defense up') || n.includes('def up')) mods.defMult += (v||0.2);
-        if (n.includes('defense down') || n.includes('def down')) mods.defMult -= (v||0.2);
-        if (n.includes('speed up') || n.includes('spd up')) mods.spdMult += (v||0.2);
-        if (n.includes('speed down') || n.includes('spd down')) mods.spdMult -= (v||0.2);
-        if (n.includes('crit up')) mods.critAdd += (v||0.1);
-        if (n.includes('crit down')) mods.critAdd -= (v||0.1);
-        if (n.includes('damage up') || n.includes('damage boost')) mods.dmgDealtMult += (v||0.15);
-        if (n.includes('vulnerable') || n.includes('damage taken up')) mods.dmgTakenMult += (v||0.15);
-    }
-    return mods;
-}
-
-function applyShieldAbsorption(defender, incomingDamage, battleLog, turn, teamPrefix='') {
-    if (!defender || !defender.statusEffects) return { remaining: incomingDamage, absorbed: 0 };
-    let dmg = incomingDamage;
-    let absorbedTotal = 0;
-    for (const e of defender.statusEffects) {
-        if (e && (e.type === 'shield' || (e.name||'').toLowerCase().includes('shield')) && e.value > 0) {
-            const absorb = Math.min(e.value, dmg);
-            e.value -= absorb;
-            dmg -= absorb;
-            absorbedTotal += absorb;
-            if (battleLog) {
-                battleLog.push({
-                    type: 'shield_absorb',
-                    message: `🛡️ **${teamPrefix ? teamPrefix+' ' : ''}${defender.name}**'s shield absorbed **${absorb}** damage (${e.name})`,
-                    turn
-                });
-            }
-            if (dmg <= 0) break;
-        }
-    }
-    return { remaining: Math.max(0, Math.floor(dmg)), absorbed: absorbedTotal };
-}
-
-function formatEffectsList(fruit) {
-    if (!fruit || !fruit.statusEffects || fruit.statusEffects.length === 0) return '—';
-    return fruit.statusEffects.map(e => {
-        const icon = e.icon || (e.type === 'dot' ? '☠️' : e.type === 'heal' ? '✨' : e.type === 'shield' ? '🛡️' : '⭐');
-        const dur = (e.duration !== undefined) ? ` (${e.duration}t)` : '';
-        const stack = (e.stacks && e.stacks > 1) ? ` x${e.stacks}` : '';
-        return `${icon} ${e.name || 'Effect'}${stack}${dur}`;
-    }).join('\n');
-}
-
-
 function areSkillsDisabled(fruit) {
     if (!fruit.statusEffects) return false;
     return fruit.statusEffects.some(effect => 
@@ -1201,7 +1114,7 @@ function getRarityDamageBonus(rarity) {
  * FIXED: Enhanced battle interface with better status processing
  */
 async async function showBattleInterface(interaction, raidState) {
-    // Ensure cinematic message exists
+    // Create/ensure cinematic message
     await ensureCinematicMessage(interaction, raidState);
     // FIXED: Process status effects with clear messaging
     if (raidState.battleLog.length === 0 || !raidState.battleLog.some(entry => entry.turn === raidState.turn)) {
@@ -1213,11 +1126,9 @@ async async function showBattleInterface(interaction, raidState) {
     }
     
     processAllStatusEffects(raidState);
+        await updateCinematicFrame(interaction, raidState, 'Battle');
     
-    
-    // Update cinematic frame after status ticks
-    await updateCinematicFrame(interaction, raidState, 'Battle');
-// Check if battle ended due to status effects
+    // Check if battle ended due to status effects
     const battleResult = checkBattleEnd(raidState);
     if (battleResult.ended) {
         await endBattle(interaction, raidState, battleResult);
@@ -1249,6 +1160,7 @@ async async function showBattleInterface(interaction, raidState) {
         raidState.turn++;
         raidState.currentPlayer = 'attacker';
         await updateCinematicFrame(interaction, raidState, 'Battle');
+        
         return showBattleInterface(interaction, raidState);
     }
     
@@ -1324,7 +1236,6 @@ function processStatusEffects(fruit, battleLog, turn, teamPrefix = '') {
                 break;
                 
             case 'heal':
-            case 'hot':
                 const healAmount = effect.value || Math.floor((fruit.maxHP || 1000) * 0.1);
                 const actualHeal = Math.min(healAmount, (fruit.maxHP || 1000) - fruit.currentHP);
                 
