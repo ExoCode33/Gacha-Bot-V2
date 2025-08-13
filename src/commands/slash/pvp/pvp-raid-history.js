@@ -1,536 +1,315 @@
-// src/commands/slash/pvp/pvp-raid-history.js - PvP Raid History with Pagination
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const DatabaseManager = require('../../../database/DatabaseManager');
-const { RARITY_COLORS, RARITY_EMOJIS } = require('../../../data/Constants');
+// src/commands/slash/pvp/pvp-raid-history.js
+// Discord.js v14+
+// Clean, crash-safe raid history viewer with message collectors (no null collector).
+// Storage: reads from data/pvp_raid_history.json if present (array of entries).
+// Each entry shape expected (example):
+// {
+//   id: "raid_123",
+//   userId: "1234567890",
+//   userName: "ExoCode",
+//   opponentName: "AI",
+//   outcome: "win" | "loss" | "draw",
+//   turns: 17,
+//   timestamp: 1723500000000,
+//   summary: "Luffy defeated Kaido",
+//   teamA: [{ name, emoji, maxHP, finalHP }],
+//   teamB: [{ name, emoji, maxHP, finalHP }],
+//   logTail: ["line1", "line2", ... up to 10]
+// }
 
-// Configuration
-const HISTORY_CONFIG = {
-    RAIDS_PER_PAGE: 5,
-    MAX_RAIDS: 100,
-    PAGE_TIMEOUT: 300000 // 5 minutes
-};
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const fs = require("fs");
+const path = require("path");
 
-// Active history sessions
-const activeHistorySessions = new Map();
+// ---------- CONFIG ----------
+const STORE_PATH = path.join(process.cwd(), "data", "pvp_raid_history.json");
+const PAGE_SIZE = 5;
+const COLLECTOR_MS = 120_000;
 
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('pvp-raid-history')
-        .setDescription('📜 View the last 100 PvP raids with details and drops!')
-        .addUserOption(option =>
-            option.setName('user')
-                .setDescription('View raids for a specific user (leave empty for server history)')
-                .setRequired(false)
-        )
-        .addStringOption(option =>
-            option.setName('filter')
-                .setDescription('Filter raids by type')
-                .setRequired(false)
-                .addChoices(
-                    { name: 'All Raids', value: 'all' },
-                    { name: 'Victories Only', value: 'victories' },
-                    { name: 'Defeats Only', value: 'defeats' },
-                    { name: 'With Drops', value: 'drops' }
-                )
-        ),
-    
-    category: 'pvp',
-    cooldown: 3,
-    
-    async execute(interaction) {
-        try {
-            await interaction.deferReply();
-            
-            const targetUser = interaction.options.getUser('user');
-            const filter = interaction.options.getString('filter') || 'all';
-            const requesterId = interaction.user.id;
-            
-            // Get raid history
-            const raidHistory = await getRaidHistory(targetUser?.id, filter);
-            
-            if (!raidHistory || raidHistory.length === 0) {
-                return interaction.editReply({
-                    embeds: [createNoRaidsEmbed(targetUser, filter)]
-                });
-            }
-            
-            // Create session
-            const sessionId = generateSessionId();
-            activeHistorySessions.set(sessionId, {
-                requesterId,
-                targetUserId: targetUser?.id,
-                filter,
-                raids: raidHistory,
-                currentPage: 0,
-                totalPages: Math.ceil(raidHistory.length / HISTORY_CONFIG.RAIDS_PER_PAGE),
-                createdAt: Date.now()
-            });
-            
-            // Show first page
-            await showHistoryPage(interaction, sessionId, 0);
-            
-            // Setup collector
-            setupHistoryCollector(interaction, sessionId);
-            
-        } catch (error) {
-            interaction.client.logger.error('PvP Raid History error:', error);
-            
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#FF0000')
-                .setTitle('❌ Error')
-                .setDescription('Failed to load raid history. Please try again.')
-                .setTimestamp();
-            
-            if (interaction.deferred) {
-                await interaction.editReply({ embeds: [errorEmbed] });
-            } else {
-                await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-            }
-        }
-    }
-};
-
-/**
- * Get raid history from database
- */
-async function getRaidHistory(userId = null, filter = 'all') {
-    try {
-        let query = `
-            SELECT 
-                rh.*,
-                attacker.username as attacker_name,
-                defender.username as defender_name
-            FROM raid_history rh
-            LEFT JOIN users attacker ON rh.attacker_id = attacker.user_id
-            LEFT JOIN users defender ON rh.defender_id = defender.user_id
-            WHERE 1=1
-        `;
-        
-        const params = [];
-        let paramIndex = 1;
-        
-        // Filter by user
-        if (userId) {
-            query += ` AND (rh.attacker_id = $${paramIndex} OR rh.defender_id = $${paramIndex})`;
-            params.push(userId);
-            paramIndex++;
-        }
-        
-        // Filter by result
-        if (filter === 'victories' && userId) {
-            query += ` AND rh.winner_id = $${paramIndex}`;
-            params.push(userId);
-            paramIndex++;
-        } else if (filter === 'defeats' && userId) {
-            query += ` AND rh.winner_id != $${paramIndex} AND rh.winner_id IS NOT NULL`;
-            params.push(userId);
-            paramIndex++;
-        } else if (filter === 'drops') {
-            query += ` AND (rh.berries_stolen > 0 OR rh.fruits_stolen IS NOT NULL)`;
-        }
-        
-        query += ` ORDER BY rh.ended_at DESC LIMIT $${paramIndex}`;
-        params.push(HISTORY_CONFIG.MAX_RAIDS);
-        
-        const result = await DatabaseManager.query(query, params);
-        return result.rows;
-        
-    } catch (error) {
-        console.error('Error getting raid history:', error);
-        
-        // If table doesn't exist, create it and return empty array
-        if (error.code === '42P01') {
-            await createRaidHistoryTable();
-            return [];
-        }
-        
-        throw error;
-    }
+// ---------- SAFE REPLY HELPERS ----------
+async function sendOrEdit(interaction, payload) {
+  // Always return a Message
+  if (interaction.deferred || interaction.replied) {
+    const msg = await interaction.editReply(payload);
+    // In v14, editReply returns a Message when a reply already exists
+    return msg ?? await interaction.fetchReply().catch(() => null);
+  }
+  return await interaction.reply({ ...payload, fetchReply: true });
 }
 
-/**
- * Create raid history table if it doesn't exist
- */
-async function createRaidHistoryTable() {
-    try {
-        await DatabaseManager.query(`
-            CREATE TABLE IF NOT EXISTS raid_history (
-                id SERIAL PRIMARY KEY,
-                attacker_id TEXT NOT NULL,
-                defender_id TEXT NOT NULL,
-                winner_id TEXT,
-                battle_duration INTEGER DEFAULT 0,
-                total_turns INTEGER DEFAULT 0,
-                berries_stolen BIGINT DEFAULT 0,
-                fruits_stolen JSONB DEFAULT '[]'::jsonb,
-                battle_log JSONB DEFAULT '[]'::jsonb,
-                started_at TIMESTAMP DEFAULT NOW(),
-                ended_at TIMESTAMP DEFAULT NOW()
-            );
-            
-            CREATE INDEX IF NOT EXISTS idx_raid_history_attacker ON raid_history(attacker_id);
-            CREATE INDEX IF NOT EXISTS idx_raid_history_defender ON raid_history(defender_id);
-            CREATE INDEX IF NOT EXISTS idx_raid_history_ended_at ON raid_history(ended_at);
-        `);
-    } catch (error) {
-        console.error('Error creating raid history table:', error);
-    }
+async function getReplyMessage(interaction) {
+  return await interaction.fetchReply().catch(() => null);
 }
 
-/**
- * Show specific page of raid history
- */
-async function showHistoryPage(interaction, sessionId, pageNumber) {
-    const session = activeHistorySessions.get(sessionId);
-    if (!session) return;
-    
-    session.currentPage = pageNumber;
-    
-    const startIndex = pageNumber * HISTORY_CONFIG.RAIDS_PER_PAGE;
-    const endIndex = startIndex + HISTORY_CONFIG.RAIDS_PER_PAGE;
-    const pageRaids = session.raids.slice(startIndex, endIndex);
-    
-    const embed = createHistoryEmbed(session, pageRaids, pageNumber);
-    const components = createHistoryComponents(sessionId, session);
-    
-    await interaction.editReply({
-        embeds: [embed],
-        components
-    });
+// ---------- DATA ----------
+function loadHistory() {
+  try {
+    if (!fs.existsSync(STORE_PATH)) return [];
+    const text = fs.readFileSync(STORE_PATH, "utf8");
+    const arr = JSON.parse(text);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
 }
 
-/**
- * Create history embed for current page
- */
-function createHistoryEmbed(session, raids, pageNumber) {
-    const { targetUserId, filter, totalPages } = session;
-    
-    const embed = new EmbedBuilder()
-        .setColor(RARITY_COLORS.legendary)
-        .setTitle('📜 PvP Raid History')
-        .setFooter({ 
-            text: `Page ${pageNumber + 1}/${totalPages} • ${session.raids.length} total raids • Filter: ${filter}` 
-        })
-        .setTimestamp();
-    
-    if (targetUserId) {
-        embed.setDescription(`Showing raids for <@${targetUserId}>`);
-    } else {
-        embed.setDescription('Showing server raid history');
-    }
-    
-    if (raids.length === 0) {
-        embed.addFields({
-            name: '📭 No Raids Found',
-            value: 'No raids match your criteria.',
-            inline: false
-        });
-        return embed;
-    }
-    
-    // Add each raid as a field
-    raids.forEach((raid, index) => {
-        const raidNumber = pageNumber * HISTORY_CONFIG.RAIDS_PER_PAGE + index + 1;
-        const raidInfo = formatRaidInfo(raid, targetUserId);
-        
-        embed.addFields({
-            name: `🏴‍☠️ Raid #${raidNumber} - ${raidInfo.title}`,
-            value: raidInfo.description,
-            inline: false
-        });
-    });
-    
-    return embed;
+function fmtDate(ts) {
+  try {
+    const d = new Date(Number(ts));
+    if (isNaN(d.getTime())) return "unknown";
+    // Display as YYYY-MM-DD HH:mm
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  } catch {
+    return "unknown";
+  }
 }
 
-/**
- * Format individual raid information
- */
-function formatRaidInfo(raid, targetUserId = null) {
-    const attackerName = raid.attacker_name || 'Unknown';
-    const defenderName = raid.defender_name || 'Unknown';
-    const winnerId = raid.winner_id;
-    const endTime = new Date(raid.ended_at);
-    
-    // Determine result
-    let resultIcon = '⚔️';
-    let resultText = 'Battle';
-    
-    if (winnerId === raid.attacker_id) {
-        resultIcon = '🏆';
-        resultText = `${attackerName} Victory`;
-    } else if (winnerId === raid.defender_id) {
-        resultIcon = '🛡️';
-        resultText = `${defenderName} Victory`;
-    } else {
-        resultIcon = '🤝';
-        resultText = 'Draw';
-    }
-    
-    // Build description
-    let description = `**${attackerName}** vs **${defenderName}**\n`;
-    description += `${resultIcon} **Result:** ${resultText}\n`;
-    description += `⏰ **Date:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n`;
-    
-    if (raid.total_turns) {
-        description += `🔄 **Turns:** ${raid.total_turns}\n`;
-    }
-    
-    if (raid.battle_duration) {
-        const minutes = Math.floor(raid.battle_duration / 60);
-        const seconds = raid.battle_duration % 60;
-        description += `⌛ **Duration:** ${minutes}m ${seconds}s\n`;
-    }
-    
-    // Add rewards section
-    const rewards = [];
-    
-    if (raid.berries_stolen > 0) {
-        rewards.push(`💰 ${raid.berries_stolen.toLocaleString()} berries`);
-    }
-    
-    if (raid.fruits_stolen && Array.isArray(raid.fruits_stolen) && raid.fruits_stolen.length > 0) {
-        const fruitList = raid.fruits_stolen.map(fruit => {
-            const emoji = RARITY_EMOJIS[fruit.rarity] || '🍈';
-            return `${emoji} ${fruit.name}`;
-        }).join(', ');
-        rewards.push(`🍈 **Fruits:** ${fruitList}`);
-    }
-    
-    if (rewards.length > 0) {
-        description += `\n🎁 **Rewards:** ${rewards.join(' • ')}`;
-    } else {
-        description += `\n🎁 **Rewards:** None`;
-    }
-    
-    return {
-        title: `${attackerName} vs ${defenderName}`,
-        description
-    };
+function hpLine(u) {
+  if (!u) return "—";
+  const e = u.emoji ? `${u.emoji} ` : "";
+  const max = u.maxHP ?? 1, cur = u.finalHP ?? 0;
+  const pct = Math.max(0, Math.min(100, Math.round((cur / Math.max(1,max)) * 100)));
+  return `${e}**${u.name || "?"}**  ${cur}/${max} (${pct}%)`;
 }
 
-/**
- * Create navigation components
- */
-function createHistoryComponents(sessionId, session) {
-    const components = [];
-    const { currentPage, totalPages } = session;
-    
-    const navRow = new ActionRowBuilder();
-    
-    // First page button
-    if (currentPage > 0) {
-        navRow.addComponents(
-            new ButtonBuilder()
-                .setCustomId(`history_first_${sessionId}`)
-                .setLabel('⏮️ First')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(currentPage === 0)
-        );
-    }
-    
-    // Previous page button
-    if (currentPage > 0) {
-        navRow.addComponents(
-            new ButtonBuilder()
-                .setCustomId(`history_prev_${sessionId}`)
-                .setLabel('⬅️ Previous')
-                .setStyle(ButtonStyle.Primary)
-        );
-    }
-    
-    // Page indicator
-    navRow.addComponents(
-        new ButtonBuilder()
-            .setCustomId(`history_page_${sessionId}`)
-            .setLabel(`${currentPage + 1}/${totalPages}`)
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true)
+// ---------- STATE / RENDER ----------
+function filterAndSort(history, userId, mineOnly) {
+  let list = history.slice();
+  if (mineOnly && userId) {
+    list = list.filter(x => String(x.userId) === String(userId));
+  }
+  // newest first
+  list.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+  return list;
+}
+
+function paginate(list, page, size) {
+  const total = list.length;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const p = Math.max(1, Math.min(page, totalPages));
+  const start = (p - 1) * size;
+  const slice = list.slice(start, start + size);
+  return { page: p, totalPages, slice, total };
+}
+
+function buildRow(disabled, page, totalPages, mineOnly) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`pvp_hist:first:${mineOnly ? "mine" : "all"}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("⏮️")
+      .setDisabled(disabled || page <= 1),
+    new ButtonBuilder()
+      .setCustomId(`pvp_hist:prev:${mineOnly ? "mine" : "all"}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("◀️")
+      .setDisabled(disabled || page <= 1),
+    new ButtonBuilder()
+      .setCustomId(`pvp_hist:toggle:${mineOnly ? "mine" : "all"}`)
+      .setStyle(ButtonStyle.Primary)
+      .setLabel(mineOnly ? "Showing: Mine" : "Showing: All"),
+    new ButtonBuilder()
+      .setCustomId(`pvp_hist:next:${mineOnly ? "mine" : "all"}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("▶️")
+      .setDisabled(disabled || page >= totalPages),
+    new ButtonBuilder()
+      .setCustomId(`pvp_hist:last:${mineOnly ? "mine" : "all"}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("⏭️")
+      .setDisabled(disabled || page >= totalPages)
+  );
+}
+
+function colorForOutcome(outcome) {
+  if (outcome === "win") return 0x28a745;
+  if (outcome === "loss") return 0xdc3545;
+  return 0x6c757d;
+}
+
+function buildEmbeds(user, list, page, totalPages, total, mineOnly) {
+  const title = `PvP Raid History ${mineOnly ? "— Yours" : "— All"}`;
+  const descr = total
+    ? `Page **${page} / ${totalPages}** • Total **${total}**`
+    : "No history found.";
+
+  const embeds = [];
+  if (list.length === 0) {
+    embeds.push(
+      new EmbedBuilder()
+        .setTitle(title)
+        .setDescription(descr)
+        .setColor(0x2b2d31)
     );
-    
-    // Next page button
-    if (currentPage < totalPages - 1) {
-        navRow.addComponents(
-            new ButtonBuilder()
-                .setCustomId(`history_next_${sessionId}`)
-                .setLabel('➡️ Next')
-                .setStyle(ButtonStyle.Primary)
-        );
+    return embeds;
+  }
+
+  for (const item of list) {
+    const a0 = (item.teamA && item.teamA[0]) || null;
+    const b0 = (item.teamB && item.teamB[0]) || null;
+    const logTail = Array.isArray(item.logTail) ? item.logTail.slice(-5).join("\n") : "—";
+    const who = item.userName || item.userId || "Player";
+    const opp = item.opponentName || "Opponent";
+
+    const em = new EmbedBuilder()
+      .setTitle(`${who} vs ${opp}`)
+      .setColor(colorForOutcome(item.outcome))
+      .setDescription(
+        `**Result:** ${item.outcome ? item.outcome.toUpperCase() : "UNKNOWN"} • ` +
+        `**Turns:** ${item.turns ?? "?"} • **When:** ${fmtDate(item.timestamp)}`
+      )
+      .addFields(
+        { name: "Team A", value: a0 ? hpLine(a0) : "—", inline: true },
+        { name: "Team B", value: b0 ? hpLine(b0) : "—", inline: true },
+        { name: "Summary", value: item.summary || "—" },
+        { name: "Recent log", value: "```md\n" + logTail + "\n```" }
+      )
+      .setFooter({ text: `ID: ${item.id || "—"}` });
+
+    embeds.push(em);
+  }
+
+  // Insert a header embed on top
+  embeds.unshift(
+    new EmbedBuilder()
+      .setTitle(title)
+      .setDescription(descr)
+      .setColor(0x2b2d31)
+  );
+
+  return embeds;
+}
+
+// ---------- RENDER WRAPPER STATE ----------
+function makeState(interaction, allHistory) {
+  return {
+    page: 1,
+    mineOnly: true,
+    historyAll: allHistory,
+    get list() {
+      return filterAndSort(this.historyAll, interaction.user.id, this.mineOnly);
+    },
+    render(opts = {}) {
+      const disabled = !!opts.disabled;
+      const { page, totalPages, slice, total } = paginate(this.list, this.page, PAGE_SIZE);
+      const embeds = buildEmbeds(interaction.user, slice, page, totalPages, total, this.mineOnly);
+      const row = buildRow(disabled, page, totalPages, this.mineOnly);
+      return { embeds, components: [row] };
+    },
+    first() { this.page = 1; },
+    prev() { this.page = Math.max(1, this.page - 1); },
+    next() {
+      const totalPages = Math.max(1, Math.ceil(this.list.length / PAGE_SIZE));
+      this.page = Math.min(totalPages, this.page + 1);
+    },
+    last() {
+      const totalPages = Math.max(1, Math.ceil(this.list.length / PAGE_SIZE));
+      this.page = totalPages;
+    },
+    toggleMine() {
+      this.mineOnly = !this.mineOnly;
+      this.page = 1;
     }
-    
-    // Last page button
-    if (currentPage < totalPages - 1) {
-        navRow.addComponents(
-            new ButtonBuilder()
-                .setCustomId(`history_last_${sessionId}`)
-                .setLabel('⏭️ Last')
-                .setStyle(ButtonStyle.Secondary)
-        );
-    }
-    
-    components.push(navRow);
-    
-    // Refresh button
-    const actionRow = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId(`history_refresh_${sessionId}`)
-                .setLabel('🔄 Refresh')
-                .setStyle(ButtonStyle.Success)
-        );
-    
-    components.push(actionRow);
-    
-    return components;
+  };
 }
 
-/**
- * Setup collector for navigation
- */
-function setupHistoryCollector(interaction, sessionId) {
-    const filter = (i) => {
-        const session = activeHistorySessions.get(sessionId);
-        return session && i.user.id === session.requesterId;
-    };
-    
-    const collector = interaction.channel.createMessageComponentCollector({
-        filter,
-        time: HISTORY_CONFIG.PAGE_TIMEOUT
-    });
-    
-    collector.on('collect', async (componentInteraction) => {
-        try {
-            const session = activeHistorySessions.get(sessionId);
-            if (!session) {
-                return componentInteraction.reply({
-                    content: '❌ History session expired!',
-                    ephemeral: true
-                });
-            }
-            
-            const customId = componentInteraction.customId;
-            
-            if (customId.startsWith('history_first_')) {
-                await componentInteraction.deferUpdate();
-                await showHistoryPage(interaction, sessionId, 0);
-            } else if (customId.startsWith('history_prev_')) {
-                await componentInteraction.deferUpdate();
-                const newPage = Math.max(0, session.currentPage - 1);
-                await showHistoryPage(interaction, sessionId, newPage);
-            } else if (customId.startsWith('history_next_')) {
-                await componentInteraction.deferUpdate();
-                const newPage = Math.min(session.totalPages - 1, session.currentPage + 1);
-                await showHistoryPage(interaction, sessionId, newPage);
-            } else if (customId.startsWith('history_last_')) {
-                await componentInteraction.deferUpdate();
-                await showHistoryPage(interaction, sessionId, session.totalPages - 1);
-            } else if (customId.startsWith('history_refresh_')) {
-                await componentInteraction.deferUpdate();
-                
-                // Reload raid history
-                const newHistory = await getRaidHistory(session.targetUserId, session.filter);
-                session.raids = newHistory;
-                session.totalPages = Math.ceil(newHistory.length / HISTORY_CONFIG.RAIDS_PER_PAGE);
-                session.currentPage = Math.min(session.currentPage, session.totalPages - 1);
-                
-                await showHistoryPage(interaction, sessionId, session.currentPage);
-            }
-            
-        } catch (error) {
-            console.error('History collector error:', error);
-            await componentInteraction.reply({
-                content: '❌ An error occurred!',
-                ephemeral: true
-            });
-        }
-    });
-    
-    collector.on('end', (collected, reason) => {
-        if (reason === 'time') {
-            interaction.editReply({
-                components: []
-            }).catch(() => {});
-        }
-        activeHistorySessions.delete(sessionId);
-    });
-}
+// ---------- COLLECTOR ----------
+async function setupHistoryCollector(interaction, message, state) {
+  // Ensure we have a Message
+  let msg = message;
+  if (!msg) msg = await getReplyMessage(interaction);
+  if (!msg) msg = await sendOrEdit(interaction, state.render());
+  if (!msg) {
+    console.warn("[pvp-raid-history] No message available; skipping collector init.");
+    return;
+  }
 
-/**
- * Create embed for no raids found
- */
-function createNoRaidsEmbed(targetUser, filter) {
-    const embed = new EmbedBuilder()
-        .setColor(RARITY_COLORS.uncommon)
-        .setTitle('📭 No Raids Found')
-        .setTimestamp();
-    
-    if (targetUser) {
-        embed.setDescription(`No raids found for ${targetUser.username} with filter: ${filter}`);
-    } else {
-        embed.setDescription(`No raids found in server history with filter: ${filter}`);
-    }
-    
-    embed.addFields({
-        name: '💡 Tips',
-        value: [
-            '• Try changing the filter option',
-            '• Check if the user has participated in any raids',
-            '• Server raid history may be limited to recent raids'
-        ].join('\n'),
-        inline: false
+  const filter = i => i.user.id === interaction.user.id &&
+    i.customId?.startsWith("pvp_hist:");
+
+  // Prefer message collector
+  let collector = null;
+  if (typeof msg.createMessageComponentCollector === "function") {
+    collector = msg.createMessageComponentCollector({ time: COLLECTOR_MS, filter });
+  } else if (interaction.channel?.createMessageComponentCollector) {
+    // Fallback on channel (filter by message id + user)
+    collector = interaction.channel.createMessageComponentCollector({
+      time: COLLECTOR_MS,
+      filter: i => i.message?.id === msg.id && filter(i)
     });
-    
-    return embed;
-}
+  } else {
+    console.warn("[pvp-raid-history] No place to attach a collector; aborting.");
+    return;
+  }
 
-/**
- * Generate unique session ID
- */
-function generateSessionId() {
-    return `history_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-}
-
-/**
- * Record a raid in history (to be called from pvp-raid.js)
- */
-async function recordRaidInHistory(raidData) {
+  collector.on("collect", async (i) => {
     try {
-        const {
-            attackerId,
-            defenderId,
-            winnerId,
-            battleDuration,
-            totalTurns,
-            berriesStolen,
-            fruitsStolen,
-            battleLog,
-            startTime,
-            endTime
-        } = raidData;
-        
-        await DatabaseManager.query(`
-            INSERT INTO raid_history (
-                attacker_id, defender_id, winner_id, battle_duration, 
-                total_turns, berries_stolen, fruits_stolen, battle_log,
-                started_at, ended_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        `, [
-            attackerId,
-            defenderId,
-            winnerId,
-            battleDuration || 0,
-            totalTurns || 0,
-            berriesStolen || 0,
-            JSON.stringify(fruitsStolen || []),
-            JSON.stringify(battleLog || []),
-            new Date(startTime),
-            new Date(endTime || Date.now())
-        ]);
-        
-    } catch (error) {
-        console.error('Error recording raid in history:', error);
+      const [, action, scope] = i.customId.split(":"); // pvp_hist:prev:mine
+      if (action === "first") state.first();
+      else if (action === "prev") state.prev();
+      else if (action === "next") state.next();
+      else if (action === "last") state.last();
+      else if (action === "toggle") state.toggleMine();
+
+      await i.deferUpdate().catch(() => {});
+      const newPayload = state.render();
+      const updated = await sendOrEdit(interaction, newPayload);
+      if (!updated) collector.stop("no_message");
+    } catch (err) {
+      console.error("[pvp-raid-history] collector error:", err);
     }
+  });
+
+  collector.on("end", async () => {
+    try {
+      const payload = state.render({ disabled: true });
+      await sendOrEdit(interaction, payload);
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
-// Export the record function for use in pvp-raid.js
-module.exports.recordRaidInHistory = recordRaidInHistory;
+// ---------- COMMAND ----------
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName("pvp-raid-history")
+    .setDescription("View PvP raid history with paging and filters.")
+    .addBooleanOption(o =>
+      o.setName("all")
+       .setDescription("Show all players (default shows only yours)")
+    ),
+
+  async execute(interaction) {
+    try {
+      const showAll = interaction.options.getBoolean("all") || false;
+
+      // Load data
+      const history = loadHistory();
+      const state = makeState(interaction, history);
+      state.mineOnly = !showAll; // default: mine only
+
+      // First render (guarantee a Message back)
+      const msg = await sendOrEdit(interaction, state.render());
+
+      // Collector (safe)
+      await setupHistoryCollector(interaction, msg, state);
+    } catch (err) {
+      console.error("PvP Raid History error:", err);
+      const embed = new EmbedBuilder()
+        .setTitle("PvP Raid History")
+        .setDescription("Something went wrong showing history.")
+        .setColor(0xcc0000);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ embeds: [embed] }).catch(() => {});
+      } else {
+        await interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+      }
+    }
+  }
+};
