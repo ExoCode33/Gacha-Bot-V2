@@ -1,4 +1,4 @@
-// src/commands/CommandManager.js - UPDATED: Discord.js v14 Compatibility Fixes
+// src/commands/CommandManager.js - COMPLETE: Discord.js v14 Compatible Version
 const fs = require('fs').promises;
 const path = require('path');
 const { Collection, MessageFlags } = require('discord.js');
@@ -194,7 +194,7 @@ class CommandManager {
             if (command.disabled) {
                 await InteractionHandler.safeReply(interaction, {
                     content: '❌ This command is currently disabled.',
-                    flags: MessageFlags.Ephemeral // FIXED: Use flags instead of ephemeral
+                    flags: MessageFlags.Ephemeral
                 });
                 return;
             }
@@ -232,7 +232,7 @@ class CommandManager {
             // Log successful execution
             this.logger.command(userId, commandName, true, duration);
             
-            // FIXED: Record to database with graceful error handling
+            // Record to database with graceful error handling
             await this.recordCommandUsageGraceful(userId, commandName, guildId, true, duration);
             
         } catch (error) {
@@ -241,7 +241,7 @@ class CommandManager {
             this.logger.error(`Command ${commandName} failed:`, error);
             this.logger.command(userId, commandName, false, duration, error.message);
             
-            // FIXED: Record failed execution with graceful error handling
+            // Record failed execution with graceful error handling
             await this.recordCommandUsageGraceful(userId, commandName, guildId, false, duration, error.message);
             
             // Send error response
@@ -401,8 +401,7 @@ class CommandManager {
     }
 
     /**
-     * FIXED: Record command usage to database with graceful error handling
-     * This prevents foreign key constraint violations and handles database issues gracefully
+     * Record command usage to database with graceful error handling
      */
     async recordCommandUsageGraceful(userId, commandName, guildId, success, executionTime, errorMessage = null) {
         try {
@@ -472,7 +471,7 @@ class CommandManager {
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp({
                     content: errorMessage,
-                    flags: MessageFlags.Ephemeral // FIXED: Use flags instead of ephemeral
+                    flags: MessageFlags.Ephemeral
                 });
             } else {
                 await InteractionHandler.safeReply(interaction, {
@@ -644,14 +643,14 @@ class CommandManager {
     }
 
     /**
-     * FIXED: Create safe command context
+     * Create safe command context
      */
     createCommandContext(interaction) {
         return InteractionHandler.createContext(interaction);
     }
 
     /**
-     * FIXED: Validate command execution environment
+     * Validate command execution environment
      */
     validateExecutionEnvironment(interaction, command) {
         // Check if command can be used in DMs
