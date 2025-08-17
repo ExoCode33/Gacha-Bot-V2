@@ -1,5 +1,5 @@
-// src/commands/slash/gacha/summon.js - COMPLETE FIXED FILE
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+// src/commands/slash/gacha/summon.js - UPDATED: Menu-Based Interface
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const GachaService = require('../../../services/GachaService');
 const EconomyService = require('../../../services/EconomyService');
 const DatabaseManager = require('../../../database/DatabaseManager');
@@ -478,86 +478,707 @@ class SummonAnimator {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('summon')
-        .setDescription('🍈 Summon Devil Fruits with cinematic animation!')
-        .addIntegerOption(option =>
-            option.setName('count')
-                .setDescription('Number of summons to make')
-                .setRequired(false)
-                .addChoices(
-                    { name: '10x Multi Summon (Default)', value: 10 },
-                    { name: '50x Mega Summon', value: 50 },
-                    { name: '100x Ultra Summon', value: 100 }
-                )
-        )
-        .addBooleanOption(option =>
-            option.setName('skip_animation')
-                .setDescription('Skip animations and show results immediately')
-                .setRequired(false)
-        ),
+        .setDescription('🍈 Summon Devil Fruits! Opens a menu to choose amount and animation options.'),
     
     category: 'gacha',
     cooldown: 5,
     
     async execute(interaction) {
         const userId = interaction.user.id;
-        const summonCount = interaction.options.getInteger('count') || 10; // Default to 10x
-        const skipAnimation = interaction.options.getBoolean('skip_animation') || false;
         
         try {
-            // Calculate cost WITHOUT DISCOUNTS - full price for all pulls
-            const cost = PULL_COST * summonCount;
-            
+            // Get user's current balance and pity info
             const balance = await EconomyService.getBalance(userId);
+            const pityInfo = await GachaService.getPityInfo(userId);
             
-            if (balance < cost) {
-                const pityInfo = await GachaService.getPityInfo(userId);
-                const pityDisplay = GachaService.formatPityDisplay(pityInfo);
-                
-                return interaction.reply({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor('#FF0000')
-                            .setTitle('❌ Insufficient Berries')
-                            .setDescription(`You need **${cost.toLocaleString()}** berries but only have **${balance.toLocaleString()}** berries\n\n${pityDisplay}`)
-                            .setFooter({ text: 'Use /income to earn more berries!' })
-                    ],
-                    ephemeral: true
-                });
-            }
+            // Create the main summon menu
+            const menuEmbed = await this.createSummonMenu(balance, pityInfo);
+            const menuComponents = await this.createSummonComponents(userId);
             
-            // ALWAYS defer the reply first for longer operations
-            await interaction.deferReply();
+            await interaction.reply({ 
+                embeds: [menuEmbed], 
+                components: menuComponents 
+            });
             
-            await EconomyService.deductBerries(userId, cost, 'gacha_summon');
-            const newBalance = balance - cost;
-            
-            if (summonCount === 10) {
-                await this.run10xSummon(interaction, newBalance, skipAnimation);
-            } else if (summonCount === 50) {
-                await this.run50xSummon(interaction, newBalance, skipAnimation);
-            } else if (summonCount === 100) {
-                await this.run100xSummon(interaction, newBalance, skipAnimation);
-            }
+            // Setup collector for menu interactions
+            await this.setupMenuCollector(interaction);
             
         } catch (error) {
             interaction.client.logger.error('Summon command error:', error);
             
-            // Check if we can still respond
-            try {
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({
-                        content: '❌ An error occurred during your summon.',
-                        ephemeral: true
-                    });
-                } else {
-                    await interaction.editReply({
-                        content: '❌ An error occurred during your summon.'
-                    });
-                }
-            } catch (responseError) {
-                interaction.client.logger.error('Failed to send error response:', responseError);
+            const errorMessage = {
+                content: '❌ An error occurred while opening the summon menu.',
+                ephemeral: true
+            };
+            
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp(errorMessage);
+            } else {
+                await interaction.reply(errorMessage);
             }
         }
+    },
+
+    /**
+     * Create the main summon menu embed
+     */
+    async createSummonMenu(balance, pityInfo) {
+        const pityDisplay = GachaService.formatPityDisplay(pityInfo);
+        
+        // Calculate costs
+        const costs = {
+            single: PULL_COST,
+            ten: PULL_COST * 10,
+            hundred: PULL_COST * 100
+        };
+        
+        // Check affordability
+        const canAfford = {
+            single: balance >= costs.single,
+            ten: balance >= costs.ten,
+            hundred: balance >= costs.hundred
+        };
+        
+        const embed = new EmbedBuilder()
+            .setTitle('🍈 Devil Fruit Summoning Menu')
+            .setColor(RARITY_COLORS.legendary)
+            .setDescription('Choose how many Devil Fruits you want to summon!')
+            .addFields(
+                {
+                    name: '💰 Your Balance',
+                    value: `**${balance.toLocaleString()} Berries** 🍓`,
+                    inline: true
+                },
+                {
+                    name: '🎯 Pity Status',
+                    value: `${pityInfo.current}/${pityInfo.hardPity} pulls\n${pityInfo.pityActive ? '🔥 Pity Active!' : '💤 Pity Inactive'}`,
+                    inline: true
+                },
+                {
+                    name: '🍈 Summon Options',
+                    value: [
+                        `**1x Pull** - ${costs.single.toLocaleString()} 🍓 ${canAfford.single ? '✅' : '❌'}`,
+                        `**10x Multi** - ${costs.ten.toLocaleString()} 🍓 ${canAfford.ten ? '✅' : '❌'}`,
+                        `**100x Mega** - ${costs.hundred.toLocaleString()} 🍓 ${canAfford.hundred ? '✅' : '❌'}`
+                    ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '🎬 Animation Options',
+                    value: '• **Full Animation** - Complete cinematic experience\n• **Skip Animation** - Quick results only',
+                    inline: false
+                }
+            )
+            .setFooter({ text: 'Use the buttons below to make your choice!' })
+            .setTimestamp();
+        
+        return embed;
+    },
+
+    /**
+     * Create the summon menu components
+     */
+    async createSummonComponents(userId) {
+        const balance = await EconomyService.getBalance(userId);
+        
+        // Calculate costs
+        const costs = {
+            single: PULL_COST,
+            ten: PULL_COST * 10,
+            hundred: PULL_COST * 100
+        };
+        
+        // Check affordability
+        const canAfford = {
+            single: balance >= costs.single,
+            ten: balance >= costs.ten,
+            hundred: balance >= costs.hundred
+        };
+        
+        // Amount selection dropdown
+        const amountOptions = [];
+        
+        if (canAfford.single) {
+            amountOptions.push({
+                label: '1x Single Pull',
+                description: `${costs.single.toLocaleString()} Berries - Quick single summon`,
+                value: '1',
+                emoji: '🍈'
+            });
+        }
+        
+        if (canAfford.ten) {
+            amountOptions.push({
+                label: '10x Multi Pull',
+                description: `${costs.ten.toLocaleString()} Berries - Multi summon experience`,
+                value: '10',
+                emoji: '📦'
+            });
+        }
+        
+        if (canAfford.hundred) {
+            amountOptions.push({
+                label: '100x Mega Pull',
+                description: `${costs.hundred.toLocaleString()} Berries - Ultimate summon session`,
+                value: '100',
+                emoji: '🎁'
+            });
+        }
+        
+        const components = [];
+        
+        // Only show dropdown if user can afford at least one option
+        if (amountOptions.length > 0) {
+            const amountSelectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`summon_amount_${userId}`)
+                .setPlaceholder('🍈 Choose summon amount...')
+                .addOptions(amountOptions);
+            
+            components.push(new ActionRowBuilder().addComponents(amountSelectMenu));
+            
+            // Animation toggle dropdown
+            const animationSelectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`summon_animation_${userId}`)
+                .setPlaceholder('🎬 Choose animation preference...')
+                .addOptions([
+                    {
+                        label: 'Full Animation',
+                        description: 'Complete cinematic summoning experience',
+                        value: 'full',
+                        emoji: '🎬'
+                    },
+                    {
+                        label: 'Skip Animation',
+                        description: 'Show results immediately',
+                        value: 'skip',
+                        emoji: '⚡'
+                    }
+                ]);
+            
+            components.push(new ActionRowBuilder().addComponents(animationSelectMenu));
+            
+            // Summon button (initially disabled)
+            const summonButton = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`summon_execute_${userId}`)
+                        .setLabel('🚀 Start Summoning!')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(true), // Disabled until selections are made
+                    new ButtonBuilder()
+                        .setCustomId(`summon_cancel_${userId}`)
+                        .setLabel('❌ Cancel')
+                        .setStyle(ButtonStyle.Secondary)
+                );
+            
+            components.push(summonButton);
+        } else {
+            // User can't afford any summons
+            const insufficientButton = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`summon_insufficient_${userId}`)
+                        .setLabel('💸 Insufficient Berries')
+                        .setStyle(ButtonStyle.Danger)
+                        .setDisabled(true),
+                    new ButtonBuilder()
+                        .setCustomId(`income_check_${userId}`)
+                        .setLabel('💰 Check Income')
+                        .setStyle(ButtonStyle.Success)
+                );
+            
+            components.push(insufficientButton);
+        }
+        
+        return components;
+    },
+
+    /**
+     * Setup menu collector for interactions
+     */
+    async setupMenuCollector(interaction) {
+        const message = await interaction.fetchReply();
+        const userId = interaction.user.id;
+        
+        // Store user's selections
+        const userSelections = new Map();
+        
+        const collector = message.createMessageComponentCollector({ 
+            time: 300000, // 5 minutes
+            filter: (i) => i.user.id === userId
+        });
+        
+        collector.on('collect', async (i) => {
+            try {
+                if (i.customId.startsWith('summon_amount_')) {
+                    await this.handleAmountSelection(i, userSelections);
+                } else if (i.customId.startsWith('summon_animation_')) {
+                    await this.handleAnimationSelection(i, userSelections);
+                } else if (i.customId.startsWith('summon_execute_')) {
+                    await this.handleSummonExecution(i, userSelections);
+                    collector.stop();
+                } else if (i.customId.startsWith('summon_cancel_')) {
+                    await this.handleSummonCancel(i);
+                    collector.stop();
+                } else if (i.customId.startsWith('income_check_')) {
+                    await this.handleIncomeCheck(i);
+                }
+            } catch (error) {
+                console.error('Menu collector error:', error);
+                await i.reply({
+                    content: '❌ An error occurred processing your selection.',
+                    ephemeral: true
+                });
+            }
+        });
+        
+        collector.on('end', async () => {
+            try {
+                // Disable all components when collector expires
+                const disabledComponents = await this.createDisabledComponents(userId);
+                await interaction.editReply({ 
+                    components: disabledComponents 
+                }).catch(() => {});
+            } catch (error) {
+                // Ignore errors when disabling components
+            }
+        });
+    },
+
+    /**
+     * Handle amount selection
+     */
+    async handleAmountSelection(interaction, userSelections) {
+        const selectedAmount = parseInt(interaction.values[0]);
+        userSelections.set(interaction.user.id, {
+            ...userSelections.get(interaction.user.id) || {},
+            amount: selectedAmount
+        });
+        
+        const cost = PULL_COST * selectedAmount;
+        
+        await interaction.update({
+            embeds: [await this.createUpdatedEmbed(interaction, userSelections, `Selected: ${selectedAmount}x summon (${cost.toLocaleString()} Berries)`)],
+            components: await this.createUpdatedComponents(interaction.user.id, userSelections)
+        });
+    },
+
+    /**
+     * Handle animation selection
+     */
+    async handleAnimationSelection(interaction, userSelections) {
+        const selectedAnimation = interaction.values[0];
+        userSelections.set(interaction.user.id, {
+            ...userSelections.get(interaction.user.id) || {},
+            animation: selectedAnimation
+        });
+        
+        const animationText = selectedAnimation === 'full' ? 'Full Animation' : 'Skip Animation';
+        
+        await interaction.update({
+            embeds: [await this.createUpdatedEmbed(interaction, userSelections, `Animation: ${animationText}`)],
+            components: await this.createUpdatedComponents(interaction.user.id, userSelections)
+        });
+    },
+
+    /**
+     * Handle summon execution
+     */
+    async handleSummonExecution(interaction, userSelections) {
+        const userId = interaction.user.id;
+        const selections = userSelections.get(userId);
+        
+        if (!selections || !selections.amount || !selections.animation) {
+            await interaction.reply({
+                content: '❌ Please make both amount and animation selections first!',
+                ephemeral: true
+            });
+            return;
+        }
+        
+        const amount = selections.amount;
+        const skipAnimation = selections.animation === 'skip';
+        const cost = PULL_COST * amount;
+        
+        // Final balance check
+        const balance = await EconomyService.getBalance(userId);
+        if (balance < cost) {
+            await interaction.update({
+                content: '❌ Insufficient berries! Your balance may have changed.',
+                embeds: [],
+                components: []
+            });
+            return;
+        }
+        
+        // Deduct berries and start summoning
+        await EconomyService.deductBerries(userId, cost, 'gacha_summon');
+        const newBalance = balance - cost;
+        
+        // Defer the update for longer operation
+        await interaction.deferUpdate();
+        
+        // Execute the appropriate summon type
+        if (amount === 1) {
+            await this.runSingleSummon(interaction, newBalance, skipAnimation);
+        } else if (amount === 10) {
+            await this.run10xSummon(interaction, newBalance, skipAnimation);
+        } else if (amount === 100) {
+            await this.run100xSummon(interaction, newBalance, skipAnimation);
+        }
+    },
+
+    /**
+     * Handle summon cancel
+     */
+    async handleSummonCancel(interaction) {
+        const cancelEmbed = new EmbedBuilder()
+            .setColor(RARITY_COLORS.common)
+            .setTitle('❌ Summoning Cancelled')
+            .setDescription('Maybe next time, brave pirate! 🏴‍☠️')
+            .setFooter({ text: 'Use /summon again when you\'re ready!' })
+            .setTimestamp();
+        
+        await interaction.update({
+            embeds: [cancelEmbed],
+            components: []
+        });
+    },
+
+    /**
+     * Handle income check
+     */
+    async handleIncomeCheck(interaction) {
+        const incomeEmbed = new EmbedBuilder()
+            .setColor(RARITY_COLORS.uncommon)
+            .setTitle('💰 Need More Berries?')
+            .setDescription('Here are ways to earn berries:')
+            .addFields(
+                {
+                    name: '⚡ Quick Income',
+                    value: '• Use `/income` to collect manual income with bonus multiplier\n• Use `/balance` to see accumulated automatic income',
+                    inline: false
+                },
+                {
+                    name: '🍈 Income Requirements',
+                    value: '• You need Devil Fruits to earn income\n• 5+ Devil Fruits = Maximum income rate (6,250 berries/hour)\n• Less than 5 fruits = Proportional income',
+                    inline: false
+                },
+                {
+                    name: '🚀 Getting Started',
+                    value: '• New users start with 5,000 berries\n• Use those berries to get your first Devil Fruits\n• Then you can start earning regular income!',
+                    inline: false
+                }
+            )
+            .setFooter({ text: 'Close this menu and try /income or /balance!' });
+        
+        await interaction.reply({
+            embeds: [incomeEmbed],
+            ephemeral: true
+        });
+    },
+
+    /**
+     * Create updated embed with selections
+     */
+    async createUpdatedEmbed(interaction, userSelections, statusText) {
+        const userId = interaction.user.id;
+        const balance = await EconomyService.getBalance(userId);
+        const pityInfo = await GachaService.getPityInfo(userId);
+        const selections = userSelections.get(userId) || {};
+        
+        const embed = new EmbedBuilder()
+            .setTitle('🍈 Devil Fruit Summoning Menu')
+            .setColor(RARITY_COLORS.legendary)
+            .setDescription('Choose how many Devil Fruits you want to summon!')
+            .addFields(
+                {
+                    name: '💰 Your Balance',
+                    value: `**${balance.toLocaleString()} Berries** 🍓`,
+                    inline: true
+                },
+                {
+                    name: '🎯 Pity Status',
+                    value: `${pityInfo.current}/${pityInfo.hardPity} pulls\n${pityInfo.pityActive ? '🔥 Pity Active!' : '💤 Pity Inactive'}`,
+                    inline: true
+                },
+                {
+                    name: '✨ Current Selection',
+                    value: statusText,
+                    inline: false
+                }
+            );
+        
+        // Show selected options
+        if (selections.amount) {
+            const cost = PULL_COST * selections.amount;
+            embed.addFields({
+                name: '🍈 Selected Amount',
+                value: `**${selections.amount}x Pull** - ${cost.toLocaleString()} 🍓`,
+                inline: true
+            });
+        }
+        
+        if (selections.animation) {
+            const animationText = selections.animation === 'full' ? 'Full Animation 🎬' : 'Skip Animation ⚡';
+            embed.addFields({
+                name: '🎬 Animation Mode',
+                value: animationText,
+                inline: true
+            });
+        }
+        
+        embed.setFooter({ text: 'Complete both selections to start summoning!' })
+             .setTimestamp();
+        
+        return embed;
+    },
+
+    /**
+     * Create updated components based on selections
+     */
+    async createUpdatedComponents(userId, userSelections) {
+        const balance = await EconomyService.getBalance(userId);
+        const selections = userSelections.get(userId) || {};
+        
+        // Calculate costs and affordability
+        const costs = {
+            single: PULL_COST,
+            ten: PULL_COST * 10,
+            hundred: PULL_COST * 100
+        };
+        
+        const canAfford = {
+            single: balance >= costs.single,
+            ten: balance >= costs.ten,
+            hundred: balance >= costs.hundred
+        };
+        
+        const components = [];
+        
+        // Amount selection dropdown
+        const amountOptions = [];
+        
+        if (canAfford.single) {
+            amountOptions.push({
+                label: '1x Single Pull',
+                description: `${costs.single.toLocaleString()} Berries - Quick single summon`,
+                value: '1',
+                emoji: '🍈',
+                default: selections.amount === 1
+            });
+        }
+        
+        if (canAfford.ten) {
+            amountOptions.push({
+                label: '10x Multi Pull',
+                description: `${costs.ten.toLocaleString()} Berries - Multi summon experience`,
+                value: '10',
+                emoji: '📦',
+                default: selections.amount === 10
+            });
+        }
+        
+        if (canAfford.hundred) {
+            amountOptions.push({
+                label: '100x Mega Pull',
+                description: `${costs.hundred.toLocaleString()} Berries - Ultimate summon session`,
+                value: '100',
+                emoji: '🎁',
+                default: selections.amount === 100
+            });
+        }
+        
+        if (amountOptions.length > 0) {
+            const amountSelectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`summon_amount_${userId}`)
+                .setPlaceholder(selections.amount ? `Selected: ${selections.amount}x` : '🍈 Choose summon amount...')
+                .addOptions(amountOptions);
+            
+            components.push(new ActionRowBuilder().addComponents(amountSelectMenu));
+        }
+        
+        // Animation selection dropdown
+        const animationSelectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`summon_animation_${userId}`)
+            .setPlaceholder(selections.animation ? 
+                `Selected: ${selections.animation === 'full' ? 'Full Animation' : 'Skip Animation'}` : 
+                '🎬 Choose animation preference...')
+            .addOptions([
+                {
+                    label: 'Full Animation',
+                    description: 'Complete cinematic summoning experience',
+                    value: 'full',
+                    emoji: '🎬',
+                    default: selections.animation === 'full'
+                },
+                {
+                    label: 'Skip Animation',
+                    description: 'Show results immediately',
+                    value: 'skip',
+                    emoji: '⚡',
+                    default: selections.animation === 'skip'
+                }
+            ]);
+        
+        components.push(new ActionRowBuilder().addComponents(animationSelectMenu));
+        
+        // Action buttons
+        const bothSelected = selections.amount && selections.animation;
+        const summonButton = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`summon_execute_${userId}`)
+                    .setLabel(bothSelected ? '🚀 Start Summoning!' : '⏳ Make Selections First')
+                    .setStyle(bothSelected ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                    .setDisabled(!bothSelected),
+                new ButtonBuilder()
+                    .setCustomId(`summon_cancel_${userId}`)
+                    .setLabel('❌ Cancel')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
+        components.push(summonButton);
+        
+        return components;
+    },
+
+    /**
+     * Create disabled components for timeout
+     */
+    async createDisabledComponents(userId) {
+        const disabledSelectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`summon_amount_disabled_${userId}`)
+            .setPlaceholder('⏰ Menu expired - use /summon again')
+            .addOptions([
+                {
+                    label: 'Expired',
+                    description: 'This menu has expired',
+                    value: 'expired'
+                }
+            ])
+            .setDisabled(true);
+        
+        const disabledButton = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`summon_expired_${userId}`)
+                    .setLabel('⏰ Menu Expired')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true)
+            );
+        
+        return [
+            new ActionRowBuilder().addComponents(disabledSelectMenu),
+            disabledButton
+        ];
+    },
+
+    /**
+     * Run single summon
+     */
+    async runSingleSummon(interaction, newBalance, skipAnimation = false) {
+        try {
+            const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
+            
+            // Perform single pull
+            const pullData = await GachaService.performPulls(interaction.user.id, 1);
+            const result = pullData.results[0];
+            const fruit = result.fruit;
+            
+            const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
+                f.name === fruit.fruit_name || f.id === fruit.fruit_id
+            );
+            
+            // Get detailed skill information
+            let skillData = null;
+            try {
+                skillData = getSkillDisplay(fruit.fruit_id, fruit.fruit_rarity);
+            } catch (error) {
+                console.warn('Failed to get skill display for fruit:', fruit.fruit_id, error.message);
+            }
+            
+            const displayFruit = {
+                id: fruit.fruit_id || fruit.id || 'fruit_1',
+                name: fruit.fruit_name || fruit.name || 'Unknown Fruit',
+                type: fruit.fruit_type || fruit.type || 'Unknown',
+                rarity: fruit.fruit_rarity || fruit.rarity || 'common',
+                multiplier: ((parseFloat(fruit.base_cp) || 100) / 100).toFixed(1),
+                description: fruit.fruit_description || fruit.description || fruit.fruit_power || 'A mysterious Devil Fruit power',
+                skillName: skillData?.name || actualFruit?.skill?.name || 'Unknown Ability',
+                skillDamage: skillData?.damage || actualFruit?.skill?.damage || 50,
+                skillCooldown: skillData?.cooldown || actualFruit?.skill?.cooldown || 2
+            };
+            
+            if (!skipAnimation) {
+                // Run single fruit animation
+                await this.runSingleAnimationWithRarityStop(interaction, displayFruit, result, 1, 1);
+            }
+            
+            // Get final pity info
+            const pityInfo = await GachaService.getPityInfo(interaction.user.id);
+            
+            // Show single result
+            const resultEmbed = createSinglePullReveal({
+                fruit: displayFruit,
+                isNew: result.duplicateCount === 1,
+                pityUsed: result.pityUsed
+            });
+            
+            // Add balance and pity info
+            resultEmbed.addFields(
+                {
+                    name: '💰 Remaining Balance',
+                    value: `${newBalance.toLocaleString()} Berries`,
+                    inline: true
+                },
+                {
+                    name: '🎯 Pity Status',
+                    value: `${pityInfo.current}/${pityInfo.hardPity}`,
+                    inline: true
+                }
+            );
+            
+            if (result.pityUsed) {
+                resultEmbed.setFooter({ text: '✨ PITY WAS USED! | Your legend grows stronger!' });
+            }
+            
+            await interaction.editReply({ 
+                embeds: [resultEmbed], 
+                components: [] 
+            });
+            
+        } catch (error) {
+            console.error('Single summon error:', error);
+            await interaction.editReply({
+                content: '❌ An error occurred during your summon.',
+                embeds: [],
+                components: []
+            });
+        }
+    },
+
+    /**
+     * Run single fruit animation with rarity stop
+     */
+    async runSingleAnimationWithRarityStop(interaction, fruit, result, summonNumber, totalSummons) {
+        const currentPity = await GachaService.getPityCount(interaction.user.id);
+        
+        // First, run the scanning animation with changing rainbow
+        for (let frame = 0; frame < ANIMATION_CONFIG.QUICK_FRAMES; frame++) {
+            const embed = SummonAnimator.createQuickFrame(frame, fruit, summonNumber, totalSummons, currentPity);
+            
+            await interaction.editReply({ embeds: [embed] });
+            await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.QUICK_DELAY));
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Show final reveal
+        const revealEmbed = SummonAnimator.createQuickReveal(fruit, result, summonNumber, totalSummons, currentPity);
+        await interaction.editReply({ embeds: [revealEmbed] });
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
     },
 
     async run10xSummon(interaction, newBalance, skipAnimation = false) {
@@ -627,120 +1248,6 @@ module.exports = {
         // Show summary
         await this.show10xSummary(interaction, allDisplayFruits, allResults, newBalance, pityInfo, pityUsedInSession);
         await this.setupButtons(interaction);
-    },
-
-    async run50xSummon(interaction, newBalance, skipAnimation = false) {
-        // Get initial pity for tracking
-        let currentPity = await GachaService.getPityCount(interaction.user.id);
-        
-        const { DEVIL_FRUITS } = require('../../../data/DevilFruits');
-        
-        // Perform ALL 50 pulls one by one
-        const allResults = [];
-        const allDisplayFruits = [];
-        
-        for (let i = 0; i < 50; i++) {
-            // Perform single pull
-            const pullData = await GachaService.performPulls(interaction.user.id, 1);
-            const result = pullData.results[0];
-            const fruit = result.fruit;
-            
-            allResults.push(result);
-            
-            const actualFruit = Object.values(DEVIL_FRUITS).find(f => 
-                f.name === fruit.fruit_name || f.id === fruit.fruit_id
-            );
-            
-            // FIXED: Get detailed skill information with COMPREHENSIVE safety checks
-            let skillData = null;
-            try {
-                skillData = getSkillDisplay(fruit.fruit_id, fruit.fruit_rarity);
-            } catch (error) {
-                console.warn('Failed to get skill display for fruit:', fruit.fruit_id, error.message);
-            }
-            
-            const displayFruit = {
-                id: fruit.fruit_id || fruit.id || `fruit_${i}`,
-                name: fruit.fruit_name || fruit.name || 'Unknown Fruit',
-                type: fruit.fruit_type || fruit.type || 'Unknown',
-                rarity: fruit.fruit_rarity || fruit.rarity || 'common', // CRITICAL: Always fallback to 'common'
-                multiplier: ((parseFloat(fruit.base_cp) || 100) / 100).toFixed(1),
-                description: fruit.fruit_description || fruit.description || fruit.fruit_power || 'A mysterious Devil Fruit power',
-                skillName: skillData?.name || actualFruit?.skill?.name || 'Unknown Ability',
-                skillDamage: skillData?.damage || actualFruit?.skill?.damage || 50,
-                skillCooldown: skillData?.cooldown || actualFruit?.skill?.cooldown || 2
-            };
-            
-            allDisplayFruits.push(displayFruit);
-            
-            // Update pity for next pull
-            currentPity = await GachaService.getPityCount(interaction.user.id);
-            
-            // Show animation based on skip_animation setting
-            if (skipAnimation) {
-                // Use simple rainbow animation - CONSTANTLY UPDATE
-                await this.showSimpleLoadingAnimation(interaction, i + 1, 50);
-                await new Promise(resolve => setTimeout(resolve, 50)); // Constant updates
-            } else {
-                // Use full individual fruit animation with rarity-stopped rainbow
-                await this.runQuickAnimationWithRarityStop(interaction, displayFruit, result, i + 1, 50, currentPity);
-                if (i < 49) await new Promise(resolve => setTimeout(resolve, 300));
-            }
-            
-            // Adjust delay based on animation preference
-            const delay = skipAnimation ? 25 : 150;
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-        
-        // Get final pity info
-        const pityInfo = await GachaService.getPityInfo(interaction.user.id);
-        const pityUsedInSession = allResults.some(r => r.pityUsed);
-        
-        // GLOBAL SORT: Sort ALL fruits by rarity first, then distribute to batches
-        const allPairs = allDisplayFruits.map((fruit, index) => ({
-            fruit,
-            result: allResults[index],
-            originalIndex: index
-        }));
-        
-        // Sort all fruits globally by rarity (highest first)
-        const rarityPriority = {
-            'divine': 7, 'mythical': 6, 'legendary': 5, 'epic': 4,
-            'rare': 3, 'uncommon': 2, 'common': 1
-        };
-        
-        allPairs.sort((a, b) => {
-            const rarityA = rarityPriority[a.fruit.rarity] || 0;
-            const rarityB = rarityPriority[b.fruit.rarity] || 0;
-            
-            if (rarityA !== rarityB) {
-                return rarityB - rarityA; // Higher rarity first
-            }
-            
-            return a.fruit.name.localeCompare(b.fruit.name); // Then alphabetical
-        });
-        
-        // Now create sorted arrays
-        const sortedFruits = allPairs.map(pair => pair.fruit);
-        const sortedResults = allPairs.map(pair => pair.result);
-        
-        // Create all batch embeds with globally sorted fruits
-        const batchEmbeds = [];
-        for (let batch = 0; batch < 5; batch++) {
-            const startIdx = batch * 10;
-            const endIdx = startIdx + 10;
-            const batchFruits = sortedFruits.slice(startIdx, endIdx);
-            const batchResults = sortedResults.slice(startIdx, endIdx);
-            
-            const summaryData = SummonAnimator.create10xSummary(batchFruits, batchResults, newBalance, pityInfo, pityUsedInSession, batch + 1, 5);
-            batchEmbeds.push(summaryData.embed);
-        }
-        
-        // Create mega summary with sorted fruits
-        const megaSummaryData = SummonAnimator.createMegaSummary(sortedFruits, sortedResults, newBalance, pityInfo, pityUsedInSession, 50);
-        
-        // Show first batch with navigation
-        await this.showBatchNavigation(interaction, batchEmbeds, megaSummaryData.embed, 0);
     },
 
     async run100xSummon(interaction, newBalance, skipAnimation = false) {
