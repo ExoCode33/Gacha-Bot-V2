@@ -1,4 +1,4 @@
-// src/commands/slash/admin/admin-gacha.js - FIXED: Discord.js v14 Permissions
+// src/commands/slash/admin/admin-gacha.js - SIMPLE: Direct Environment Variable Check
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const EconomyService = require('../../../services/EconomyService');
 const DatabaseManager = require('../../../database/DatabaseManager');
@@ -106,10 +106,13 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            // FIXED: Proper permission checking for Discord.js v14
-            if (!hasAdministratorPermission(interaction)) {
+            // SIMPLE: Just check if user ID is in ADMIN_USERS environment variable
+            const adminUsers = process.env.ADMIN_USERS || '';
+            const userId = interaction.user.id;
+            
+            if (!adminUsers.includes(userId)) {
                 return await interaction.reply({ 
-                    content: '❌ You need Administrator permissions to use this command!', 
+                    content: `❌ You need Administrator permissions to use this command!\n\nYour ID: \`${userId}\`\nAdmin Users: \`${adminUsers}\``, 
                     ephemeral: true 
                 });
             }
@@ -473,56 +476,3 @@ module.exports = {
         }
     }
 };
-
-/**
- * FIXED: Proper permission checking for Discord.js v14
- * This handles the case where interaction.member can be GuildMember or APIInteractionGuildMember
- */
-function hasAdministratorPermission(interaction) {
-    // If not in a guild, can't check permissions
-    if (!interaction.guild) {
-        return false;
-    }
-    
-    // Check if user is guild owner
-    if (interaction.user.id === interaction.guild.ownerId) {
-        return true;
-    }
-    
-    // FIXED: Handle different member types in Discord.js v14
-    const member = interaction.member;
-    if (!member) {
-        return false;
-    }
-    
-    // Case 1: member is a GuildMember object (has permissions property as PermissionsBitField)
-    if (member.permissions && typeof member.permissions.has === 'function') {
-        return member.permissions.has(PermissionFlagsBits.Administrator);
-    }
-    
-    // Case 2: member is APIInteractionGuildMember (has permissions as string)
-    if (typeof member.permissions === 'string') {
-        // Convert string permissions to BigInt and check
-        const permissions = BigInt(member.permissions);
-        const adminFlag = BigInt(PermissionFlagsBits.Administrator);
-        return (permissions & adminFlag) === adminFlag;
-    }
-    
-    // Case 3: Use interaction.memberPermissions if available (Discord.js v14 feature)
-    if (interaction.memberPermissions && typeof interaction.memberPermissions.has === 'function') {
-        return interaction.memberPermissions.has(PermissionFlagsBits.Administrator);
-    }
-    
-    // Fallback: Try to fetch the member from the guild
-    try {
-        const guildMember = interaction.guild.members.cache.get(interaction.user.id);
-        if (guildMember && guildMember.permissions && typeof guildMember.permissions.has === 'function') {
-            return guildMember.permissions.has(PermissionFlagsBits.Administrator);
-        }
-    } catch (error) {
-        console.warn('Failed to check permissions via guild member cache:', error.message);
-    }
-    
-    // If all methods fail, return false for security
-    return false;
-}
