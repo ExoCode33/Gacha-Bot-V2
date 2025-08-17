@@ -1,9 +1,10 @@
-// src/commands/CommandManager.js - FIXED: Graceful database error handling
+// src/commands/CommandManager.js - UPDATED: Discord.js v14 Compatibility Fixes
 const fs = require('fs').promises;
 const path = require('path');
-const { Collection } = require('discord.js');
+const { Collection, MessageFlags } = require('discord.js');
 const Logger = require('../utils/Logger');
 const RateLimiter = require('../utils/RateLimiter');
+const InteractionHandler = require('../utils/InteractionHandler');
 const Config = require('../config/Config');
 
 class CommandManager {
@@ -191,9 +192,9 @@ class CommandManager {
         try {
             // Check if command is disabled
             if (command.disabled) {
-                await interaction.reply({
+                await InteractionHandler.safeReply(interaction, {
                     content: '❌ This command is currently disabled.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral // FIXED: Use flags instead of ephemeral
                 });
                 return;
             }
@@ -215,7 +216,9 @@ class CommandManager {
             
             // Auto-defer if configured
             if (command.defer && !interaction.replied && !interaction.deferred) {
-                await interaction.deferReply({ ephemeral: command.ephemeral });
+                await InteractionHandler.safeDefer(interaction, { 
+                    flags: command.ephemeral ? MessageFlags.Ephemeral : undefined 
+                });
             }
             
             // Record usage
@@ -247,19 +250,18 @@ class CommandManager {
     }
 
     /**
-     * Check if user has required permissions
+     * FIXED: Check if user has required permissions using Discord.js v14 methods
      */
     async checkPermissions(interaction, command) {
         const userId = interaction.user.id;
-        const member = interaction.member;
         
         // Check admin only
         if (command.adminOnly) {
             const adminUsers = Config.security.adminUsers;
             if (!adminUsers.includes(userId)) {
-                await interaction.reply({
+                await InteractionHandler.safeReply(interaction, {
                     content: '❌ This command is restricted to administrators only.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
                 
                 this.logger.security('Unauthorized admin command attempt', userId, {
@@ -271,30 +273,43 @@ class CommandManager {
             }
         }
         
-        // Check Discord permissions
-        if (command.permissions.length > 0 && member) {
-            const hasPermission = member.permissions.has(command.permissions);
+        // FIXED: Check Discord permissions using InteractionHandler
+        if (command.permissions.length > 0) {
+            const permCheck = InteractionHandler.checkPermissions(interaction, command.permissions);
             
-            if (!hasPermission) {
-                await interaction.reply({
-                    content: '❌ You do not have the required permissions to use this command.',
-                    ephemeral: true
+            if (!permCheck.hasPermission) {
+                await InteractionHandler.safeReply(interaction, {
+                    content: `❌ You do not have the required permissions to use this command.\nReason: ${permCheck.reason}`,
+                    flags: MessageFlags.Ephemeral
                 });
                 return false;
             }
         }
         
         // Check moderator roles
-        if (command.moderatorOnly && member) {
+        if (command.moderatorOnly && interaction.member) {
             const moderatorRoles = Config.security.moderatorRoles;
-            const hasModRole = member.roles.cache.some(role => 
-                moderatorRoles.includes(role.id) || moderatorRoles.includes(role.name)
-            );
+            const member = interaction.member;
+            
+            let hasModRole = false;
+            
+            // Try different methods to check roles
+            if (member.roles) {
+                if (member.roles.cache) {
+                    // GuildMember object
+                    hasModRole = member.roles.cache.some(role => 
+                        moderatorRoles.includes(role.id) || moderatorRoles.includes(role.name)
+                    );
+                } else if (Array.isArray(member.roles)) {
+                    // APIInteractionGuildMember object
+                    hasModRole = member.roles.some(roleId => moderatorRoles.includes(roleId));
+                }
+            }
             
             if (!hasModRole && !Config.security.adminUsers.includes(userId)) {
-                await interaction.reply({
+                await InteractionHandler.safeReply(interaction, {
                     content: '❌ This command requires moderator privileges.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
                 return false;
             }
@@ -324,9 +339,9 @@ class CommandManager {
             if (now < expirationTime) {
                 const timeLeft = (expirationTime - now) / 1000;
                 
-                await interaction.reply({
+                await InteractionHandler.safeReply(interaction, {
                     content: `⏰ Please wait ${timeLeft.toFixed(1)} more seconds before using \`${commandName}\` again.`,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
                 
                 return false;
@@ -355,9 +370,9 @@ class CommandManager {
         const isLimited = await this.rateLimiter.checkLimit(userId);
         
         if (isLimited) {
-            await interaction.reply({
+            await InteractionHandler.safeReply(interaction, {
                 content: '🚫 You are being rate limited. Please slow down and try again later.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
             
             this.logger.security('Rate limit exceeded', userId, {
@@ -436,7 +451,7 @@ class CommandManager {
     }
 
     /**
-     * Handle command errors
+     * FIXED: Handle command errors with proper flags
      */
     async handleCommandError(interaction, error) {
         const errorId = Date.now().toString(36);
@@ -457,12 +472,12 @@ class CommandManager {
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp({
                     content: errorMessage,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral // FIXED: Use flags instead of ephemeral
                 });
             } else {
-                await interaction.reply({
+                await InteractionHandler.safeReply(interaction, {
                     content: errorMessage,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
         } catch (responseError) {
@@ -626,6 +641,49 @@ class CommandManager {
             return true;
         }
         return false;
+    }
+
+    /**
+     * FIXED: Create safe command context
+     */
+    createCommandContext(interaction) {
+        return InteractionHandler.createContext(interaction);
+    }
+
+    /**
+     * FIXED: Validate command execution environment
+     */
+    validateExecutionEnvironment(interaction, command) {
+        // Check if command can be used in DMs
+        if (!interaction.guild && command.guildOnly) {
+            return {
+                valid: false,
+                reason: 'This command can only be used in servers'
+            };
+        }
+
+        // Check if command requires specific channel types
+        if (command.channelTypes && interaction.channel) {
+            if (!command.channelTypes.includes(interaction.channel.type)) {
+                return {
+                    valid: false,
+                    reason: `This command can only be used in ${command.channelTypes.join(', ')} channels`
+                };
+            }
+        }
+
+        // Check if bot has required permissions
+        if (command.botPermissions && interaction.guild) {
+            const botMember = interaction.guild.members.me;
+            if (botMember && !botMember.permissions.has(command.botPermissions)) {
+                return {
+                    valid: false,
+                    reason: 'Bot is missing required permissions for this command'
+                };
+            }
+        }
+
+        return { valid: true };
     }
 }
 
