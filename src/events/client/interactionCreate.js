@@ -1,4 +1,5 @@
-// src/events/client/interactionCreate.js - FIXED: No More 40060 Errors
+// src/events/client/interactionCreate.js - FIXED: Discord.js v14 Compatible Event Handler
+const { MessageFlags } = require('discord.js');
 const Logger = require('../../utils/Logger');
 const ErrorHandler = require('../../utils/ErrorHandler');
 const InteractionHandler = require('../../utils/InteractionHandler');
@@ -41,7 +42,7 @@ module.exports = {
         } catch (error) {
             logger.error('Interaction handler error:', error);
             
-            // Use safe error handling
+            // Use safe error handling with fixed flags
             await handleInteractionError(interaction, error);
         }
     }
@@ -57,7 +58,7 @@ async function handleSlashCommand(interaction, logger) {
         logger.warn(`Unknown command: ${interaction.commandName}`);
         await InteractionHandler.safeReply(interaction, {
             content: '❌ Unknown command!',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral // FIXED: Use flags instead of ephemeral
         });
         return;
     }
@@ -135,7 +136,11 @@ async function handleButtonInteraction(interaction, logger) {
         return;
     }
     
-    logger.debug(`Unhandled button interaction: ${customId}`);
+    // If button not handled by collectors, log it
+    logger.debug(`Unhandled button interaction: ${customId}`, {
+        userId: interaction.user.id,
+        guildId: interaction.guildId
+    });
 }
 
 /**
@@ -158,8 +163,17 @@ async function handleSelectMenuInteraction(interaction, logger) {
         return;
     }
     
-    logger.debug(`Select menu interaction: ${customId}`, {
-        values: interaction.values
+    // Summon configuration menus
+    if (customId.startsWith('summon_amount_') || customId.startsWith('summon_animation_')) {
+        logger.debug(`Summon configuration menu: ${customId}`);
+        return;
+    }
+    
+    // If select menu not handled by collectors, log it
+    logger.debug(`Unhandled select menu interaction: ${customId}`, {
+        values: interaction.values,
+        userId: interaction.user.id,
+        guildId: interaction.guildId
     });
 }
 
@@ -218,7 +232,7 @@ async function ensureUserExists(interaction) {
 }
 
 /**
- * FIXED: Handle interaction errors with safe response methods
+ * FIXED: Handle interaction errors with safe response methods and proper flags
  */
 async function handleInteractionError(interaction, error) {
     const logger = new Logger('INTERACTION_ERROR');
@@ -244,10 +258,10 @@ async function handleInteractionError(interaction, error) {
         ? `❌ Error: ${error.message}\n\`Error ID: ${errorId}\``
         : `❌ Something went wrong! Please try again.\n\`Error ID: ${errorId}\``;
     
-    // Use safe reply method
+    // FIXED: Use InteractionHandler with proper flags
     const success = await InteractionHandler.safeReply(interaction, {
         content: errorMessage,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral // FIXED: Use flags instead of ephemeral
     });
     
     if (!success) {
@@ -256,12 +270,28 @@ async function handleInteractionError(interaction, error) {
 }
 
 /**
- * ADDED: Create safe interaction context for commands
+ * FIXED: Create safe interaction context for commands
  */
 function createSafeContext(interaction) {
     return InteractionHandler.createContext(interaction);
 }
 
+/**
+ * FIXED: Safe permission check for interactions
+ */
+function checkInteractionPermissions(interaction, requiredPermissions) {
+    return InteractionHandler.checkPermissions(interaction, requiredPermissions);
+}
+
+/**
+ * FIXED: Safe component interaction handler
+ */
+async function handleSafeComponentInteraction(interaction, handler) {
+    return await InteractionHandler.handleComponentInteraction(interaction, handler);
+}
+
 // Export additional utilities for use in commands
 module.exports.createSafeContext = createSafeContext;
+module.exports.checkInteractionPermissions = checkInteractionPermissions;
+module.exports.handleSafeComponentInteraction = handleSafeComponentInteraction;
 module.exports.InteractionHandler = InteractionHandler;
